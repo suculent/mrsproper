@@ -1,7 +1,18 @@
 import { app, BrowserWindow, nativeTheme } from 'electron'
 import { join } from 'path'
+import { TelegramClient } from 'telegram'
+import { StringSession } from 'telegram/sessions'
+import { SessionManager } from './telegram/SessionManager'
+import { createSecretsStore } from './storage/secrets'
+import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
+import type { AuthState } from '../shared/authTypes'
 
-function createWindow(): void {
+// ── API credentials (injected at build time via electron.vite.config.ts define) ──
+// Loaded here lazily — safeStorage and electron ready must fire first (Pitfall 3).
+// NOTE: config.ts reads import.meta.env — safe in main bundle (not in renderer).
+// We import dynamically after app.whenReady() to ensure Electron is initialized.
+
+function createWindow(): BrowserWindow {
   // Apply OS appearance before creating the window
   const isDark = nativeTheme.shouldUseDarkColors
 
@@ -52,10 +63,68 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
-app.whenReady().then(() => {
-  createWindow()
+app.whenReady().then(async () => {
+  const win = createWindow()
+
+  // ── After app ready: safeStorage is available (Pitfall 3 — guard post-ready) ──
+  // Create the secrets store backed by the real Electron safeStorage
+  const secretsStore = createSecretsStore()
+
+  // Load API credentials (build-time injected, not committed to source — D-04)
+  const { API_ID, API_HASH } = await import('./telegram/config')
+
+  // ── Build the SessionManager ──────────────────────────────────────────────
+  // Restore any previously persisted session string from the encrypted store
+  const savedSession = secretsStore.restoreSession() ?? ''
+
+  const client = new TelegramClient(
+    new StringSession(savedSession),
+    API_ID,
+    API_HASH,
+    {
+      connectionRetries: 5,
+      // RESEARCH Pitfall 5: set low so login flood-waits throw (surfaced as D-13 countdown)
+      // rather than silently sleeping and freezing the UI
+      floodSleepThreshold: 5,
+    }
+  )
+
+  const sm = new SessionManager({
+    client: client as unknown as ConstructorParameters<typeof SessionManager>[0]['client'],
+    storage: {
+      isEncryptionAvailable: () => {
+        const { safeStorage } = require('electron')
+        return safeStorage.isEncryptionAvailable()
+      },
+      encryptString: (s: string) => {
+        const { safeStorage } = require('electron')
+        return safeStorage.encryptString(s)
+      },
+      decryptString: (b: Buffer) => {
+        const { safeStorage } = require('electron')
+        return safeStorage.decryptString(b)
+      },
+    },
+    onStateChange: (state: AuthState) => {
+      emitAuthState(win, state)
+    },
+    onSessionWipe: () => {
+      secretsStore.wipeSession()
+    },
+    apiCreds: { apiId: API_ID, apiHash: API_HASH },
+  })
+
+  // ── Register IPC handlers ─────────────────────────────────────────────────
+  registerAuthChannels(win, sm)
+
+  // ── Restore session on launch ─────────────────────────────────────────────
+  // savedSession is either a live StringSession string or ''.
+  // initialize() will connect + checkAuthorization; wipe + route to idle on dead session.
+  await sm.initialize(savedSession || undefined)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
