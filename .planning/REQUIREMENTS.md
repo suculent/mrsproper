@@ -99,13 +99,42 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (pending roadmap) | — | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| APP-01 | Phase 1 | Pending |
+| APP-02 | Phase 1 | Pending |
+| EXE-01 | Phase 2 | Pending |
+| EXE-02 | Phase 2 | Pending |
+| EXE-03 | Phase 2 | Pending |
+| TGT-01 | Phase 3 | Pending |
+| TGT-02 | Phase 3 | Pending |
+| TGT-03 | Phase 3 | Pending |
+| TGT-04 | Phase 3 | Pending |
+| VRF-01 | Phase 3 | Pending |
+| VRF-02 | Phase 3 | Pending |
+| VRF-03 | Phase 3 | Pending |
+| GRP-01 | Phase 4 | Pending |
+| GRP-02 | Phase 4 | Pending |
+| GRP-03 | Phase 4 | Pending |
+| GRP-04 | Phase 4 | Pending |
+| GRP-05 | Phase 4 | Pending |
+| RMV-01 | Phase 5 | Pending |
+| RMV-02 | Phase 5 | Pending |
+| EXE-04 | Phase 5 | Pending |
+| EXE-05 | Phase 5 | Pending |
+| SAF-01 | Phase 6 | Pending |
+| SAF-02 | Phase 6 | Pending |
+| SAF-03 | Phase 6 | Pending |
+| APP-03 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-10*
-*Last updated: 2026-06-10 after initial definition*
+*Last updated: 2026-06-10 after roadmap creation*
