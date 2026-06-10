@@ -52,7 +52,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-04-PLAN.md — Auth state machine + GramJS stepped flow + zod-validated IPC + locked-down preload
+- [x] 01-04-PLAN.md — Auth state machine + GramJS stepped flow + zod-validated IPC + locked-down preload
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -154,7 +154,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Auth, Session & Portable Shell | 3/5 | In Progress|  |
+| 1. Foundation — Auth, Session & Portable Shell | 4/5 | In Progress|  |
 | 2. Rate-Limit Governor & Error Classification | 0/TBD | Not started | - |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
