@@ -11,7 +11,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **AUTH-01**: User can log in to their Telegram account via phone number + login code
 - [ ] **AUTH-02**: User can complete login when their account has a 2FA password
-- [ ] **AUTH-03**: App ships with an embedded api_id/api_hash so users need no per-user registration
+- [x] **AUTH-03**: App ships with an embedded api_id/api_hash so users need no per-user registration
 - [ ] **AUTH-04**: Session is persisted encrypted at rest (OS keystore-backed) so re-login isn't required each launch
 - [ ] **AUTH-05**: User can log out, revoking the server-side authorization and wiping the local session
 
@@ -57,8 +57,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Application & Packaging
 
-- [ ] **APP-01**: App runs as a portable desktop app on macOS
-- [ ] **APP-02**: App runs as a portable desktop app on Windows
+- [x] **APP-01**: App runs as a portable desktop app on macOS
+- [x] **APP-02**: App runs as a portable desktop app on Windows
 - [ ] **APP-03**: macOS build is code-signed and notarized and Windows build is code-signed (launches without Gatekeeper/SmartScreen blocking)
 
 ## v2 Requirements
@@ -101,11 +101,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Pending |
 | AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
-| APP-01 | Phase 1 | Pending |
-| APP-02 | Phase 1 | Pending |
+| APP-01 | Phase 1 | Complete |
+| APP-02 | Phase 1 | Complete |
 | EXE-01 | Phase 2 | Pending |
 | EXE-02 | Phase 2 | Pending |
 | EXE-03 | Phase 2 | Pending |

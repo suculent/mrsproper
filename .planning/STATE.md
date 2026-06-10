@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-10T20:31:35.902Z"
-last_activity: 2026-06-10 -- Phase 1 planning complete
+last_updated: "2026-06-10T20:48:37.464Z"
+last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 1 — Foundation: Auth, Session & Portable Shell
+**Current focus:** Phase 01 — Foundation — Auth, Session & Portable Shell
 
 ## Current Position
 
-Phase: 1 of 7 (Foundation — Auth, Session & Portable Shell)
-Plan: 0 of TBD in current phase
+Phase: 01 (Foundation — Auth, Session & Portable Shell) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-10 -- Phase 1 planning complete
+Last activity: 2026-06-10
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-foundation-auth-session-portable-shell P01 | 45 | 3 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,10 @@ Recent decisions affecting current work:
 - Stack (research): Electron + GramJS in-process in main; UI in renderer over locked-down IPC; session encrypted via `safeStorage` (Keychain/DPAPI)
 - Build order (research): auth/session -> rate-limit governor -> target resolution / group enumeration -> AuditStore + executor -> UI -> signing
 - Phase 1: Embedded shared api_id treated as public; remote kill-switch / rotation is a v2 resilience concern (CRED-01), not a v1 blocker
+- [Phase ?]: electron-vite@5 peer range is ^5||^6||^7; Vite 8 excluded
+- [Phase ?]: npx shadcn init cannot detect electron-vite framework; components.json and UI components manually created following new-york/slate pattern
+- [Phase ?]: .env auto-read at build time via dotenv; no manual env export needed
+- [Phase ?]: no Google Fonts CDN; Electron must work offline for its own chrome (SSRF/offline constraint)
 
 ### Pending Todos
 
@@ -88,6 +93,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-10T20:05:19.213Z
+Last session: 2026-06-10T20:48:37.459Z
 Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-foundation-auth-session-portable-shell/01-UI-SPEC.md
+Resume file: None
