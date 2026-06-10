@@ -32,7 +32,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User needs no per-user api_id registration — the app authenticates with its embedded credential
   4. After logging in and quitting, relaunching the app finds the user still logged in (session restored from encrypted-at-rest storage, key held in the OS keystore)
   5. User can log out, after which the server-side authorization is revoked and the local session blob is wiped (relaunch requires fresh login)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold electron-vite shell + hardened window + build-time credential injection + portable packaging
+- [ ] 01-02-PLAN.md — Wave 0 test infra (Vitest + mock GramJS/safeStorage) + shared auth contract + [ASSUMED] package gate
+- [ ] 01-03-PLAN.md — Encrypted session persistence + error classification + injectable FloodWaitController
+- [ ] 01-04-PLAN.md — Auth state machine + GramJS stepped flow + zod-validated IPC + locked-down preload
+- [ ] 01-05-PLAN.md — Renderer: stepped login UI + identity shell + stubbed regions + revoking logout
 **UI hint**: yes
 
 ### Phase 2: Rate-Limit Governor & Error Classification
@@ -111,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Auth, Session & Portable Shell | 0/TBD | Not started | - |
+| 1. Foundation — Auth, Session & Portable Shell | 0/5 | Planned | - |
 | 2. Rate-Limit Governor & Error Classification | 0/TBD | Not started | - |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
