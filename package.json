@@ -1,0 +1,33 @@
+{
+  "name": "mrproper",
+  "version": "0.1.0",
+  "description": "Portable desktop app for bulk-removing a person from all Telegram groups",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "package:mac": "electron-builder --mac",
+    "package:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "telegram": "2.26.22"
+  },
+  "devDependencies": {
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@swc/core": "^1.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react-swc": "^4.3.1",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.0"
+  }
+}
