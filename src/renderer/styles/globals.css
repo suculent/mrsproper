@@ -1,4 +1,144 @@
-/* Placeholder - full token set wired in Task 2 (shadcn genesis) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Phase 1 Design System — UI-SPEC tokens (light + dark)
+   Color palette: trust-forward, not playful; Telegram-adjacent blue accent
+   ────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* Light mode — 60/30/10 rule */
+    /* 60% Dominant: #FFFFFF — app background, auth-card surface, input fields */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;          /* #0F172A slate-900 — body + headings */
+
+    /* Card surface (same as background in light) */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* 30% Secondary: #F1F5F9 slate-100 — chrome, sidebar, shell regions */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* 10% Accent: #2563EB blue-600 — submit buttons, focus ring, resend link */
+    --primary: 221 83% 53%;             /* #2563EB blue-600 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Muted: #64748B slate-500 — hints, labels, placeholder */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;    /* #64748B slate-500 */
+
+    /* Accent (interactive highlight) */
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive: #DC2626 red-600 — log-out button, error text, server-revocation warning */
+    --destructive: 0 72% 51%;           /* #DC2626 red-600 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border: #E2E8F0 slate-200 */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+
+    /* Focus ring — accent blue */
+    --ring: 221 83% 53%;
+
+    /* Success: #16A34A green-600 — confirmed-identity check only */
+    --success: 142 71% 45%;             /* #16A34A green-600 */
+    --success-foreground: 0 0% 100%;
+
+    /* Border radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark mode */
+    /* 60% Dominant: #0B1220 — app background, auth-card surface */
+    --background: 222 47% 8%;           /* #0B1220 */
+    --foreground: 210 40% 96%;          /* #F1F5F9 slate-100 — body + headings */
+
+    /* Card */
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+
+    /* Popover */
+    --popover: 215 28% 17%;
+    --popover-foreground: 210 40% 96%;
+
+    /* 30% Secondary: #1E293B slate-800 — shell chrome, stubbed regions, input fields */
+    --secondary: 215 28% 17%;           /* #1E293B slate-800 */
+    --secondary-foreground: 210 40% 96%;
+
+    /* 10% Accent: #3B82F6 blue-500 — brightened for dark contrast */
+    --primary: 217 91% 60%;             /* #3B82F6 blue-500 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Muted: #94A3B8 slate-400 */
+    --muted: 215 28% 17%;
+    --muted-foreground: 215 20% 65%;    /* #94A3B8 slate-400 */
+
+    /* Accent */
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive: #EF4444 red-500 — brightened for dark */
+    --destructive: 0 84% 60%;           /* #EF4444 red-500 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border: #334155 slate-700 */
+    --border: 215 28% 27%;              /* #334155 slate-700 */
+    --input: 215 28% 27%;
+
+    /* Focus ring */
+    --ring: 217 91% 60%;
+
+    /* Success: #22C55E green-500 — brightened */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    /* Spacing scale reminder (8-pt grid):
+       xs:4px | sm:8px | md:16px | lg:24px | xl:32px | 2xl:48px | 3xl:64px */
+  }
+
+  /* Typography — 4 sizes, 2 weights (Inter, 400+600) */
+  .text-display {
+    /* 28px/600/1.2 — auth step titles, app name */
+    @apply text-[28px] font-semibold leading-[1.2];
+  }
+
+  .text-heading {
+    /* 20px/600/1.2 — display name, dialog title, section headers */
+    @apply text-[20px] font-semibold leading-[1.2];
+  }
+
+  .text-body {
+    /* 16px/400/1.5 — field hints, dialog body, helper text */
+    @apply text-[16px] font-normal leading-[1.5];
+  }
+
+  .text-label {
+    /* 14px/600/1.5 — field labels, @username, button labels, countdown */
+    @apply text-[14px] font-semibold leading-[1.5];
+  }
+
+  /* Monospace stack for: numeric user IDs, login codes, @username */
+  .text-mono {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+  }
+}

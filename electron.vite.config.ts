@@ -1,6 +1,11 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react-swc'
+import { config as loadDotenv } from 'dotenv'
+
+// Load .env (gitignored) at build time so MRPROPER_API_ID/MRPROPER_API_HASH
+// are available in process.env for the define substitution below (D-04, AUTH-03).
+loadDotenv()
 
 export default defineConfig({
   main: {

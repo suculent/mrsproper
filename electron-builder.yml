@@ -1,0 +1,66 @@
+# electron-builder packaging configuration (APP-01, APP-02)
+# Produces UNSIGNED-but-runnable portable artifacts for macOS and Windows.
+# Code signing and notarization are Phase 7 (APP-03).
+#
+# macOS dev launch note (Pitfall 6):
+#   Unsigned builds trigger Gatekeeper on other machines.
+#   Launch method: right-click -> Open, or:
+#     xattr -dr com.apple.quarantine /path/to/MrProper.app
+#   This is expected for dev/test builds. Real signing arrives in Phase 7.
+
+appId: cz.corpus.mrproper
+productName: MrProper
+copyright: Copyright © 2026 MrProper
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**/*
+  - "!**/.DS_Store"
+  - "!**/node_modules/**"
+
+# macOS — APP-01
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  # No identity/notarize — unsigned-runnable for dev/testing (Phase 7 adds signing)
+  identity: null
+
+dmg:
+  title: MrProper
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# Windows — APP-02
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  # No signingHashAlgorithms / certificateFile — unsigned-runnable (Phase 7 adds signing)
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+portable:
+  artifactName: "${productName}-${version}-portable.exe"

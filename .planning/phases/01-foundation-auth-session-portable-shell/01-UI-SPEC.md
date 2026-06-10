@@ -2,8 +2,8 @@
 phase: 1
 slug: foundation-auth-session-portable-shell
 status: approved
-shadcn_initialized: false
-preset: recommended-not-yet-run
+shadcn_initialized: true
+preset: "new-york/slate/css-variables/lucide"
 created: 2026-06-10
 reviewed_at: 2026-06-10
 ---
