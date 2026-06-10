@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-10T20:48:37.464Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-06-10T20:59:47.726Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 ## Current Position
 
 Phase: 01 (Foundation — Auth, Session & Portable Shell) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-06-10
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [██░░░░░░░░] 20%
 
 *Updated after each plan completion*
 | Phase 01-foundation-auth-session-portable-shell P01 | 45 | 3 tasks | 35 files |
+| Phase 01-foundation-auth-session-portable-shell P02 | 30 | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,7 @@ Recent decisions affecting current work:
 - [Phase ?]: npx shadcn init cannot detect electron-vite framework; components.json and UI components manually created following new-york/slate pattern
 - [Phase ?]: .env auto-read at build time via dotenv; no manual env export needed
 - [Phase ?]: no Google Fonts CDN; Electron must work offline for its own chrome (SSRF/offline constraint)
+- [Phase ?]: signInWithPassword (telegram@2.26.22): password is a callback (hint)=>Promise<string>, onError required (callback form, plan 04 must use callback not plain value)
 
 ### Pending Todos
 
@@ -93,6 +95,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-10T20:48:37.459Z
-Stopped at: Phase 1 UI-SPEC approved
+Last session: 2026-06-10T20:59:47.720Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

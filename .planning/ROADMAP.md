@@ -44,7 +44,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Wave 0 test infra (Vitest + mock GramJS/safeStorage) + shared auth contract + [ASSUMED] package gate
+- [x] 01-02-PLAN.md — Wave 0 test infra (Vitest + mock GramJS/safeStorage) + shared auth contract + [ASSUMED] package gate
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -154,7 +154,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Auth, Session & Portable Shell | 1/5 | In Progress|  |
+| 1. Foundation — Auth, Session & Portable Shell | 2/5 | In Progress|  |
 | 2. Rate-Limit Governor & Error Classification | 0/TBD | Not started | - |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |

@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Authentication & Session
 
-- [ ] **AUTH-01**: User can log in to their Telegram account via phone number + login code
-- [ ] **AUTH-02**: User can complete login when their account has a 2FA password
+- [x] **AUTH-01**: User can log in to their Telegram account via phone number + login code
+- [x] **AUTH-02**: User can complete login when their account has a 2FA password
 - [x] **AUTH-03**: App ships with an embedded api_id/api_hash so users need no per-user registration
-- [ ] **AUTH-04**: Session is persisted encrypted at rest (OS keystore-backed) so re-login isn't required each launch
-- [ ] **AUTH-05**: User can log out, revoking the server-side authorization and wiping the local session
+- [x] **AUTH-04**: Session is persisted encrypted at rest (OS keystore-backed) so re-login isn't required each launch
+- [x] **AUTH-05**: User can log out, revoking the server-side authorization and wiping the local session
 
 ### Target Resolution
 
@@ -99,11 +99,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
-| AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Complete |
+| AUTH-05 | Phase 1 | Complete |
 | APP-01 | Phase 1 | Complete |
 | APP-02 | Phase 1 | Complete |
 | EXE-01 | Phase 2 | Pending |
