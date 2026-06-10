@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: foundation-auth-session-portable-shell
-status: draft
+status: approved
 shadcn_initialized: false
 preset: recommended-not-yet-run
 created: 2026-06-10
+reviewed_at: 2026-06-10
 ---
 
 # Phase 1 — UI Design Contract
@@ -184,7 +185,7 @@ These are the load-bearing patterns this phase births. Specify them once; later 
 | **Live countdown (FLOOD_WAIT)** | Submit disabled; button label augmented or replaced with "Try again in {mm:ss}" updating every second; counts down to zero then re-enables automatically and restores the normal CTA label. The remaining seconds render in monospace so the layout doesn't jitter. (Cross-phase note D-18: this minimal inline handler is the seed the Phase 2 governor generalizes — keep the countdown rendering decoupled from the timing source so Phase 2 can feed it.) |
 | **Confirm dialog** | shadcn `Dialog`, max-width 400px, overlay dims the shell. Title (Heading) + body (Body) + right-aligned button row: neutral Cancel (autofocus) then the action button. Escape and overlay-click both cancel. Destructive variant colors only the action button red. |
 | **Identity display** | Horizontal block: avatar (48px circle, accent ring) + two-line stack: line 1 = display name (Heading) with a green "Signed in" check; line 2 = `@username` (monospace, muted). When avatar is missing, show initials on a slate-200/slate-700 circle (no broken image, no empty ring). Lives prominently at the top of the authenticated shell. |
-| **App shell layout** | Full eventual layout scaffolded now: a slim top header band (secondary surface) carrying the app name + the identity display on the right and a settings/menu trigger (gear icon, ≥44px) that houses Log out; a main content area with the stubbed workflow regions (placeholder target-input area, placeholder group-list area) rendered as muted, clearly-labeled empty states — visibly inert, not fake-interactive. |
+| **App shell layout** | Full eventual layout scaffolded now: a slim top header band (secondary surface) carrying the app name + the identity display on the right and a settings/menu trigger (gear icon, ≥44px, `aria-label="Settings"` + tooltip so this destructive-action entry point is discoverable to keyboard/screen-reader users) that houses Log out; a main content area with the stubbed workflow regions (placeholder target-input area, placeholder group-list area) rendered as muted, clearly-labeled empty states — visibly inert, not fake-interactive. |
 
 ---
 
