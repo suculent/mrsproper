@@ -13,7 +13,7 @@ MrProper is built discipline-first: the dependency spine (authenticated client -
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation — Auth, Session & Portable Shell** - Authenticated, encrypted-session Electron+GramJS app that launches on macOS and Windows
+- [x] **Phase 1: Foundation — Auth, Session & Portable Shell** - Authenticated, encrypted-session Electron+GramJS app that launches on macOS and Windows (completed 2026-06-10)
 - [ ] **Phase 2: Rate-Limit Governor & Error Classification** - Single serialized queue every Telegram call funnels through, with FLOOD_WAIT back-off and PEER_FLOOD hard-stop
 - [ ] **Phase 3: Target Resolution & Verification** - Resolve a target to a stable numeric ID and visually confirm identity before any action
 - [ ] **Phase 4: Group Enumeration, Membership & Rights** - Membership-verified, rights-aware checklist of the groups the target can be removed from
@@ -56,7 +56,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-05-PLAN.md — Renderer: stepped login UI + identity shell + stubbed regions + revoking logout
+- [x] 01-05-PLAN.md — Renderer: stepped login UI + identity shell + stubbed regions + revoking logout
 
 **UI hint**: yes
 
@@ -154,7 +154,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Auth, Session & Portable Shell | 4/5 | In Progress|  |
+| 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-10 |
 | 2. Rate-Limit Governor & Error Classification | 0/TBD | Not started | - |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
