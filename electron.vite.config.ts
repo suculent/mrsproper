@@ -10,6 +10,12 @@ loadDotenv()
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared'),
+        '@main': resolve('src/main'),
+      },
+    },
     define: {
       'import.meta.env.MRPROPER_API_ID': JSON.stringify(process.env.MRPROPER_API_ID),
       'import.meta.env.MRPROPER_API_HASH': JSON.stringify(process.env.MRPROPER_API_HASH),
@@ -23,6 +29,11 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared'),
+      },
+    },
     build: {
       outDir: 'out/preload',
       lib: {
