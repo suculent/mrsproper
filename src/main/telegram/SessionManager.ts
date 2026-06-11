@@ -39,6 +39,15 @@ const DEAD_SESSION_ERRORS = new Set([
   'AUTH_KEY_DUPLICATED',
 ])
 
+/**
+ * Maximum time logout() waits for the server-side revocation before proceeding
+ * with the unconditional local wipe (D-17 / review WR-05). The auth.LogOut call
+ * is queued behind the governor's serial tail — a prior governed call mid-
+ * FLOOD_WAIT could otherwise hold the user's explicit logout hostage for up to
+ * an hour. After this deadline we report serverRevoked: false and wipe anyway.
+ */
+const LOGOUT_REVOKE_TIMEOUT_MS = 10_000
+
 function isDeadSessionError(err: unknown): boolean {
   const msg = (err as { errorMessage?: string })?.errorMessage ?? ''
   return DEAD_SESSION_ERRORS.has(msg)
@@ -275,31 +284,44 @@ export class SessionManager {
   /**
    * Revoke the server-side authorization and ALWAYS wipe the local session (D-17).
    *
-   * Pattern 6: try LogOut → finally disconnect + wipeSession.
-   * Returns { serverRevoked: true } on success, { serverRevoked: false } on server failure.
+   * Pattern 6: try LogOut → then disconnect + wipeSession unconditionally.
+   * Returns { serverRevoked: true } on success, { serverRevoked: false } on server
+   * failure OR when revocation does not complete within LOGOUT_REVOKE_TIMEOUT_MS
+   * (review WR-05: the governed LogOut queues behind the serial tail and can be
+   * stuck behind a long FLOOD_WAIT — the local wipe must not wait for that).
    * The local session is ALWAYS wiped regardless of server outcome.
    */
   async logout(): Promise<LogoutResult> {
-    let serverRevoked = false
+    // Api.auth.LogOut takes NO constructor argument (telegram@2.26.22 api.d.ts:
+    // class LogOut extends Request<void, auth.TypeLoggedOut>).
+    const revoke = this._governor.run(() => this._client.invoke(new Api.auth.LogOut()))
+
+    // Race the revocation against a bounded deadline. revoke is settled-handled
+    // either way (.then(onFulfilled, onRejected)), so a late rejection after the
+    // timeout wins the race cannot become an unhandled rejection.
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | undefined
+    const serverRevoked = await Promise.race([
+      revoke.then(
+        () => true,
+        () => false
+      ),
+      new Promise<boolean>((resolve) => {
+        timeoutHandle = globalThis.setTimeout(() => resolve(false), LOGOUT_REVOKE_TIMEOUT_MS)
+      }),
+    ])
+    if (timeoutHandle !== undefined) {
+      globalThis.clearTimeout(timeoutHandle)
+    }
 
     try {
-      // Api.auth.LogOut takes NO constructor argument (telegram@2.26.22 api.d.ts:
-      // class LogOut extends Request<void, auth.TypeLoggedOut>).
-      await this._governor.run(() => this._client.invoke(new Api.auth.LogOut()))
-      serverRevoked = true
+      await this._client.disconnect()
     } catch {
-      serverRevoked = false
-    } finally {
-      try {
-        await this._client.disconnect()
-      } catch {
-        // Best-effort disconnect — don't let this block the wipe
-      }
-      this._connected = false
-      // ALWAYS wipe (D-17)
-      this._wipeSessionLocally()
-      this._emit({ step: 'idle' })
+      // Best-effort disconnect — don't let this block the wipe
     }
+    this._connected = false
+    // ALWAYS wipe (D-17) — unconditional, regardless of revocation outcome/timeout
+    this._wipeSessionLocally()
+    this._emit({ step: 'idle' })
 
     return { serverRevoked }
   }
