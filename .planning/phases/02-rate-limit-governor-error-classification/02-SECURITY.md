@@ -1,3 +1,12 @@
+---
+phase: 2
+slug: rate-limit-governor-error-classification
+status: secured
+threats_open: 0
+asvs_level: 1
+created: 2026-06-11
+---
+
 # Phase 2 Security Audit — Rate-Limit Governor & Error Classification
 
 **Audit date:** 2026-06-11
