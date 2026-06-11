@@ -80,7 +80,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Implement classifyRpcError (operationErrors.ts) + RateLimitGovernor class (governor.ts) — GREEN all tests
+- [x] 02-02-PLAN.md — Implement classifyRpcError (operationErrors.ts) + RateLimitGovernor class (governor.ts) — GREEN all tests
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
-| 2. Rate-Limit Governor & Error Classification | 1/3 | In Progress|  |
+| 2. Rate-Limit Governor & Error Classification | 2/3 | In Progress|  |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
