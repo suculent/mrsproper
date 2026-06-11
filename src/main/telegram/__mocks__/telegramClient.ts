@@ -23,6 +23,7 @@
  */
 
 import bigInt from 'big-integer'
+import { Api } from 'telegram'
 
 export type MockRPCErrorCode =
   | 'SESSION_PASSWORD_NEEDED'
@@ -117,6 +118,23 @@ export interface MockClientConfig {
    * it as 'fail' and throws immediately instead of running NETWORK backoff.
    */
   downloadProfilePhotoError?: string
+
+  // ── Phase 4: group enumeration + membership mock controls ──────────────
+  /** If set, getDialogs returns these dialog-like objects. */
+  getDialogsResult?: Array<{
+    entity: 'Chat' | 'Channel' | 'ChannelBroadcast'
+    id: string
+    title: string
+    megagroup?: boolean
+    creator?: boolean
+    adminRights?: { banUsers?: boolean }
+  }>
+  /** If set, GetParticipant throws USER_NOT_PARTICIPANT for these dialogIds. */
+  notMemberDialogIds?: string[]
+  /** If set, GetFullChat returns participant list for these chatIds. */
+  basicGroupParticipants?: Record<string, string[]>  // chatId → userId[]
+  /** If set, getDialogs throws this error. */
+  getDialogsError?: MockRPCErrorCode
 }
 
 const DEFAULT_IDENTITY = {
@@ -271,8 +289,48 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         }
       }
 
+      // channels.GetParticipant — membership check (GRP-01)
+      if (ctorName === 'GetParticipant' || (request as { className?: string })?.className === 'channels.GetParticipant') {
+        const channelInput = (request as { channel?: { channelId?: { toString(): string } } }).channel
+        const channelId = channelInput?.channelId?.toString() ?? ''
+        if (config.notMemberDialogIds?.includes(channelId)) {
+          const err = Object.assign(new Error('USER_NOT_PARTICIPANT'), { errorMessage: 'USER_NOT_PARTICIPANT' })
+          throw err
+        }
+        // Return a ChannelParticipant (member)
+        return { participant: { className: 'ChannelParticipant', userId: bigInt('12345') } }
+      }
+
+      // messages.GetFullChat — basic group membership (GRP-01)
+      if (ctorName === 'GetFullChat' || (request as { className?: string })?.className === 'messages.GetFullChat') {
+        const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
+        const participants = config.basicGroupParticipants?.[chatId] ?? []
+        return {
+          fullChat: {
+            className: 'ChatFull',
+            participants: {
+              className: 'ChatParticipants',
+              participants: participants.map(userId => ({ userId: bigInt(userId) })),
+            },
+          },
+        }
+      }
+
       // Fallback: return a mock result for unrecognised requests
       return {}
+    },
+
+    // ── Phase 4: getDialogs — returns mock dialog list ───────────────────────
+    getDialogs: async (_params?: unknown): Promise<unknown[]> => {
+      if (config.getDialogsError) throw makeRPCError(config.getDialogsError)
+      return (config.getDialogsResult ?? []).map((d) => ({
+        entity: d.entity === 'Chat'
+          ? Object.assign(new Api.Chat({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights })
+          : Object.assign(new Api.Channel({}), { id: bigInt(d.id), megagroup: d.megagroup, adminRights: d.adminRights }),
+        inputEntity: { channelId: bigInt(d.id), accessHash: bigInt.zero },
+        title: d.title,
+        id: bigInt(d.id),
+      }))
     },
 
     // ── Auth: signInWithPassword ──────────────────────────────────────────────
