@@ -72,7 +72,7 @@ Plans:
   3. A PEER_FLOOD response is classified distinctly from FLOOD_WAIT and hard-stops the operation with no retry
   4. A single error-classification function maps RPC errors to a typed enum with explicit skip / fail / retry dispositions, covered by mock-client tests
 
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 **Wave 1**
 
@@ -85,6 +85,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 02-03-PLAN.md — Wire governor into SessionManager + update floodSleepThreshold to 0 in main/index.ts
+
+**Wave 4 (gap closure)** *(blocked on Wave 3 completion)*
+
+- [ ] 02-04-PLAN.md — Close verification gaps: route auth.LogOut through governor.run() (D-08), fix tsc errors in governor.test.ts, correct SESSION_INVALID docstrings
 
 ### Phase 3: Target Resolution & Verification
 
@@ -167,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
-| 2. Rate-Limit Governor & Error Classification | 3/3 | Complete   | 2026-06-11 |
+| 2. Rate-Limit Governor & Error Classification | 3/4 | Gap closure in progress | 2026-06-11 |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
