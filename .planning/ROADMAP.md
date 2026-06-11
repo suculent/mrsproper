@@ -88,7 +88,7 @@ Plans:
 
 **Wave 4 (gap closure)** *(blocked on Wave 3 completion)*
 
-- [ ] 02-04-PLAN.md — Close verification gaps: route auth.LogOut through governor.run() (D-08), fix tsc errors in governor.test.ts, correct SESSION_INVALID docstrings
+- [x] 02-04-PLAN.md — Close verification gaps: route auth.LogOut through governor.run() (D-08), fix tsc errors in governor.test.ts, correct SESSION_INVALID docstrings
 
 ### Phase 3: Target Resolution & Verification
 
@@ -171,7 +171,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
-| 2. Rate-Limit Governor & Error Classification | 3/4 | Gap closure in progress | 2026-06-11 |
+| 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 0/TBD | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
