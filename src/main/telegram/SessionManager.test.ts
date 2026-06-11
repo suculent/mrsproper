@@ -10,7 +10,7 @@
  *   - logout server-revoke FAILS → local STILL wiped + serverRevoked:false (D-17) [-t "logout server fail"]
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { createMockSafeStorage } from '../storage/__mocks__/safeStorage'
 

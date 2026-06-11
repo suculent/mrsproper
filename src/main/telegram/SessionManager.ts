@@ -9,8 +9,8 @@
  * Composes:
  *   - authFlow (startPhone/submitCode/submitPassword/fetchIdentity)
  *   - classifyTelegramError (errors.ts)
- *   - FloodWaitController (floodWait.ts)
- *   - SecretsStore (secrets.ts) — injectable for tests
+ *   - RateLimitGovernor (governor.ts) — all post-auth Telegram calls
+ *   - storage backend (safeStorage in production) — injectable for tests
  *
  * Security (D-02):
  *   - Session string never crosses to the renderer
@@ -27,10 +27,8 @@
 import { Api } from 'telegram'
 import type { AuthState, SubmitPhone, SubmitCode, SubmitPassword, LogoutResult, Identity } from '@shared/authTypes'
 import type { GovernorEvent } from '@shared/opTypes'
-import type { SecretsStore } from '../storage/secrets'
 import { AuthFlow } from './authFlow'
 import { classifyTelegramError } from './errors'
-import { floodWaitSeconds, FloodWaitController } from './floodWait'
 import { RateLimitGovernor } from './governor'
 
 // ── Dead session error codes (RESEARCH Pattern 3 + Code Examples) ─────────
@@ -110,7 +108,6 @@ export class SessionManager {
   private readonly _onSessionWipe: (() => void) | undefined
   private readonly _onSessionPersist: ((sessionString: string) => void) | undefined
   private readonly _apiCreds: { apiId: number; apiHash: string }
-  private readonly _floodController: FloodWaitController
   private readonly _governor: RateLimitGovernor
 
   private _currentState: AuthState = { step: 'idle' }
@@ -131,7 +128,6 @@ export class SessionManager {
     this._onSessionWipe = options.onSessionWipe
     this._onSessionPersist = options.onSessionPersist
     this._apiCreds = options.apiCreds ?? { apiId: 0, apiHash: '' }
-    this._floodController = new FloodWaitController()
     this._governor = new RateLimitGovernor({
       client: options.client,
       onEvent: options.onGovernorEvent,
@@ -287,7 +283,9 @@ export class SessionManager {
     let serverRevoked = false
 
     try {
-      await this._governor.run(() => this._client.invoke(new Api.auth.LogOut({})))
+      // Api.auth.LogOut takes NO constructor argument (telegram@2.26.22 api.d.ts:
+      // class LogOut extends Request<void, auth.TypeLoggedOut>).
+      await this._governor.run(() => this._client.invoke(new Api.auth.LogOut()))
       serverRevoked = true
     } catch {
       serverRevoked = false
