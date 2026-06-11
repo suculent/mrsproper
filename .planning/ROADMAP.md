@@ -142,7 +142,45 @@ Plans:
   4. The app detects each group's type (basic group vs supergroup vs channel) and uses it to determine removal capability and the correct grey-out reason
   5. The app window widens to a ~3x-wider two-pane layout below the header: target/search pane in the left third, groups display pane in the right two-thirds — saving vertical space and giving long group names room (user request 2026-06-11)
 
-**Plans**: TBD
+**Plans**: 10 plans
+Plans:
+**Wave 1** *(test stubs + mock client extensions)*
+
+- [ ] 04-01-PLAN.md — Wave 0: test stubs (groupEnumerator.test.ts, membershipScanner.test.ts, groupChannels.test.ts) + extend mock client
+
+**Wave 2** *(parallel with Wave 1 complete — shared contracts)*
+
+- [ ] 04-02-PLAN.md — Shared types: groupTypes.ts + channels.ts augmentation (GROUP_*/SCAN_* constants)
+
+**Wave 3** *(parallel — both blocked on Wave 2)*
+
+- [ ] 04-03-PLAN.md — GroupEnumerator.ts: dialog enumeration + type classification + rights detection (GREEN tests)
+- [ ] 04-04-PLAN.md — MembershipScanner.ts: per-target membership scan with streaming progress (GREEN tests)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-05-PLAN.md — IPC wiring: groupChannels.ts + preload bridge + main/index.ts service registration + window resize D-10
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04-06-PLAN.md — Renderer foundation: groupsClient.ts + groupsStore.ts + checkbox.tsx + scroll-area.tsx
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 04-07-PLAN.md — Renderer leaf components: groupsCopy.ts + GroupRow.tsx
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 04-08-PLAN.md — GroupsPane.tsx: browse mode + checklist mode + scan progress + empty states
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 04-09-PLAN.md — AppShell.tsx two-pane restructure + delete StubbedWorkflowRegions + CountryPicker CZ fix
+
+**Wave 9 (human checkpoint)** *(blocked on Wave 8 completion)*
+
+- [ ] 04-10-PLAN.md — Human visual verification: layout, scan flow, row states, interactivity
+
 **UI hint**: yes — wide layout: left third = search/target pane, right two-thirds = groups pane; window default size widened accordingly
 
 ### Phase 4.1: Target Search by Name (INSERTED)
@@ -216,7 +254,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
+| 4. Group Enumeration, Membership & Rights | 0/10 | Planned | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
