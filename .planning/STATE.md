@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-01 — shared type contracts for target resolution
-last_updated: "2026-06-11T16:58:51.065Z"
+status: verifying
+stopped_at: "Completed 03-05 — UI layer: TargetCard, TargetInput, Mrs. Proper rename, icons"
+last_updated: "2026-06-11T17:15:32.299Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 29
+  completed_plans: 14
+  percent: 43
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 Phase: 03 (target-resolution-verification) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-11
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 93%
 | Phase 03 P02 | 8 | 2 tasks | 3 files |
 | Phase 03 P03 | 3 | 2 tasks | 2 files |
 | Phase 03 P04 | 8 | 2 tasks | 4 files |
+| Phase 03 P05 | 15 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 3: opTypes.ts forward comment updated from 'Phase 5' to 'Phase 6' — 3 TARGET_* codes added in Phase 3
 - [Phase ?]: Badge component created manually following new-york/slate cva pattern (consistent with shadcn manual setup decision from Phase 1)
 - [Phase 03]: Duck-typed peer check (peer.userId !== undefined) instead of instanceof Api.PeerUser — mock client returns plain objects; duck-typing works for both real and mock GramJS clients
+- [Phase ?]: TargetCard duplicates bytesToDataUrl/getInitials from IdentityDisplay.tsx — avoids premature abstraction
+- [Phase ?]: productName=MrsProper binary + CFBundleDisplayName Mrs. Proper macOS display — binary avoids spaces
+- [Phase ?]: Round JPEG source for macOS icon; square source for Windows icon — matches platform icon conventions
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T16:58:51.059Z
-Stopped at: Completed 03-01 — shared type contracts for target resolution
+Last session: 2026-06-11T17:15:32.285Z
+Stopped at: Completed 03-05 — UI layer: TargetCard, TargetInput, Mrs. Proper rename, icons
 Resume file: None
