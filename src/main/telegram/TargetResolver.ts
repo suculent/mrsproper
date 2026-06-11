@@ -74,6 +74,15 @@ export class TargetResolver {
   private _resolvedUserId: bigint | null = null
   private _resolvedAccessHash: bigint | null = null
 
+  /**
+   * Generation token (WR-03): incremented by every resolve() and reset().
+   * An in-flight resolution whose generation no longer matches is STALE — it
+   * must not emit state and must not write _resolvedUserId/_resolvedAccessHash.
+   * This makes displayed-identity vs acted-identity divergence impossible by
+   * construction (a reset() or newer resolve() always invalidates older work).
+   */
+  private _generation = 0
+
   constructor(options: TargetResolverOptions) {
     this._client = options.client
     // WR-01: prefer the injected account-wide governor; construct a private
@@ -108,20 +117,25 @@ export class TargetResolver {
    * Emits: resolving → (resolved | error)
    */
   async resolve(input: string): Promise<void> {
+    // WR-03: claim a new generation — invalidates any older in-flight resolve.
+    const gen = ++this._generation
     const normalized = normalizeInput(input.trim())
 
     this._emit({ step: 'resolving' })
 
     try {
+      let dto: ResolvedTargetDTO
       if (isPhoneInput(normalized)) {
-        const dto = await this._resolveByPhone(normalized)
-        this._emit({ step: 'resolved', target: dto })
+        dto = await this._resolveByPhone(normalized, gen)
       } else {
-        const cleanUsername = stripLeadingAt(normalized)
-        const dto = await this._resolveByUsername(cleanUsername)
-        this._emit({ step: 'resolved', target: dto })
+        dto = await this._resolveByUsername(stripLeadingAt(normalized), gen)
       }
+      // WR-03: a reset() or newer resolve() superseded this resolution while it
+      // was in flight — discard silently (the newer state already won).
+      if (gen !== this._generation) return
+      this._emit({ step: 'resolved', target: dto })
     } catch (err) {
+      if (gen !== this._generation) return // WR-03: stale — never emit
       const classified = classifyRpcError(err)
       this._emit({
         step: 'error',
@@ -147,6 +161,9 @@ export class TargetResolver {
    * D-14: "Change target" resets flow and all downstream state.
    */
   reset(): void {
+    // WR-03: invalidate any in-flight resolve BEFORE clearing state, so a
+    // pending resolution cannot resurrect the cleared target afterwards.
+    this._generation++
     this._resolvedUserId = null
     this._resolvedAccessHash = null
     this._emit({ step: 'idle' })
@@ -181,7 +198,7 @@ export class TargetResolver {
    * classifyRpcError can map USERNAME_NOT_OCCUPIED → TARGET_USERNAME_NOT_FOUND.
    * NEVER use client.getEntity() here — it wraps the error and defeats the classifier.
    */
-  private async _resolveByUsername(username: string): Promise<ResolvedTargetDTO> {
+  private async _resolveByUsername(username: string, gen: number): Promise<ResolvedTargetDTO> {
     const resolved = await this._governor.run(() =>
       this._client.invoke(new Api.contacts.ResolveUsername({ username }))
     ) as { peer: unknown; users: unknown[] }
@@ -210,6 +227,13 @@ export class TargetResolver {
       throw Object.assign(new Error('USERNAME_NOT_OCCUPIED'), err)
     }
 
+    // WR-03: a reset()/newer resolve() invalidated this resolution mid-flight —
+    // do NOT write the private identity fields, do NOT spend further governed
+    // API calls on bio/avatar. resolve()'s catch sees the stale gen and stays silent.
+    if (gen !== this._generation) {
+      throw STALE_RESOLUTION
+    }
+
     // Store access hash privately (T-03-05 — never in DTO).
     // Normalized to native bigint via decimal string (works for both GramJS
     // BigInteger objects and the mock's values) — Phase 4 reconstructs the
@@ -229,7 +253,7 @@ export class TargetResolver {
    * No contact import, no contact pollution, no cleanup path.
    * RPCError 'PHONE_NOT_OCCUPIED' is caught by classifyRpcError → TARGET_PHONE_NOT_FOUND.
    */
-  private async _resolveByPhone(phone: string): Promise<ResolvedTargetDTO> {
+  private async _resolveByPhone(phone: string, gen: number): Promise<ResolvedTargetDTO> {
     const resolved = await this._governor.run(() =>
       this._client.invoke(new Api.contacts.ResolvePhone({ phone }))
     ) as { peer: unknown; users: unknown[] }
@@ -251,6 +275,11 @@ export class TargetResolver {
     if (!targetUser) {
       const err = { errorMessage: 'PHONE_NOT_OCCUPIED' }
       throw Object.assign(new Error('PHONE_NOT_OCCUPIED'), err)
+    }
+
+    // WR-03: stale-resolution guard — see username path.
+    if (gen !== this._generation) {
+      throw STALE_RESOLUTION
     }
 
     // Store access hash privately (T-03-05 — never in DTO); normalized to
@@ -337,6 +366,13 @@ export class TargetResolver {
     }
   }
 }
+
+// ── Stale-resolution sentinel (WR-03) ─────────────────────────────────────────
+// Thrown inside the private resolution paths when the generation token no longer
+// matches. resolve()'s catch block checks the generation BEFORE classifying, so
+// this sentinel never reaches the user — it only short-circuits stale work.
+
+const STALE_RESOLUTION = new Error('STALE_RESOLUTION')
 
 // ── Minimal shapes for API objects ────────────────────────────────────────────
 

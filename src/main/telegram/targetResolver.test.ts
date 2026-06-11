@@ -467,4 +467,51 @@ describe('TargetResolver.reset', () => {
 
     expect(resolver.getResolvedUser()).toBeNull()
   })
+
+  it('reset() during an in-flight resolve discards the stale resolution (WR-03)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '303',
+        username: 'staleuser',
+        firstName: 'Stale',
+        accessHash: '0',
+      },
+    })
+
+    // Start a resolve but reset() before it completes — the pending resolution
+    // must NOT resurrect the cleared target or repopulate the private fields.
+    const pending = resolver.resolve('@staleuser')
+    resolver.reset()
+    await pending
+
+    expect(resolver.getState().step).toBe('idle')
+    expect(resolver.getResolvedUser()).toBeNull()
+    // No 'resolved' state may have been emitted after the reset's 'idle'
+    const idleIndex = states.findIndex((s) => s.step === 'idle')
+    expect(states.slice(idleIndex).some((s) => s.step === 'resolved')).toBe(false)
+  })
+
+  it('a newer resolve() supersedes an older in-flight resolve (WR-03)', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '304',
+        username: 'winner',
+        firstName: 'Winner',
+        accessHash: '0',
+      },
+    })
+
+    // Two overlapping resolves — the LAST one started must win; the displayed
+    // identity and getResolvedUser() must agree (never the older resolution).
+    const first = resolver.resolve('@loser')
+    const second = resolver.resolve('@winner')
+    await Promise.all([first, second])
+
+    const state = resolver.getState()
+    expect(state.step).toBe('resolved')
+    const resolved = state as Extract<TargetState, { step: 'resolved' }>
+    expect(resolved.target.id).toBe('304')
+    resolver.confirm()
+    expect(resolver.getResolvedUser()?.id).toBe(BigInt('304'))
+  })
 })
