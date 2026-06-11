@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 04.1 — target search by name
+**Current focus:** Phase 04 — group enumeration, membership & rights
 
 ## Current Position
 
-Phase: 04.1
+Phase: 04 (group-enumeration-membership-rights) — context gathered, ready to plan
 Plan: Not started
-Status: Ready to plan
+Status: Ready to plan (Phase 4.1 target-search-by-name follows after Phase 4)
 Last activity: 2026-06-11
 
 Progress: [██████████] 100%
