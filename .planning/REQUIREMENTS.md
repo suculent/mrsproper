@@ -62,6 +62,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **APP-02**: App runs as a portable desktop app on Windows
 - [ ] **APP-03**: macOS build is code-signed and notarized and Windows build is code-signed (launches without Gatekeeper/SmartScreen blocking)
 
+## v1.5 Requirements
+
+Ships after v1 feature-freeze + UAT (Phase 8). i18n hygiene (strings in dedicated copy modules) is maintained throughout v1 development.
+
+### Localization
+
+- [ ] **LOC-01**: Settings has a `Language` row with `English` and `Česky` options; preference persists across launches
+- [ ] **LOC-02**: All user-facing strings are externalized through an i18n layer (no hardcoded strings in components)
+- [ ] **LOC-03**: Complete Czech translation of the app
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -114,7 +124,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | TGT-02 | Phase 3 | Complete |
 | TGT-03 | Phase 3 | Complete |
 | TGT-04 | Phase 3 | Complete |
-| TGT-05 | Phase 3.1 | Pending |
+| TGT-05 | Phase 4.1 | Pending |
 | VRF-01 | Phase 3 | Complete |
 | VRF-02 | Phase 3 | Complete |
 | VRF-03 | Phase 3 | Complete |
@@ -131,6 +141,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SAF-02 | Phase 6 | Pending |
 | SAF-03 | Phase 6 | Pending |
 | APP-03 | Phase 7 | Pending |
+| LOC-01 | Phase 8 (v1.5) | Pending |
+| LOC-02 | Phase 8 (v1.5) | Pending |
+| LOC-03 | Phase 8 (v1.5) | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total

@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: "Completed 03-05 — UI layer: TargetCard, TargetInput, Mrs. Proper rename, icons"
-last_updated: "2026-06-11T17:40:14.413Z"
+last_updated: "2026-06-11T18:18:02.177Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 3
   total_plans: 14
   completed_plans: 14
-  percent: 38
+  percent: 33
 ---
 
 # Project State
@@ -71,6 +71,8 @@ Progress: [██████████] 100%
 ### Roadmap Evolution
 
 - Phase 3.1 inserted after Phase 3: Target Search by Name — forgotten v1 requirement (TGT-05): find deletion target by First + Last Name with candidate disambiguation, resolving through the standard confirmation gate (URGENT)
+- Phase 4.1 moved: Target Search by Name re-sequenced from 3.1 to 4.1: architecture decision to use group-scoped participant search (needs Phase 4 group enumeration) instead of global contacts.Search — finds username-less users, on-demand (no login prefetch), governor-paced
+- Phase 8 added: Localization — i18n & Czech Translation (v1.5, LOC-01..03): Language menu (English/Česky), i18n externalization, Czech translation after v1 feature-freeze + UAT; copy-module hygiene maintained from now on
 
 ### Decisions
 
@@ -102,6 +104,7 @@ Recent decisions affecting current work:
 [From .planning/todos/pending/ — ideas captured during sessions]
 
 - Make country rows clickable in login-form CountryPicker (`2026-06-11-country-picker-rows-clickable.md`, area: ui)
+- Default country Czechia (+420) in CountryPicker (`2026-06-11-default-country-czechia.md`, area: ui)
 
 ### Blockers/Concerns
 

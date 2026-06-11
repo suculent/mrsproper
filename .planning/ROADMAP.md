@@ -16,11 +16,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation — Auth, Session & Portable Shell** - Authenticated, encrypted-session Electron+GramJS app that launches on macOS and Windows (completed 2026-06-10)
 - [x] **Phase 2: Rate-Limit Governor & Error Classification** - Single serialized queue every Telegram call funnels through, with FLOOD_WAIT back-off and PEER_FLOOD hard-stop (completed 2026-06-11)
 - [ ] **Phase 3: Target Resolution & Verification** - Resolve a target to a stable numeric ID and visually confirm identity before any action (verification: gaps_found 2026-06-11)
-- [ ] **Phase 3.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name with candidate disambiguation, ending in the same identity-confirmation gate
 - [ ] **Phase 4: Group Enumeration, Membership & Rights** - Membership-verified, rights-aware checklist of the groups the target can be removed from
+- [ ] **Phase 4.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name via group-scoped participant search with candidate disambiguation, ending in the same identity-confirmation gate
 - [ ] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report
 - [ ] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view
 - [ ] **Phase 7: Packaging, Signing & Release** - Code-signed, notarized portable builds verified launching on clean macOS and Windows machines
+- [ ] **Phase 8: Localization — i18n & Czech Translation (v1.5)** - Language switcher (English/Česky), i18n string externalization, full Czech translation — after v1 feature-freeze + UAT
 
 ## Phase Details
 
@@ -124,23 +125,6 @@ Plans:
 
 **UI hint**: yes
 
-### Phase 3.1: Target Search by Name (INSERTED)
-
-**Goal**: A user who knows only the target's first and/or last name can search for them, pick the right person from a disambiguation list of candidates (avatar + identity details per candidate), and land in the exact same resolved-target confirmation gate as username/phone resolution — so name search is a third entry path, not a parallel flow.
-**Depends on**: Phase 3
-**Requirements**: TGT-05
-**Success Criteria** (what must be TRUE):
-
-  1. User can enter a first + last name (or partial name) and the app returns matching Telegram users via a governor-routed search call (contacts.Search), honestly labeled by where matches come from (contacts vs global results)
-  2. When multiple candidates match, user sees a disambiguation list with avatar, name, @username, and numeric ID per candidate, and can pick one
-  3. Picking a candidate resolves them through the existing TargetResolver path (stable numeric ID, exactly-once resolution) and lands in the same TargetCard confirm gate as username/phone entry
-  4. When no candidates match, user gets a clear, accurate empty-state message (not an error and not a dead end — they can edit the search)
-
-**Plans**: 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 3.1 to break down)
-
 ### Phase 4: Group Enumeration, Membership & Rights
 
 **Goal**: For a resolved target, the user sees a checklist of only the groups where the target is actually a member, pre-checked for removal, with groups the user lacks ban rights in greyed-out and labeled by reason and group type.
@@ -152,9 +136,28 @@ Plans:
   2. Each actionable group appears as a checkbox pre-checked for removal, and the user can uncheck groups to keep the target in them
   3. Groups where the user lacks the ban/kick right appear greyed-out with a specific reason and are not actionable
   4. The app detects each group's type (basic group vs supergroup vs channel) and uses it to determine removal capability and the correct grey-out reason
+  5. The app window widens to a ~3x-wider two-pane layout below the header: target/search pane in the left third, groups display pane in the right two-thirds — saving vertical space and giving long group names room (user request 2026-06-11)
 
 **Plans**: TBD
-**UI hint**: yes
+**UI hint**: yes — wide layout: left third = search/target pane, right two-thirds = groups pane; window default size widened accordingly
+
+### Phase 4.1: Target Search by Name (INSERTED)
+
+**Goal**: A user who knows only the target's first and/or last name can search for them across the groups they administer, pick the right person from a disambiguation list of candidates (avatar + identity details per candidate), and land in the exact same resolved-target confirmation gate as username/phone resolution — so name search is a third entry path, not a parallel flow.
+**Depends on**: Phase 4 (requires the enumerated dialog/group list and group-type detection)
+**Requirements**: TGT-05
+**Architecture decision (2026-06-11)**: Name search is GROUP-SCOPED, not global. On-demand at search time (never prefetched at login), the app iterates the already-enumerated groups and runs server-side participant name search per group (`channels.GetParticipants` + `ChannelParticipantsSearch(q)` for supergroups/channels; full participant list + client-side filter for basic groups, which cap at ~200 members), all serialized through the rate-limit governor with progressive results. Rationale: global `contacts.Search` only finds users with a public @username or in contacts — a username-less bad actor is invisible to it, while group-scoped search finds exactly the removable population. Prefetching all participants at login was evaluated and rejected as too data-heavy (hundreds of paginated calls for large groups).
+**Success Criteria** (what must be TRUE):
+
+  1. User can enter a first + last name (or partial name) and the app searches participants of the user's enumerated groups via governor-routed per-group search calls, streaming results progressively with a visible scan progress indicator
+  2. When multiple candidates match, user sees a disambiguation list with avatar, name, @username (if any), numeric ID, and which group(s) they were found in, deduplicated by user ID — and can pick one
+  3. Picking a candidate resolves them through the existing TargetResolver path (stable numeric ID, exactly-once resolution) and lands in the same TargetCard confirm gate as username/phone entry
+  4. When no candidates match after the scan completes, user gets a clear, accurate empty-state message (not an error and not a dead end — they can edit the search)
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 4.1 to break down)
 
 ### Phase 5: Removal Execution Engine
 
@@ -213,3 +216,23 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
+| 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
+
+### Phase 8: Localization — i18n & Czech Translation (v1.5)
+
+**Goal**: A user can switch the app language via a `Language` settings row with `English` and `Česky` options, with every UI string externalized through an i18n framework and fully translated to Czech — shipped as v1.5, only after all v1 features are finished and UAT passes.
+**Depends on**: Phase 7 (all v1 features complete + UAT passed)
+**Requirements**: LOC-01 (Language switcher with English/Česky), LOC-02 (all UI strings externalized via i18n), LOC-03 (complete Czech translation)
+**Success Criteria** (what must be TRUE):
+
+  1. Settings menu has a `Language` row with `English` and `Česky` submenu options, and switching takes effect without restart (or with a clearly communicated reload)
+  2. No user-facing string is hardcoded in components — all flow through the i18n layer (the existing copy-module pattern, e.g. resolveCopy.ts/errorCopy.ts, migrates into it)
+  3. The full app is usable in Czech: every label, error message, confirmation gate, and progress string is translated
+  4. Language preference persists across launches (non-secret pref storage)
+
+**Notes**: Translation work must wait for feature-freeze + UAT, but i18n hygiene is prepared on-the-fly from now: phases 4-7 should keep all new user-facing strings in dedicated copy modules (the established `*Copy.ts` pattern) so extraction into the i18n framework is mechanical.
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 8 to break down)
