@@ -28,3 +28,4 @@ desktop.ini
 
 # Electron builder artifacts
 release/
+tsconfig.node.tsbuildinfo
