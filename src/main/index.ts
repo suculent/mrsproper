@@ -3,8 +3,10 @@ import { join } from 'path'
 import { TelegramClient } from 'telegram'
 import { StringSession } from 'telegram/sessions'
 import { SessionManager } from './telegram/SessionManager'
+import { TargetResolver } from './telegram/TargetResolver'
 import { createSecretsStore } from './storage/secrets'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
+import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
@@ -168,6 +170,24 @@ app.whenReady().then(async () => {
   // Handlers close over sm (request/response), not the window — safe across
   // window re-creation on macOS re-activation.
   registerAuthChannels(currentWin, sm)
+
+  // ── Wire TargetResolver ───────────────────────────────────────────────────
+  // Shares the same TelegramClient as SessionManager — no new connection, no auth.
+  // emitTargetState and onGovernorEvent both close over currentWin via lambda so
+  // re-activated windows keep receiving events without re-registering (WR-03).
+  const resolver = new TargetResolver({
+    client: client as unknown as ConstructorParameters<typeof TargetResolver>[0]['client'],
+    onStateChange: (state) => {
+      emitTargetState(currentWin, state)
+    },
+    onGovernorEvent: (event: GovernorEvent) => {
+      console.log('[resolver-governor]', JSON.stringify(event))
+      if (!currentWin.isDestroyed()) {
+        currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
+      }
+    },
+  })
+  registerTargetChannels(currentWin, resolver)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.
