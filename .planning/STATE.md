@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-06-11T21:54:06.454Z"
-last_activity: 2026-06-11 -- Phase 04 planning complete
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-06-11T22:01:16.043Z"
+last_activity: 2026-06-11
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 25
-  completed_plans: 15
+  completed_plans: 16
   percent: 33
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 04 — group enumeration, membership & rights
+**Current focus:** Phase 04 — group-enumeration-membership-rights
 
 ## Current Position
 
-Phase: 04 (group-enumeration-membership-rights) — context gathered, ready to plan
-Plan: Not started
+Phase: 04 (group-enumeration-membership-rights) — EXECUTING
+Plan: 2 of 10
 Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 04 planning complete
+Last activity: 2026-06-11
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 64%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100%
 | Phase 03 P04 | 8 | 2 tasks | 4 files |
 | Phase 03 P05 | 15 | 2 tasks | 10 files |
 | Phase 03 P06 | 8 | 3 tasks | 2 files |
+| Phase 04 P01 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase ?]: TargetCard duplicates bytesToDataUrl/getInitials from IdentityDisplay.tsx — avoids premature abstraction
 - [Phase ?]: productName=MrsProper binary + CFBundleDisplayName Mrs. Proper macOS display — binary avoids spaces
 - [Phase ?]: Round JPEG source for macOS icon; square source for Windows icon — matches platform icon conventions
+- [Phase ?]: Phase 4 Wave 0: it.todo() stubs used for Nyquist compliance; mock client extended with Api.Chat/Channel entity construction for getDialogs()
 
 ### Pending Todos
 
@@ -132,6 +134,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T21:29:50.475Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-group-enumeration-membership-rights/04-UI-SPEC.md
+Last session: 2026-06-11T22:01:16.037Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

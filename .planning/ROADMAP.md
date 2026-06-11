@@ -146,7 +146,7 @@ Plans:
 Plans:
 **Wave 1** *(test stubs + mock client extensions)*
 
-- [ ] 04-01-PLAN.md — Wave 0: test stubs (groupEnumerator.test.ts, membershipScanner.test.ts, groupChannels.test.ts) + extend mock client
+- [x] 04-01-PLAN.md — Wave 0: test stubs (groupEnumerator.test.ts, membershipScanner.test.ts, groupChannels.test.ts) + extend mock client
 
 **Wave 2** *(parallel with Wave 1 complete — shared contracts)*
 
@@ -254,7 +254,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 0/10 | Planned | - |
+| 4. Group Enumeration, Membership & Rights | 1/10 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
