@@ -16,16 +16,15 @@ A group admin can confidently remove the right person from every relevant commun
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- ✓ Cross-platform desktop app, portable/easy to run on macOS and Windows — Phase 1 (macOS launch confirmed; Windows build configured, launch pending on a Windows host)
+- ✓ Log in to a Telegram user account via MTProto (phone + code + 2FA password) — Phase 1 (no-2FA confirmed; real-2FA path implemented, confirmation pending a 2FA account)
+- ✓ App ships with its own api_id/api_hash (no per-user registration required) — Phase 1
+- ✓ Persist the session encrypted on disk so re-login isn't needed every launch; provide a logout that clears it — Phase 1 (confirmed)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Cross-platform desktop app, portable/easy to run on macOS and Windows
-- [ ] Log in to a Telegram user account via MTProto (phone + code + 2FA password)
-- [ ] App ships with its own api_id/api_hash (no per-user registration required)
-- [ ] Persist the session encrypted on disk so re-login isn't needed every launch; provide a logout that clears it
 - [ ] Resolve a target person by username OR phone number
 - [ ] Show the target's avatar plus identity details (name, username, ID, bio) for visual verification, with a graceful "no photo" fallback when the avatar is unavailable/hidden
 - [ ] List only the groups where the target is actually a member (membership verified before display)
@@ -99,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-10 after initialization*
+*Last updated: 2026-06-11 after Phase 1 (Foundation — Auth, Session & Portable Shell) completion*
