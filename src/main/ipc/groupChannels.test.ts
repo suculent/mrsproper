@@ -1,19 +1,25 @@
 /**
- * RED test stubs for groupChannels.ts (GRP-02, GRP-03).
- * These tests will remain todo/pending until Plan 04-04 creates groupChannels.ts.
+ * RED tests for groupChannels.ts (GRP-02, GRP-03, T-04-06).
+ * Import of './groupChannels' will fail until groupChannels.ts is created.
+ * That is the correct RED state.
  *
  * Test map:
- *   - GRP-02: IPC handler registration and state return
- *   - GRP-03: scan:start, scan:abort, scan:retryGroup IPC handlers
- *   - T-04: security gate — dialogId validated against known list in scan:retryGroup
- *   - Zod validation on scan:retryGroup payload
- *   - emitGroupsState / emitScanState window destroyed guard
+ *   - GRP-02: groups:getState, groups:refresh handlers
+ *   - GRP-03: scan:start, scan:abort, scan:getState, scan:retryGroup handlers
+ *   - T-04-06: dialogId validated against known in-memory list before any scanner call
+ *   - Zod validation: scan:retryGroup payload shape and bounds
+ *   - Window guard: emitGroupsState / emitScanState skip destroyed windows
  */
 
-import { describe, it, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { GroupsState, ScanState } from '@shared/groupTypes'
+
+// RED: This import will fail — groupChannels.ts does not exist yet.
+// Task 2 (GREEN) creates: src/main/ipc/groupChannels.ts
+import { registerGroupChannels, emitGroupsState, emitScanState } from './groupChannels'
 
 // ---------------------------------------------------------------------------
-// Electron mock — mirrors the pattern from targetChannels.test.ts
+// Electron mock — mirrors the pattern from targetChannels.test.ts exactly
 // ---------------------------------------------------------------------------
 
 type IpcHandler = (_event: unknown, payload: unknown) => Promise<unknown>
@@ -43,15 +49,50 @@ function makeMockWin(destroyed = false) {
   }
 }
 
-// makeMockWin is used in implemented tests — referenced here to avoid unused warning
-void makeMockWin
+/** Create a mock GroupEnumerator stub. */
+function makeMockEnumerator() {
+  return {
+    getState: vi.fn((): GroupsState => ({
+      step: 'loaded',
+      dialogs: [{ id: '123', title: 'Test Group', avatar: null, memberCount: 5, type: 'supergroup' as const, canAct: true, greyReason: null }],
+    })),
+    refresh: vi.fn((): Promise<void> => Promise.resolve()),
+  }
+}
+
+/** Create a mock MembershipScanner stub. */
+function makeMockScanner() {
+  return {
+    scan: vi.fn((): Promise<void> => Promise.resolve()),
+    abortScan: vi.fn((): void => undefined),
+    getScanState: vi.fn((): ScanState => ({ step: 'idle' })),
+    retryGroup: vi.fn((): Promise<void> => Promise.resolve()),
+  }
+}
 
 // ---------------------------------------------------------------------------
 // GRP-02 — groups:getState
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — groups:getState', () => {
-  it.todo('returns current GroupsState from enumerator')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('returns current GroupsState from enumerator', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    expect(capturedHandlers['groups:getState']).toBeDefined()
+
+    const result = (await capturedHandlers['groups:getState']({}, undefined)) as GroupsState
+
+    expect(enumerator.getState).toHaveBeenCalled()
+    expect(result.step).toBe('loaded')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -59,7 +100,23 @@ describe('registerGroupChannels — groups:getState', () => {
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — groups:refresh', () => {
-  it.todo('calls enumerator.refresh() and returns new state')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('calls enumerator.refresh() and returns new state', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    const result = (await capturedHandlers['groups:refresh']({}, undefined)) as GroupsState
+
+    expect(enumerator.refresh).toHaveBeenCalled()
+    expect(enumerator.getState).toHaveBeenCalled()
+    expect(result.step).toBe('loaded')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -67,7 +124,22 @@ describe('registerGroupChannels — groups:refresh', () => {
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — scan:start', () => {
-  it.todo('calls scanner.scan() and returns ScanState')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('calls scanner.scan() and returns ScanState', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    const result = (await capturedHandlers['scan:start']({}, undefined)) as ScanState
+
+    expect(scanner.scan).toHaveBeenCalled()
+    expect(result).toBeDefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -75,16 +147,81 @@ describe('registerGroupChannels — scan:start', () => {
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — scan:abort', () => {
-  it.todo('calls scanner.abortScan()')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('calls scanner.abortScan() and returns ScanState', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    const result = (await capturedHandlers['scan:abort']({}, undefined)) as ScanState
+
+    expect(scanner.abortScan).toHaveBeenCalled()
+    expect(result).toBeDefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
-// GRP-03, T-04 — scan:retryGroup
+// GRP-03 — scan:getState
+// ---------------------------------------------------------------------------
+
+describe('registerGroupChannels — scan:getState', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('returns scanner.getScanState()', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    const result = (await capturedHandlers['scan:getState']({}, undefined)) as ScanState
+
+    expect(scanner.getScanState).toHaveBeenCalled()
+    expect(result.step).toBe('idle')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GRP-03, T-04-06 — scan:retryGroup
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — scan:retryGroup', () => {
-  it.todo('rejects unknown dialogId (T-04 security gate)')
-  it.todo('calls scanner.retryGroup with validated dialogId')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('calls scanner.retryGroup with valid payload and known dialogId', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    await capturedHandlers['scan:retryGroup']({}, { dialogId: '123' })
+
+    expect(scanner.retryGroup).toHaveBeenCalledWith('123')
+  })
+
+  it('throws "Unknown dialogId" for unknown dialogId (T-04-06 security gate)', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    await expect(
+      capturedHandlers['scan:retryGroup']({}, { dialogId: '999' })
+    ).rejects.toThrow('Unknown dialogId')
+
+    expect(scanner.retryGroup).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -92,9 +229,51 @@ describe('registerGroupChannels — scan:retryGroup', () => {
 // ---------------------------------------------------------------------------
 
 describe('registerGroupChannels — scan:retryGroup Zod validation', () => {
-  it.todo('throws on missing dialogId')
-  it.todo('throws on dialogId empty string')
-  it.todo('throws on dialogId over 32 chars')
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('throws ZodError on missing dialogId', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    await expect(
+      capturedHandlers['scan:retryGroup']({}, {})
+    ).rejects.toThrow()
+
+    expect(scanner.retryGroup).not.toHaveBeenCalled()
+  })
+
+  it('throws ZodError on dialogId empty string (min 1)', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    await expect(
+      capturedHandlers['scan:retryGroup']({}, { dialogId: '' })
+    ).rejects.toThrow()
+
+    expect(scanner.retryGroup).not.toHaveBeenCalled()
+  })
+
+  it('throws ZodError on dialogId over 32 chars (max 32)', async () => {
+    const win = makeMockWin()
+    const enumerator = makeMockEnumerator()
+    const scanner = makeMockScanner()
+
+    registerGroupChannels(win as never, enumerator as never, scanner as never)
+
+    await expect(
+      capturedHandlers['scan:retryGroup']({}, { dialogId: 'a'.repeat(33) })
+    ).rejects.toThrow()
+
+    expect(scanner.retryGroup).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -102,8 +281,23 @@ describe('registerGroupChannels — scan:retryGroup Zod validation', () => {
 // ---------------------------------------------------------------------------
 
 describe('emitGroupsState — window guard', () => {
-  it.todo('does NOT call send when isDestroyed()=true')
-  it.todo('calls send when isDestroyed()=false')
+  it('does NOT call send when isDestroyed()=true', () => {
+    const win = makeMockWin(true) // destroyed
+    const state: GroupsState = { step: 'idle' }
+
+    emitGroupsState(win as never, state)
+
+    expect(win.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('calls send when isDestroyed()=false', () => {
+    const win = makeMockWin(false) // live
+    const state: GroupsState = { step: 'idle' }
+
+    emitGroupsState(win as never, state)
+
+    expect(win.webContents.send).toHaveBeenCalledOnce()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -111,5 +305,12 @@ describe('emitGroupsState — window guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('emitScanState — window guard', () => {
-  it.todo('does NOT call send when isDestroyed()=true')
+  it('does NOT call send when isDestroyed()=true', () => {
+    const win = makeMockWin(true) // destroyed
+    const state: ScanState = { step: 'idle' }
+
+    emitScanState(win as never, state)
+
+    expect(win.webContents.send).not.toHaveBeenCalled()
+  })
 })
