@@ -21,7 +21,7 @@
  *   - Pitfall 4: Use errorMessage (RPCError canonical field), never err.message.
  */
 
-import type { OperationErrorCode, Disposition, ClassifiedOperationError } from '@shared/opTypes'
+import type { ClassifiedOperationError } from '@shared/opTypes'
 import { floodWaitSeconds } from './floodWait'
 
 // ── Session-invalid error codes ────────────────────────────────────────────
