@@ -1,7 +1,8 @@
 ---
 phase: 4
 slug: group-enumeration-membership-rights
-status: draft
+status: approved
+reviewed_at: 2026-06-11
 shadcn_initialized: true
 preset: "new-york/slate"
 created: 2026-06-11
