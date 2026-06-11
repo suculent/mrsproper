@@ -39,6 +39,8 @@ mac:
         - arm64
   # No identity/notarize — unsigned-runnable for dev/testing (Phase 7 adds signing)
   identity: null
+  # build/icon.png (round source, 1024x1024) — electron-builder derives icns from this
+  icon: build/icon.png
   # CFBundleDisplayName provides the human-readable "Mrs. Proper" display name in Finder/Dock
   extendInfo:
     CFBundleDisplayName: "Mrs. Proper"
@@ -62,6 +64,8 @@ win:
     - target: portable
       arch:
         - x64
+  # build/icon-win.png (square source, 1024x1024) — electron-builder derives ico from this
+  icon: build/icon-win.png
   # No signingHashAlgorithms / certificateFile — unsigned-runnable (Phase 7 adds signing)
 
 nsis:
