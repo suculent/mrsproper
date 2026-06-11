@@ -56,8 +56,8 @@ const COUNTRY_OPTIONS: CountryOption[] = getCountries()
   }))
   .sort((a, b) => a.name.localeCompare(b.name))
 
-// Default to US
-const DEFAULT_COUNTRY = COUNTRY_OPTIONS.find((c) => c.code === 'US') ?? COUNTRY_OPTIONS[0]
+// Default to CZ (Czech Republic, +420)
+const DEFAULT_COUNTRY = COUNTRY_OPTIONS.find((c) => c.code === 'CZ') ?? COUNTRY_OPTIONS[0]
 
 interface CountryPickerProps {
   value: CountryOption
@@ -101,7 +101,7 @@ export default function CountryPicker({ value, onChange, disabled }: CountryPick
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-0" align="start">
-        <Command>
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search country…"
             value={search}
