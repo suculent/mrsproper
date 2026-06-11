@@ -657,19 +657,21 @@ export default function AppShell({ identity }: AppShellProps) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does `channels.GetParticipant` throw `USER_NOT_PARTICIPANT` or return a `ChannelParticipantLeft`-equivalent for users who were never members?**
+All three questions were resolved at planning time — the recommendations below were adopted in the Phase 4 plans (OQ-1 → Plan 04-04 handles both the error and the participant-subtype return; OQ-2 → Plan 04-03 uses the OR logic; OQ-3 → Plan 04-03 includes archived groups with `ignoreMigrated: true`).
+
+1. **RESOLVED — Does `channels.GetParticipant` throw `USER_NOT_PARTICIPANT` or return a `ChannelParticipantLeft`-equivalent for users who were never members?**
    - What we know: Telegram docs say USER_NOT_PARTICIPANT is returned; GramJS source uses the same error string; Pitfall 1 documents that recently-left users return a ChannelParticipantLeft without error
    - What's unclear: The exact behavior for users who were never in the group vs users who left recently
    - Recommendation: Add a test case in the MembershipScanner service for both scenarios; handle both USER_NOT_PARTICIPANT error AND ChannelParticipantLeft return value as "not a member"
 
-2. **Can non-creator admins remove members from basic groups?**
+2. **RESOLVED — Can non-creator admins remove members from basic groups?**
    - What we know: `Api.Chat` has `adminRights?: ChatAdminRights` which includes `banUsers`. If an admin was promoted, they may have ban rights even without `creator = true`
    - What's unclear: Whether `messages.DeleteChatUser` works for a non-creator promoted admin
    - Recommendation: Check `entity.adminRights?.banUsers === true` as an additional condition alongside `entity.creator` for basic groups. Use OR logic: `canAct = entity.creator || entity.adminRights?.banUsers === true`
 
-3. **Should the dialog list include archived groups?**
+3. **RESOLVED — Should the dialog list include archived groups?**
    - What we know: `getDialogs()` without `folder` param includes all dialogs (archived + non-archived). D-08 says "dialog list fetched eagerly at login, cached for session"
    - What's unclear: Whether admins expect to see archived groups in the removal target list
    - Recommendation: Decide at planning time — default to `ignoreMigrated: true` to skip promoted basic groups (which became supergroups and show up twice); include archived groups by default since admins may have legitimate archived communities
