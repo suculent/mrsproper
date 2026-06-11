@@ -184,6 +184,10 @@ export class MembershipScanner {
   async retryGroup(dialogId: string): Promise<void> {
     if (this._currentState.step !== 'complete') return
 
+    // CR-02: capture generation token before the async gap so we can detect if
+    // abortScan() or scan() was called during the await (both increment _generation).
+    const gen = this._generation
+
     const resolved = this._resolver.getResolvedUser()
     if (resolved === null) return
 
@@ -205,6 +209,12 @@ export class MembershipScanner {
     } catch (_err) {
       status = 'failed'
     }
+
+    // CR-02: generation guard — if abortScan() or scan() was called during the
+    // await above, _generation will have incremented past gen. Merging stale
+    // results would either crash (TypeError on this._currentState.results when
+    // state is now 'idle') or corrupt the new scan's results with old data.
+    if (gen !== this._generation || this._currentState.step !== 'complete') return
 
     // Merge updated result into the existing results array
     const updatedResults = this._currentState.results.map(r =>

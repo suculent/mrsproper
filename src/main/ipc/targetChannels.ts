@@ -48,7 +48,7 @@ const ResolveTargetSchema = z.object({
  * Handlers:
  *   TARGET_RESOLVE   — validates payload (Zod), calls resolver.resolve(), returns new state
  *   TARGET_CONFIRM   — calls resolver.confirm(), returns new state
- *   TARGET_RESET     — calls resolver.reset(), returns new state
+ *   TARGET_RESET     — calls scanner.abortScan() then resolver.reset(), returns new state
  *   TARGET_GET_STATE — returns current state
  *
  * State push (target:state) is wired in main/index.ts via the TargetResolver onStateChange
@@ -56,8 +56,14 @@ const ResolveTargetSchema = z.object({
  *
  * @param win       The main BrowserWindow (used for webContents.send via emitTargetState)
  * @param resolver  The TargetResolver instance (constructed in main/index.ts)
+ * @param scanner   Structural type — only abortScan() is needed; avoids importing
+ *                  MembershipScanner and creating a circular dependency (CR-01-MAIN).
  */
-export function registerTargetChannels(win: BrowserWindow, resolver: TargetResolver): void {
+export function registerTargetChannels(
+  win: BrowserWindow,
+  resolver: TargetResolver,
+  scanner: { abortScan(): void }
+): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
 
@@ -75,7 +81,12 @@ export function registerTargetChannels(win: BrowserWindow, resolver: TargetResol
   })
 
   // ── Handle: target:reset ─────────────────────────────────────────────────
+  // CR-01-MAIN: abortScan() must fire before resolver.reset() so that scan
+  // state transitions to 'idle'. The GroupsPane auto-start effect watches for
+  // scan.step === 'idle'; without this, a completed scan would never reset and
+  // confirming a new target would not re-trigger the scan.
   ipcMain.handle(TARGET_RESET, () => {
+    scanner.abortScan()
     resolver.reset()
     return resolver.getState()
   })

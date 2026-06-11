@@ -202,7 +202,8 @@ app.whenReady().then(async () => {
       emitTargetState(currentWin, state)
     },
   })
-  registerTargetChannels(currentWin, resolver)
+  // NOTE: registerTargetChannels is called AFTER scanner is constructed below (CR-01-MAIN).
+  // scanner must be in scope before the call; it is declared at the MembershipScanner block.
 
   // ── Wire GroupEnumerator ──────────────────────────────────────────────────
   // Shares the same TelegramClient AND the same account-wide governor (WR-01).
@@ -230,6 +231,12 @@ app.whenReady().then(async () => {
   })
 
   registerGroupChannels(currentWin, enumerator, scanner)
+
+  // CR-01-MAIN: registerTargetChannels moved here so scanner is in scope.
+  // TARGET_RESET calls scanner.abortScan() before resolver.reset(), ensuring
+  // scan state returns to 'idle' and the GroupsPane auto-start effect fires
+  // on the next target confirm.
+  registerTargetChannels(currentWin, resolver, scanner)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.
