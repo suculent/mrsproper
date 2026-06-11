@@ -175,7 +175,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 04-09-PLAN.md — AppShell.tsx two-pane restructure + delete StubbedWorkflowRegions + CountryPicker CZ fix
+- [x] 04-09-PLAN.md — AppShell.tsx two-pane restructure + delete StubbedWorkflowRegions + CountryPicker CZ fix
 
 **Wave 9 (human checkpoint)** *(blocked on Wave 8 completion)*
 
@@ -254,7 +254,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 8/10 | In Progress|  |
+| 4. Group Enumeration, Membership & Rights | 9/10 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
