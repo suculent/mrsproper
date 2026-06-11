@@ -326,7 +326,7 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       return (config.getDialogsResult ?? []).map((d) => ({
         entity: d.entity === 'Chat'
           ? Object.assign(new Api.Chat({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights })
-          : Object.assign(new Api.Channel({}), { id: bigInt(d.id), megagroup: d.megagroup, adminRights: d.adminRights }),
+          : Object.assign(new Api.Channel({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights }),
         inputEntity: { channelId: bigInt(d.id), accessHash: bigInt.zero },
         title: d.title,
         id: bigInt(d.id),

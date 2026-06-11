@@ -139,6 +139,29 @@ describe('type detection — Api.Channel megagroup', () => {
       expect(loaded.dialogs[0].greyReason).toBe('no-ban-right')
     }
   })
+
+  it('canAct=true when entity.creator=true (OQ-2 OR logic mirrors basic-group)', async () => {
+    // Regression guard: supergroup creators have adminRights=null in the Telegram API
+    // (all rights are implicit for creators). Without the creator check, canAct would be
+    // false for the admin's own supergroups — bug that empties the actionable partition.
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '203',
+          title: 'Creator Supergroup',
+          megagroup: true,
+          creator: true,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAct).toBe(true)
+      expect(loaded.dialogs[0].greyReason).toBeNull()
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------

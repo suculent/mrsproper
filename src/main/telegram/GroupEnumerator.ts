@@ -184,7 +184,10 @@ export class GroupEnumerator {
 
       if (entity.megagroup) {
         // Supergroup (megagroup channel)
-        const canAct = (entity.adminRights as { banUsers?: boolean } | null | undefined)?.banUsers === true
+        // OQ-2 mirror: channel creators have adminRights=null in the Telegram API (all rights
+        // are implicit). Use OR logic — same as basic-group — so creator-owned supergroups
+        // are actionable even when adminRights is absent.
+        const canAct = entity.creator === true || (entity.adminRights as { banUsers?: boolean } | null | undefined)?.banUsers === true
         const greyReason: GreyReason | null = canAct ? null : 'no-ban-right'
         const memberCount: number | null =
           typeof entity.participantsCount === 'number' ? entity.participantsCount : null
