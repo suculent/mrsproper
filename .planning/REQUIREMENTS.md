@@ -49,9 +49,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Execution & Rate Limiting
 
-- [ ] **EXE-01**: All Telegram calls funnel through a single serialized, rate-limited governor (no parallel blasting)
-- [ ] **EXE-02**: App honors FLOOD_WAIT by sleeping the server-specified time and resuming (never treated as a hard failure)
-- [ ] **EXE-03**: App detects PEER_FLOOD distinctly and hard-stops the job (no retry), warning the user
+- [x] **EXE-01**: All Telegram calls funnel through a single serialized, rate-limited governor (no parallel blasting)
+- [x] **EXE-02**: App honors FLOOD_WAIT by sleeping the server-specified time and resuming (never treated as a hard failure)
+- [x] **EXE-03**: App detects PEER_FLOOD distinctly and hard-stops the job (no retry), warning the user
 - [ ] **EXE-04**: App shows live progress during execution
 - [ ] **EXE-05**: App shows a per-group success/failure report after execution, with each group's failure isolated from the rest
 
@@ -106,9 +106,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | AUTH-05 | Phase 1 | Complete |
 | APP-01 | Phase 1 | Complete |
 | APP-02 | Phase 1 | Complete |
-| EXE-01 | Phase 2 | Pending |
-| EXE-02 | Phase 2 | Pending |
-| EXE-03 | Phase 2 | Pending |
+| EXE-01 | Phase 2 | Complete |
+| EXE-02 | Phase 2 | Complete |
+| EXE-03 | Phase 2 | Complete |
 | TGT-01 | Phase 3 | Pending |
 | TGT-02 | Phase 3 | Pending |
 | TGT-03 | Phase 3 | Pending |
