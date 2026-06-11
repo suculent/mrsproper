@@ -55,6 +55,9 @@ function createWindow(): BrowserWindow {
   // Production (packaged): strict — local bundle only, no remote connections. The renderer
   // never talks to the network directly (MTProto runs in the main process), so connect-src
   // 'none' is correct for the shipped app.
+  // NOTE (WR-02): header injection below is unreliable for file:// loads, so the SAME strict
+  // CSP is ALSO baked into the built index.html as a <meta http-equiv> tag at build time —
+  // see injectProductionCsp() in electron.vite.config.ts. Keep both strings in sync.
   // Development: the Vite dev server needs an inline React-refresh preamble ('unsafe-inline'),
   // eval-based HMR ('unsafe-eval'), and a websocket back to localhost (connect-src), so a
   // strict CSP blanks the renderer. Relax ONLY in dev.
