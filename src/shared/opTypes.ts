@@ -26,7 +26,12 @@ export type OperationErrorCode =
   | 'SESSION_INVALID'
   | 'NETWORK'
   | 'UNKNOWN'
-// Phase 5 extends this with: USER_PRIVACY_RESTRICTED, CHAT_ADMIN_REQUIRED, etc.
+  // Phase 3 additions — cause-specific target resolution codes (D-16, TGT-04).
+  // These carry disposition 'fail' (non-retryable resolution failures — T-03-02).
+  | 'TARGET_USERNAME_NOT_FOUND'
+  | 'TARGET_PHONE_NOT_FOUND'
+  | 'TARGET_NO_PUBLIC_PROFILE'
+// Phase 6 extends this with: USER_PRIVACY_RESTRICTED, CHAT_ADMIN_REQUIRED, etc.
 
 /**
  * The classified result returned by classifyRpcError().

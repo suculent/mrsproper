@@ -15,6 +15,17 @@ export const AUTH_FLOOD_TICK = 'auth:floodTick' as const
 // main/index.ts; Phase 5's progress UI subscribes via the preload bridge.
 export const OP_GOVERNOR_EVENT = 'op:governorEvent' as const
 
+// Target resolution IPC channels (Phase 3).
+// Renderer → main request channels + main → renderer push channel.
+// D-03: resolution fires on explicit Find/Enter only; TARGET_RESOLVE is the trigger.
+// D-14: TARGET_RESET clears all downstream state.
+// D-11: TARGET_CONFIRM locks the resolved target for Phase 4 use.
+export const TARGET_RESOLVE = 'target:resolve' as const
+export const TARGET_CONFIRM = 'target:confirm' as const
+export const TARGET_RESET = 'target:reset' as const
+export const TARGET_GET_STATE = 'target:getState' as const
+export const TARGET_STATE = 'target:state' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -26,4 +37,9 @@ export const CHANNELS = {
   AUTH_STATE,
   AUTH_FLOOD_TICK,
   OP_GOVERNOR_EVENT,
+  TARGET_RESOLVE,
+  TARGET_CONFIRM,
+  TARGET_RESET,
+  TARGET_GET_STATE,
+  TARGET_STATE,
 } as const
