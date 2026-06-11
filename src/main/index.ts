@@ -149,6 +149,8 @@ app.whenReady().then(async () => {
       // Write the session to the encrypted on-disk store so it survives a restart.
       secretsStore.persistSession(sessionString)
     },
+    // WR-09: symmetric read path so sm.restore() can actually reach the durable store.
+    restoreSession: () => secretsStore.restoreSession(),
     apiCreds: { apiId: API_ID, apiHash: API_HASH },
     // WR-04: with floodSleepThreshold=0 every FLOOD_WAIT on governed calls reaches
     // the governor — without this bridge those sleeps (up to 3600s) are invisible

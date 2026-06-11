@@ -102,6 +102,13 @@ export interface SessionManagerOptions {
   onSessionWipe?: () => void
   /** Called to durably persist the session string (wired to the on-disk SecretsStore in production). */
   onSessionPersist?: (sessionString: string) => void
+  /**
+   * Reads the persisted session string from the durable store (wired to
+   * SecretsStore.restoreSession in production) — symmetric to onSessionPersist.
+   * Without this, restore() can only see the in-memory mirror, which is always
+   * empty on a freshly constructed SessionManager (review WR-09).
+   */
+  restoreSession?: () => string | null
   /** API credentials — used by AuthFlow for sendCode / signInWithPassword. */
   apiCreds?: { apiId: number; apiHash: string }
   /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry) — wired to IPC in production. */
@@ -116,6 +123,7 @@ export class SessionManager {
   private readonly _emit: (state: AuthState) => void
   private readonly _onSessionWipe: (() => void) | undefined
   private readonly _onSessionPersist: ((sessionString: string) => void) | undefined
+  private readonly _restoreSessionFromStore: (() => string | null) | undefined
   private readonly _apiCreds: { apiId: number; apiHash: string }
   private readonly _governor: RateLimitGovernor
 
@@ -136,6 +144,7 @@ export class SessionManager {
     }
     this._onSessionWipe = options.onSessionWipe
     this._onSessionPersist = options.onSessionPersist
+    this._restoreSessionFromStore = options.restoreSession
     this._apiCreds = options.apiCreds ?? { apiId: 0, apiHash: '' }
     this._governor = new RateLimitGovernor({
       client: options.client,
@@ -198,7 +207,10 @@ export class SessionManager {
 
   /**
    * Restore session for use in production main/index.ts.
-   * Reads the persisted session string from the secrets store.
+   * Reads the persisted session string from the durable store via the injected
+   * `restoreSession` option (falling back to the in-memory mirror populated by
+   * _persistSession within this process lifetime). If neither yields a session,
+   * degenerates to initialize(undefined) → idle.
    */
   async restore(): Promise<void> {
     const sessionString = this._restoreSession()
@@ -363,6 +375,16 @@ export class SessionManager {
   }
 
   private _restoreSession(): string | null {
+    // Durable store first (production wiring) — the in-memory mirror below only
+    // exists within a single process lifetime and is empty on a fresh instance.
+    if (this._restoreSessionFromStore) {
+      try {
+        const fromStore = this._restoreSessionFromStore()
+        if (fromStore) return fromStore
+      } catch {
+        // Store read failed — fall through to the in-memory mirror
+      }
+    }
     if (!this._encryptedSession) return null
     if (!this._storage.isEncryptionAvailable()) return null
     try {
