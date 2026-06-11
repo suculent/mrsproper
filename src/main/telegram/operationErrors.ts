@@ -111,6 +111,20 @@ export function classifyRpcError(err: unknown): ClassifiedOperationError {
     return { code: 'SESSION_INVALID', disposition: 'fail' }
   }
 
+  // ── 4a. Phase 3: target resolution errors — cause-specific, non-retryable ──
+  // D-16: cause-specific codes back actionable error copy in the renderer (TGT-04).
+  // T-03-02: disposition is 'fail' — resolution errors must NOT cause governor retry loops.
+
+  // Phase 3: target resolution error.
+  if (errorMessage === 'USERNAME_NOT_OCCUPIED') {
+    return { code: 'TARGET_USERNAME_NOT_FOUND', disposition: 'fail' }
+  }
+
+  // Phase 3: target resolution error.
+  if (errorMessage === 'PHONE_NOT_OCCUPIED') {
+    return { code: 'TARGET_PHONE_NOT_FOUND', disposition: 'fail' }
+  }
+
   // ── 4. Network / connection errors — no errorMessage field ──
   // Plain Error objects (e.g., fetch failed, connection reset) have no .errorMessage.
 

@@ -23,6 +23,9 @@ export type MockRPCErrorCode =
   | 'PASSWORD_HASH_INVALID'
   | 'AUTH_KEY_UNREGISTERED'
   | 'SESSION_REVOKED'
+  // Phase 3: target resolution error codes (TGT-04)
+  | 'USERNAME_NOT_OCCUPIED'
+  | 'PHONE_NOT_OCCUPIED'
   | { type: 'FLOOD_WAIT'; seconds: number }
 
 /** Create an RPC-shaped error that matches GramJS RPCError + FloodWaitError shapes. */
@@ -70,6 +73,30 @@ export interface MockClientConfig {
   sessionString?: string
   /** If set, invoke (LogOut) will throw an RPC-shaped error with this code. */
   logoutErrorCode?: MockRPCErrorCode
+
+  // ── Phase 3: target resolution mock controls ─────────────────────────────
+  /** If set, invoke (ResolveUsername) will throw this error. */
+  resolveUsernameError?: MockRPCErrorCode
+  /** If set, invoke (ResolveUsername) returns this resolved peer data. */
+  resolveUsernameResult?: {
+    userId: string
+    username: string
+    firstName: string
+    accessHash: string
+  }
+  /** If set, invoke (ResolvePhone) will throw this error. */
+  resolvePhoneError?: MockRPCErrorCode
+  /** If set, invoke (ResolvePhone) returns this resolved peer data. */
+  resolvePhoneResult?: {
+    userId: string
+    firstName: string
+    username?: string
+    accessHash: string
+  }
+  /** If set, invoke (GetFullUser) returns this data. */
+  getFullUserResult?: { about: string | null }
+  /** If set, invoke (GetFullUser) will throw this error. */
+  getFullUserError?: MockRPCErrorCode
 }
 
 const DEFAULT_IDENTITY = {
@@ -139,6 +166,79 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
           throw makeRPCError(config.logoutErrorCode)
         }
         return { futureAuthToken: null }
+      }
+
+      // ── Phase 3: target resolution invoke dispatch ───────────────────────
+      // contacts.ResolveUsername — username → peer (TGT-01)
+      if (ctorName === 'ResolveUsername' || (request as { className?: string })?.className === 'contacts.ResolveUsername') {
+        if (config.resolveUsernameError) {
+          throw makeRPCError(config.resolveUsernameError)
+        }
+        const r = config.resolveUsernameResult ?? {
+          userId: '111111111',
+          username: 'mockuser',
+          firstName: 'Mock',
+          accessHash: 'mock-access-hash',
+        }
+        return {
+          peer: { userId: BigInt(r.userId) },
+          users: [
+            {
+              id: BigInt(r.userId),
+              accessHash: BigInt(r.accessHash.replace(/[^0-9-]/g, '0').slice(0, 15) || '0'),
+              firstName: r.firstName,
+              lastName: undefined,
+              username: r.username,
+              deleted: false,
+              bot: false,
+              premium: false,
+              status: undefined,
+            },
+          ],
+          chats: [],
+        }
+      }
+
+      // contacts.ResolvePhone — phone → peer (TGT-02, D-07 REVISED)
+      if (ctorName === 'ResolvePhone' || (request as { className?: string })?.className === 'contacts.ResolvePhone') {
+        if (config.resolvePhoneError) {
+          throw makeRPCError(config.resolvePhoneError)
+        }
+        const r = config.resolvePhoneResult ?? {
+          userId: '222222222',
+          firstName: 'MockPhone',
+          username: undefined,
+          accessHash: '0',
+        }
+        return {
+          peer: { userId: BigInt(r.userId) },
+          users: [
+            {
+              id: BigInt(r.userId),
+              accessHash: BigInt(0),
+              firstName: r.firstName,
+              lastName: undefined,
+              username: r.username ?? null,
+              deleted: false,
+              bot: false,
+              premium: false,
+              status: undefined,
+            },
+          ],
+          chats: [],
+        }
+      }
+
+      // users.GetFullUser — fetch bio (VRF-02)
+      if (ctorName === 'GetFullUser' || (request as { className?: string })?.className === 'users.GetFullUser') {
+        if (config.getFullUserError) {
+          throw makeRPCError(config.getFullUserError)
+        }
+        return {
+          fullUser: { about: config.getFullUserResult?.about ?? null },
+          users: [],
+          chats: [],
+        }
       }
 
       // Fallback: return a mock result for unrecognised requests
