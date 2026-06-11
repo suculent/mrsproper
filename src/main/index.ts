@@ -105,9 +105,12 @@ app.whenReady().then(async () => {
     API_HASH,
     {
       connectionRetries: 5,
-      // RESEARCH Pitfall 5: set low so login flood-waits throw (surfaced as D-13 countdown)
-      // rather than silently sleeping and freezing the UI
-      floodSleepThreshold: 5,
+      // Phase 2 D-11: set to 0 so ALL FLOOD_WAITs throw to the governor rather than being
+      // silently absorbed by GramJS. Governor decides per D-09 whether to emit a countdown event.
+      // floodSleepThreshold=0 is valid: Math.min(0 || 0, 86400) = 0 (verified: telegramBaseClient.js).
+      // Interactive auth FLOOD_WAITs (login flow) are excluded from the governor per D-06 —
+      // they follow the existing FloodWaitController path in SessionManager.
+      floodSleepThreshold: 0,
     }
   )
 
