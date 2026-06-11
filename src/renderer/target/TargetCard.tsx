@@ -168,7 +168,7 @@ export function TargetCard(): React.JSX.Element | null {
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                Telegram&rsquo;s permanent ID for this account — this is what MrProper acts on
+                Telegram&rsquo;s permanent ID for this account — this is what Mrs. Proper acts on
               </TooltipContent>
             </Tooltip>
 

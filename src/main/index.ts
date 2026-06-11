@@ -26,7 +26,7 @@ function createWindow(): BrowserWindow {
     minWidth: 400,
     minHeight: 600,
     show: false,
-    title: 'MrProper',
+    title: 'Mrs. Proper',
     backgroundColor: isDark ? '#0B1220' : '#FFFFFF',
     webPreferences: {
       // D-02 trust boundary: contextIsolation + no nodeIntegration + sandbox

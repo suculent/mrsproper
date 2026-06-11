@@ -8,9 +8,11 @@
 #     xattr -dr com.apple.quarantine /path/to/MrProper.app
 #   This is expected for dev/test builds. Real signing arrives in Phase 7.
 
-appId: cz.corpus.mrproper
-productName: MrProper
-copyright: Copyright © 2026 MrProper
+appId: cz.corpus.mrsproper
+# productName is the binary stem: MrsProper.app on macOS, MrsProper.exe on Windows.
+# The human-readable display name "Mrs. Proper" is set via platform extendInfo below.
+productName: MrsProper
+copyright: Copyright © 2026 Mrs. Proper
 
 directories:
   buildResources: build
@@ -37,9 +39,12 @@ mac:
         - arm64
   # No identity/notarize — unsigned-runnable for dev/testing (Phase 7 adds signing)
   identity: null
+  # CFBundleDisplayName provides the human-readable "Mrs. Proper" display name in Finder/Dock
+  extendInfo:
+    CFBundleDisplayName: "Mrs. Proper"
 
 dmg:
-  title: MrProper
+  title: Mrs. Proper
   contents:
     - x: 130
       y: 220
