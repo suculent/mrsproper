@@ -236,18 +236,27 @@ export class MembershipScanner {
     const entity = this._enumerator.getDialogEntity(dialog.id)
 
     if (dialog.type === 'supergroup' || dialog.type === 'broadcast-channel') {
-      // Use channels.GetParticipant for supergroups and channels
-      // Entity provides the channel input peer
-      const channelInput = entity as { channelId?: { toString(): string } } | null
-      const channelId = channelInput?.channelId?.toString() ?? dialog.id
+      // Use channels.GetParticipant for supergroups and channels.
+      //
+      // Build InputChannel from the stored Api.Channel entity's own id and
+      // accessHash rather than using bigInt.zero. The entity was returned by
+      // getDialogs() and has the real accessHash set by the Telegram server.
+      // Using bigInt.zero causes a GramJS CastError during invoke → resolve()
+      // when it auto-casts the InputChannel field (InputChannel is in AUTO_CASTS)
+      // because getInputEntity() may fail or return a mistyped peer (Defect 3).
+      const channelEntity = entity as { id?: { toString(): string; value?: unknown }; accessHash?: { toString(): string; value?: unknown } } | null
+      const channelId = bigInt(channelEntity?.id?.toString() ?? dialog.id)
+      const accessHash = channelEntity?.accessHash
+        ? bigInt(channelEntity.accessHash.toString())
+        : bigInt.zero
 
       try {
         const result = await this._governor.run(() =>
           this._client.invoke(
             new Api.channels.GetParticipant({
               channel: new Api.InputChannel({
-                channelId: bigInt(channelId),
-                accessHash: bigInt.zero,
+                channelId,
+                accessHash,
               }),
               participant: inputUser,
             })
@@ -272,11 +281,22 @@ export class MembershipScanner {
     }
 
     if (dialog.type === 'basic-group') {
-      // Use messages.GetFullChat for basic groups
+      // Use messages.GetFullChat for basic groups.
+      //
+      // Use entity.id directly (the bigInt from the stored Api.Chat entity)
+      // rather than re-constructing bigInt(dialog.id) from the string DTO field.
+      // This guarantees a big-integer library instance reaches GetFullChat.chatId
+      // and avoids the GramJS CastError that fires when a plain JS number is
+      // passed (Defect 3).
+      const chatEntity = entity as { id?: { toString(): string } } | null
+      const chatId = chatEntity?.id
+        ? bigInt(chatEntity.id.toString())
+        : bigInt(dialog.id)
+
       const result = await this._governor.run(() =>
         this._client.invoke(
           new Api.messages.GetFullChat({
-            chatId: bigInt(dialog.id),
+            chatId,
           })
         )
       ) as {

@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import bigInt from 'big-integer'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { RateLimitGovernor } from './governor'
 import { MembershipScanner } from './MembershipScanner'
@@ -380,6 +381,105 @@ describe('retryGroup', () => {
     if (afterRetry.step === 'complete') {
       const r1 = afterRetry.results.find(r => r.dialogId === '1')
       expect(r1?.status).toBe('member')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Defect 3 regression: GramJS requests must receive bigInt instances for id fields
+//
+// GramJS TL type validator logs a CastError (console.error) when a field typed
+// as `long` receives a plain JS number instead of a big-integer library instance.
+// These tests inspect the raw request object passed to client.invoke() and assert
+// that chatId / channelId are bigInt instances — not plain numbers or strings.
+// ---------------------------------------------------------------------------
+
+describe('GramJS id types — bigInt regression (Defect 3)', () => {
+  it('basic-group path: chatId passed to GetFullChat is a big-integer instance', async () => {
+    const dialog = makeDialog('5228186488', 'basic-group')
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({
+      basicGroupParticipants: { '5228186488': [] },
+    })
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (_id: string) => {
+        // Return a Chat-like entity with bigInt id (as real GramJS would)
+        return { className: 'Chat', id: bigInt('5228186488') }
+      },
+    }
+    const stubResolver = { getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('0') }) }
+
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: () => {},
+    })
+
+    await scanner.scan()
+
+    const getFullChatReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'messages.GetFullChat'
+    ) as { chatId?: unknown } | undefined
+
+    expect(getFullChatReq).toBeDefined()
+    // Regression: chatId must be a bigInt instance, not a plain number or string
+    expect(bigInt.isInstance(getFullChatReq?.chatId)).toBe(true)
+  })
+
+  it('supergroup path: channelId passed to InputChannel is a bigInt instance', async () => {
+    const dialog = makeDialog('5228186488', 'supergroup')
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({})
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (_id: string) => {
+        // Return a Channel-like entity with bigInt id (as real GramJS would)
+        return { className: 'Channel', id: bigInt('5228186488'), accessHash: bigInt('987654321'), megagroup: true }
+      },
+    }
+    const stubResolver = { getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('0') }) }
+
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: () => {},
+    })
+
+    await scanner.scan()
+
+    const getParticipantReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'channels.GetParticipant'
+    ) as { channel?: { channelId?: unknown; accessHash?: unknown } } | undefined
+
+    expect(getParticipantReq).toBeDefined()
+    // Regression: InputChannel.channelId must be a bigInt instance — Defect 3
+    expect(bigInt.isInstance(getParticipantReq?.channel?.channelId)).toBe(true)
+    // And accessHash must NOT be zero (must use entity's real accessHash)
+    const accessHashVal = getParticipantReq?.channel?.accessHash
+    expect(bigInt.isInstance(accessHashVal)).toBe(true)
+    if (bigInt.isInstance(accessHashVal)) {
+      expect(accessHashVal.equals(bigInt.zero)).toBe(false)
     }
   })
 })
