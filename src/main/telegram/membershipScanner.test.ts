@@ -386,6 +386,145 @@ describe('retryGroup', () => {
 })
 
 // ---------------------------------------------------------------------------
+// CR-02 regression: retryGroup generation guard
+//
+// These tests verify that retryGroup() does not crash or merge stale results when
+// abortScan() or scan() is called during the async _checkMembership await.
+// ---------------------------------------------------------------------------
+
+describe('retryGroup — generation guard regression (CR-02)', () => {
+  it('CR-02-T1: abortScan called while retryGroup is awaiting — final state is idle, no crash', async () => {
+    const dialog = makeDialog('1', 'supergroup')
+    const mockClient = createMockTelegramClient({})
+
+    // Deferred promise to pause _checkMembership inside retryGroup
+    let resolveDeferred!: () => void
+    const deferred = new Promise<void>((res) => { resolveDeferred = res })
+
+    let retryCallCount = 0
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
+        retryCallCount++
+        if (retryCallCount >= 2) {
+          // Pause on the second call (the retryGroup call) until deferred resolves
+          await deferred
+        }
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (id: string) => ({ className: 'Channel', channelId: { toString: () => id } }),
+    }
+    const stubResolver = { getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('0') }) }
+
+    const states: ScanState[] = []
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: (s) => states.push(s),
+    })
+
+    // Complete initial scan
+    await scanner.scan()
+    expect(scanner.getState().step).toBe('complete')
+
+    // Start retryGroup (pauses mid-flight), then immediately call abortScan
+    const retryPromise = scanner.retryGroup('1')
+    scanner.abortScan()
+
+    // Unblock the deferred _checkMembership
+    resolveDeferred()
+
+    // Await retryGroup — must not throw
+    await expect(retryPromise).resolves.toBeUndefined()
+
+    // abortScan won — final state must be 'idle', not a 'complete' with stale data
+    expect(scanner.getState().step).toBe('idle')
+
+    // The last emitted state must be 'idle'
+    const lastState = states[states.length - 1]
+    expect(lastState.step).toBe('idle')
+  })
+
+  it('CR-02-T2: scan() called while retryGroup is awaiting — final state is from new scan, not stale retryGroup', async () => {
+    const dialog = makeDialog('1', 'supergroup')
+    const mockClient = createMockTelegramClient({})
+
+    // Deferred to pause retryGroup's _checkMembership
+    let resolveDeferred!: () => void
+    const deferred = new Promise<void>((res) => { resolveDeferred = res })
+
+    // Track call count to distinguish scan vs retryGroup invoke calls
+    let callCount = 0
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
+        callCount++
+        if (callCount === 2) {
+          // Pause retryGroup's call until deferred resolves
+          await deferred
+        }
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (id: string) => ({ className: 'Channel', channelId: { toString: () => id } }),
+    }
+    const stubResolver = { getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('0') }) }
+
+    const states: ScanState[] = []
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: (s) => states.push(s),
+    })
+
+    // Complete initial scan
+    await scanner.scan()
+    expect(scanner.getState().step).toBe('complete')
+
+    // Start retryGroup (pauses mid-flight at callCount===2)
+    const retryPromise = scanner.retryGroup('1')
+
+    // Before retryGroup resolves, start a new scan — increments _generation
+    const newScanPromise = scanner.scan()
+
+    // Unblock the deferred retryGroup call
+    resolveDeferred()
+
+    // Await both — neither must throw
+    await expect(retryPromise).resolves.toBeUndefined()
+    await expect(newScanPromise).resolves.toBeUndefined()
+
+    // Final state must be from the new scan(), not from the stale retryGroup
+    const finalState = scanner.getState()
+    expect(finalState.step).toBe('complete')
+
+    // retryGroup must not have merged stale results into the new scan's state
+    // Verify the results array is valid (from new scan) — no TypeError occurred
+    if (finalState.step === 'complete') {
+      expect(finalState.results).toBeDefined()
+      expect(Array.isArray(finalState.results)).toBe(true)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Defect 3 regression: GramJS requests must receive bigInt instances for id fields
 //
 // GramJS TL type validator logs a CastError (console.error) when a field typed
