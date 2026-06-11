@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: "Completed 03-05 — UI layer: TargetCard, TargetInput, Mrs. Proper rename, icons"
-last_updated: "2026-06-11T18:46:52.415Z"
+status: ready_to_plan
+stopped_at: Phase 03 complete (6/6) — ready to discuss Phase 04.1
+last_updated: 2026-06-11T18:51:50.427Z
 last_activity: 2026-06-11
 progress:
   total_phases: 9
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 03 — target-resolution-verification
+**Current focus:** Phase 04.1 — target search by name
 
 ## Current Position
 
-Phase: 03 (target-resolution-verification) — VERIFICATION FAILED (gaps_found)
-Plan: 5 of 5 executed
-Status: Phase complete — ready for verification
+Phase: 04.1
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-11
 
 Progress: [██████████] 100%
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 15
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -46,6 +46,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
 | 02 | 4 | - | - |
+| 03 | 6 | - | - |
 
 **Recent Trend:**
 
