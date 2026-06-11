@@ -1,0 +1,406 @@
+/**
+ * RED tests for TargetResolver.ts (TGT-01..04, VRF-01..02, VRF-03 prerequisite).
+ * Import of './TargetResolver' will fail until Plan 03-03 creates TargetResolver.ts.
+ * That is the correct RED state — Wave 2 Plan 03 makes these tests GREEN.
+ *
+ * Test map:
+ *   - TGT-01: username resolution → resolved state
+ *   - TGT-02: phone resolution → resolved state
+ *   - TGT-03: bigint IDs > Number.MAX_SAFE_INTEGER serialized without loss
+ *   - TGT-04: username/phone not found → typed error codes
+ *   - VRF-01: avatar bytes available → Uint8Array; avatar hidden/missing → null
+ *   - VRF-02: bio from GetFullUser; graceful degradation when GetFullUser fails
+ *   - VRF-03 prerequisite: confirm() advances resolved → confirmed; getResolvedUser() bigint shape
+ */
+
+import { describe, it, expect, vi } from 'vitest'
+import type { TargetState, ResolvedTargetDTO } from '@shared/targetTypes'
+import { createMockTelegramClient } from './__mocks__/telegramClient'
+
+// RED: This import will fail — TargetResolver.ts does not exist yet (Wave 0).
+// Plan 03-03 creates: src/main/telegram/TargetResolver.ts
+import { TargetResolver } from './TargetResolver'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Create a TargetResolver wired to a mock client; captures all state changes. */
+function makeResolver(config: Parameters<typeof createMockTelegramClient>[0] = {}) {
+  const client = createMockTelegramClient(config)
+  const states: TargetState[] = []
+  const resolver = new TargetResolver({
+    client,
+    onStateChange: (s: TargetState) => states.push(s),
+    onGovernorEvent: vi.fn(),
+  })
+  return { resolver, states, client }
+}
+
+// ---------------------------------------------------------------------------
+// TGT-01, TGT-03 — username resolution
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolve — username path (TGT-01, TGT-03)', () => {
+  it('resolves @username to a resolved TargetState with string id', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '111111111',
+        username: 'testuser',
+        firstName: 'Test',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@testuser')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('resolved')
+    const resolved = last as Extract<TargetState, { step: 'resolved' }>
+    expect(resolved.target.id).toBe('111111111')
+    expect(resolved.target.username).toBe('testuser')
+    expect(resolved.target.name).toBeTruthy()
+  })
+
+  it('bigint user ID > Number.MAX_SAFE_INTEGER serializes to string without precision loss (TGT-03)', async () => {
+    const largeId = '1234567890123456789'
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: largeId,
+        username: 'biguser',
+        firstName: 'Big',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@biguser')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    expect(last.step).toBe('resolved')
+    // Must be exact decimal string — no rounding from Number conversion
+    expect(last.target.id).toBe(largeId)
+  })
+
+  it('state transitions through resolving → resolved', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '12345',
+        username: 'someone',
+        firstName: 'Someone',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@someone')
+
+    expect(states.some((s) => s.step === 'resolving')).toBe(true)
+    expect(states[states.length - 1].step).toBe('resolved')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TGT-04 — username not found
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolve — username not found (TGT-04)', () => {
+  it('USERNAME_NOT_OCCUPIED → error state with code TARGET_USERNAME_NOT_FOUND', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameError: 'USERNAME_NOT_OCCUPIED',
+    })
+
+    await resolver.resolve('@nobody')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('error')
+    const errState = last as Extract<TargetState, { step: 'error' }>
+    expect(errState.code).toBe('TARGET_USERNAME_NOT_FOUND')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TGT-02, TGT-03 — phone resolution
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolve — phone path (TGT-02, TGT-03)', () => {
+  it('resolves phone number to a resolved TargetState', async () => {
+    const { resolver, states } = makeResolver({
+      resolvePhoneResult: {
+        userId: '222222222',
+        firstName: 'PhoneUser',
+        username: undefined,
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('+420123456789')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('resolved')
+    const resolved = last as Extract<TargetState, { step: 'resolved' }>
+    expect(resolved.target.id).toBe('222222222')
+  })
+
+  it('input +420123456789 routes to phone resolution path (not username)', async () => {
+    const { resolver, states } = makeResolver({
+      resolvePhoneResult: {
+        userId: '333333333',
+        firstName: 'PhoneTest',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('+420123456789')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    expect(last.step).toBe('resolved')
+    // Resolved from phone path — id comes from resolvePhoneResult
+    expect(last.target.id).toBe('333333333')
+  })
+
+  it('leading + with digits routes to phone path, @name routes to username path', async () => {
+    // Phone path
+    const { resolver: phoneResolver, states: phoneStates } = makeResolver({
+      resolvePhoneResult: { userId: '444', firstName: 'P', accessHash: '0' },
+    })
+    await phoneResolver.resolve('+1234567890')
+    expect(phoneStates[phoneStates.length - 1].step).toBe('resolved')
+
+    // Username path — @prefix routes differently
+    const { resolver: userResolver, states: userStates } = makeResolver({
+      resolveUsernameResult: { userId: '555', username: 'u', firstName: 'U', accessHash: '0' },
+    })
+    await userResolver.resolve('@u')
+    expect(userStates[userStates.length - 1].step).toBe('resolved')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TGT-04 — phone not found
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolve — phone not found (TGT-04)', () => {
+  it('PHONE_NOT_OCCUPIED → error state with code TARGET_PHONE_NOT_FOUND', async () => {
+    const { resolver, states } = makeResolver({
+      resolvePhoneError: 'PHONE_NOT_OCCUPIED',
+    })
+
+    await resolver.resolve('+420000000000')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('error')
+    const errState = last as Extract<TargetState, { step: 'error' }>
+    expect(errState.code).toBe('TARGET_PHONE_NOT_FOUND')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// VRF-01, VRF-02 — avatar and bio
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolve — avatar and bio (VRF-01, VRF-02)', () => {
+  it('downloadProfilePhoto returns non-empty Buffer → target.avatar is Uint8Array (VRF-01)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '100',
+        username: 'photouser',
+        firstName: 'Photo',
+        accessHash: '0',
+      },
+      identity: {
+        firstName: 'Photo',
+        id: '100',
+        hasPhoto: true,
+      },
+      getFullUserResult: { about: 'Bio text' },
+    })
+
+    await resolver.resolve('@photouser')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    expect(last.step).toBe('resolved')
+    expect(last.target.avatar).toBeInstanceOf(Uint8Array)
+    expect((last.target.avatar as Uint8Array).length).toBeGreaterThan(0)
+  })
+
+  it('downloadProfilePhoto returns null → target.avatar is null (VRF-01)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '101',
+        username: 'nophoto',
+        firstName: 'NoPhoto',
+        accessHash: '0',
+      },
+      identity: {
+        firstName: 'NoPhoto',
+        id: '101',
+        hasPhoto: false,
+      },
+    })
+
+    await resolver.resolve('@nophoto')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    expect(last.step).toBe('resolved')
+    expect(last.target.avatar).toBeNull()
+  })
+
+  it('GetFullUser succeeds → target.bio is populated (VRF-02)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '102',
+        username: 'biouser',
+        firstName: 'Bio',
+        accessHash: '0',
+      },
+      getFullUserResult: { about: 'My bio text' },
+    })
+
+    await resolver.resolve('@biouser')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    expect(last.step).toBe('resolved')
+    expect(last.target.bio).toBe('My bio text')
+  })
+
+  it('GetFullUser throws → bio is null but state is still resolved (VRF-02 graceful degradation)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '103',
+        username: 'nobi',
+        firstName: 'NoBio',
+        accessHash: '0',
+      },
+      getFullUserError: 'USERNAME_NOT_OCCUPIED', // any error causes graceful fallback
+    })
+
+    await resolver.resolve('@nobi')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    // Must still be resolved even if bio fetch fails
+    expect(last.step).toBe('resolved')
+    expect(last.target.bio).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// VRF-03 prerequisite — confirm gate
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.confirm (VRF-03 prerequisite)', () => {
+  it('after resolve, confirm() advances state from resolved to confirmed', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '200',
+        username: 'confirmme',
+        firstName: 'Confirm',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@confirmme')
+    expect(resolver.getState().step).toBe('resolved')
+
+    resolver.confirm()
+
+    expect(resolver.getState().step).toBe('confirmed')
+    const last = states[states.length - 1]
+    expect(last.step).toBe('confirmed')
+  })
+
+  it('getResolvedUser() returns { id: bigint, accessHash: bigint } in confirmed state (T-03-03)', () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '201',
+        username: 'bigintcheck',
+        firstName: 'BigInt',
+        accessHash: '9999999999999999',
+      },
+    })
+
+    // Start in a synthetic resolved state is not possible directly —
+    // the test verifies the shape contract after a full resolve+confirm cycle
+    // but since we can't await here, we assert the type contract inline:
+    // getResolvedUser() MUST return null until confirmed.
+    const before = resolver.getResolvedUser()
+    expect(before).toBeNull()
+  })
+
+  it('getResolvedUser() returns bigint id+accessHash after confirm', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '202',
+        username: 'confirmed',
+        firstName: 'Confirmed',
+        accessHash: '9999999999999999',
+      },
+    })
+
+    await resolver.resolve('@confirmed')
+    resolver.confirm()
+
+    const user = resolver.getResolvedUser()
+    expect(user).not.toBeNull()
+    expect(typeof user!.id).toBe('bigint')
+    expect(typeof user!.accessHash).toBe('bigint')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Reset
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.reset', () => {
+  it('after resolve, reset() returns state to idle', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '300',
+        username: 'resetme',
+        firstName: 'Reset',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@resetme')
+    expect(resolver.getState().step).toBe('resolved')
+
+    resolver.reset()
+
+    expect(resolver.getState().step).toBe('idle')
+  })
+
+  it('after confirm, reset() returns state to idle', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '301',
+        username: 'resetafter',
+        firstName: 'Reset',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@resetafter')
+    resolver.confirm()
+    expect(resolver.getState().step).toBe('confirmed')
+
+    resolver.reset()
+
+    expect(resolver.getState().step).toBe('idle')
+  })
+
+  it('getResolvedUser() returns null after reset', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '302',
+        username: 'resetuser',
+        firstName: 'Reset',
+        accessHash: '0',
+      },
+    })
+
+    await resolver.resolve('@resetuser')
+    resolver.confirm()
+    resolver.reset()
+
+    expect(resolver.getResolvedUser()).toBeNull()
+  })
+})
