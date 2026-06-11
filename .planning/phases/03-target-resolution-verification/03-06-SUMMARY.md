@@ -20,7 +20,7 @@ decisions:
 metrics:
   duration_min: 8
   completed_date: "2026-06-11"
-  tasks_completed: 2
+  tasks_completed: 3
   files_changed: 2
 requirements: [TGT-01, TGT-02, TGT-03, TGT-04, VRF-01, VRF-02, VRF-03]
 ---
@@ -94,9 +94,18 @@ None — no new network endpoints, auth paths, or schema changes introduced. The
 - All 3 CR source assertions pass
 - Full suite 112/114 (pre-existing 2 failures only)
 
-## Checkpoint Awaiting Human Verification
+## Human Verification: APPROVED
 
-Task 3 is a `checkpoint:human-verify` — requires a running app with an active Telegram session to verify:
-1. Real username resolves to identity card without React crash (CR-01 + CR-02 end-to-end)
-2. Non-existent username shows "No one has that username" copy (CR-03 end-to-end)
-3. (Optional) Phone resolution, no-avatar fallback, confirm gate, change target
+Task 3 (`checkpoint:human-verify`) completed by user with signal "approved":
+
+- **Test 1 (required):** Real Telegram username resolved to identity card without React crash — CR-01 (hooks) and CR-02 (bigint) confirmed working end-to-end against real Telegram API.
+- **Test 2 (required):** Non-existent username showed cause-specific copy "No one has that username. Check the spelling..." — CR-03 (TARGET_NO_PUBLIC_PROFILE classification) confirmed working end-to-end.
+
+All three production blockers are fully closed — automated assertions (Tasks 1-2) and real-API smoke tests (Task 3) both green.
+
+## Next Phase Readiness
+
+Phase 3 gap-closure complete. All blockers closed. Phase 3 (target-resolution-verification) can be marked complete by the orchestrator.
+
+- Phase 4 (group enumeration) can proceed — `Window.mrproper` typed contract (14 methods via `MrProperApi` interface) is stable for renderer-side additions.
+- Phase 4 concerns remain (documented in STATE.md blockers): per-chat-type rights and `deleteChatUser` vs `editBanned` dispatch need research verification.
