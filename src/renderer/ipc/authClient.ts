@@ -6,17 +6,18 @@ import type { AuthState, FloodTick, LogoutResult } from '@shared/authTypes'
 
 // Type declaration for the contextBridge surface exposed by src/preload/index.ts
 declare global {
+  interface MrProperApi {
+    submitPhone(p: { dialCode: string; national: string }): Promise<AuthState>
+    submitCode(p: { code: string }): Promise<AuthState>
+    submitPassword(p: { password: string }): Promise<AuthState>
+    resendCode(): Promise<AuthState>
+    getAuthState(): Promise<AuthState>
+    logout(): Promise<LogoutResult>
+    onAuthState(cb: (s: AuthState) => void): () => void
+    onFloodTick(cb: (t: FloodTick) => void): () => void
+  }
   interface Window {
-    mrproper: {
-      submitPhone(p: { dialCode: string; national: string }): Promise<AuthState>
-      submitCode(p: { code: string }): Promise<AuthState>
-      submitPassword(p: { password: string }): Promise<AuthState>
-      resendCode(): Promise<AuthState>
-      getAuthState(): Promise<AuthState>
-      logout(): Promise<LogoutResult>
-      onAuthState(cb: (s: AuthState) => void): () => void
-      onFloodTick(cb: (t: FloodTick) => void): () => void
-    }
+    mrproper: MrProperApi
   }
 }
 
