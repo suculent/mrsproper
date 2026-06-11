@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-06-11T22:17:57.023Z"
+last_updated: "2026-06-11T22:24:37.681Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 25
-  completed_plans: 19
+  completed_plans: 20
   percent: 33
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 ## Current Position
 
 Phase: 04 (group-enumeration-membership-rights) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-06-11
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [████████░░] 76%
 | Phase 04 P02 | 2 | 2 tasks | 2 files |
 | Phase 04 P03 | 3 | 2 tasks | 2 files |
 | Phase 04-group-enumeration-membership-rights P04 | 3 | 2 tasks | 2 files |
+| Phase 04 P05 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Round JPEG source for macOS icon; square source for Windows icon — matches platform icon conventions
 - [Phase ?]: Phase 4 Wave 0: it.todo() stubs used for Nyquist compliance; mock client extended with Api.Chat/Channel entity construction for getDialogs()
 - [Phase ?]: OQ-2 resolved: basic group canAct uses OR logic — entity.creator===true OR adminRights.banUsers===true (GroupEnumerator Plan 03)
+- [Phase ?]: 04-05: AuthState uses authorized not loggedIn
+- [Phase ?]: 04-05: security gate for IPC retryGroup
 
 ### Pending Todos
 
@@ -138,6 +141,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T22:17:57.018Z
+Last session: 2026-06-11T22:24:31.577Z
 Stopped at: Completed 04-03-PLAN.md
 Resume file: None
