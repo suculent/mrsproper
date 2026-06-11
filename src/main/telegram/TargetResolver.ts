@@ -26,6 +26,7 @@
  */
 
 import { Api } from 'telegram'
+import type { BigInteger } from 'big-integer'
 import type { TargetState, ResolvedTargetDTO, TargetErrorCode } from '@shared/targetTypes'
 import type { GovernorEvent } from '@shared/opTypes'
 import { RateLimitGovernor } from './governor'
@@ -173,33 +174,40 @@ export class TargetResolver {
       this._client.invoke(new Api.contacts.ResolveUsername({ username }))
     ) as { peer: unknown; users: unknown[] }
 
-    // Verify peer is a user (not a channel/group) — duck-typing for testability
-    // (mock returns plain { userId } objects; real GramJS returns Api.PeerUser instances)
-    const peer = resolved.peer as { userId?: bigint }
-    if (!peer || typeof peer.userId !== 'bigint') {
+    // Verify peer is a user (not a channel/group). CR-02: GramJS `long` fields
+    // are `big-integer` library objects (typeof === 'object'), NEVER native
+    // bigint — duck-type on presence and compare via decimal-string form.
+    const peerUserId = (resolved.peer as { userId?: LongLike } | null | undefined)?.userId
+    if (peerUserId === undefined || peerUserId === null) {
       // Peer is not a user — treat as no public profile
       const err = { errorMessage: 'TARGET_NO_PUBLIC_PROFILE' }
       const classified = classifyRpcError(err)
       throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), classified)
     }
+    const peerIdStr = peerUserId.toString()
 
-    const targetUser = (resolved.users as Array<{ id: bigint }>).find(
-      (u) => u.id === peer.userId
-    ) as Api.User | undefined
+    // CR-02: big-integer objects are never reference-equal — compare toString().
+    const targetUser = (resolved.users as Array<{ id: LongLike }>).find(
+      (u) => u.id.toString() === peerIdStr
+    ) as ApiUserShape | undefined
 
     if (!targetUser) {
       const err = { errorMessage: 'USERNAME_NOT_OCCUPIED' }
       throw Object.assign(new Error('USERNAME_NOT_OCCUPIED'), err)
     }
 
-    // Store access hash privately (T-03-05 — never in DTO)
-    this._resolvedUserId = (targetUser as unknown as { id: bigint }).id
-    this._resolvedAccessHash = (targetUser as unknown as { accessHash: bigint | null }).accessHash ?? BigInt(0)
+    // Store access hash privately (T-03-05 — never in DTO).
+    // Normalized to native bigint via decimal string (works for both GramJS
+    // BigInteger objects and the mock's values) — Phase 4 reconstructs the
+    // GramJS long with bigInt(id.toString()) when building Api.InputPeerUser.
+    this._resolvedUserId = BigInt(targetUser.id.toString())
+    this._resolvedAccessHash =
+      targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
 
-    return this._buildDTO(targetUser as unknown as ApiUserShape, bio, avatar)
+    return this._buildDTO(targetUser, bio, avatar)
   }
 
   /**
@@ -212,15 +220,17 @@ export class TargetResolver {
       this._client.invoke(new Api.contacts.ResolvePhone({ phone }))
     ) as { peer: unknown; users: unknown[] }
 
-    const peer = resolved.peer as { userId?: bigint }
-    if (!peer || typeof peer.userId !== 'bigint') {
+    // CR-02: same big-integer duck-typing as the username path — see comments there.
+    const peerUserId = (resolved.peer as { userId?: LongLike } | null | undefined)?.userId
+    if (peerUserId === undefined || peerUserId === null) {
       const err = { errorMessage: 'TARGET_NO_PUBLIC_PROFILE' }
       const classified = classifyRpcError(err)
       throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), classified)
     }
+    const peerIdStr = peerUserId.toString()
 
-    const targetUser = (resolved.users as Array<{ id: bigint }>).find(
-      (u) => u.id === peer.userId
+    const targetUser = (resolved.users as Array<{ id: LongLike }>).find(
+      (u) => u.id.toString() === peerIdStr
     ) as ApiUserShape | undefined
 
     if (!targetUser) {
@@ -228,9 +238,11 @@ export class TargetResolver {
       throw Object.assign(new Error('PHONE_NOT_OCCUPIED'), err)
     }
 
-    // Store access hash privately (T-03-05 — never in DTO)
-    this._resolvedUserId = targetUser.id
-    this._resolvedAccessHash = targetUser.accessHash ?? BigInt(0)
+    // Store access hash privately (T-03-05 — never in DTO); normalized to
+    // native bigint via decimal string (see username path).
+    this._resolvedUserId = BigInt(targetUser.id.toString())
+    this._resolvedAccessHash =
+      targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
@@ -243,10 +255,16 @@ export class TargetResolver {
    * Graceful degradation: any failure → bio = null; resolution still proceeds (Pitfall 5).
    */
   private async _fetchBio(user: ApiUserShape): Promise<string | null> {
+    // Without an access hash GetFullUser cannot address the user — skip the
+    // call entirely (graceful: bio stays null) rather than sending a zero hash.
+    if (user.accessHash === undefined || user.accessHash === null) return null
     try {
+      // CR-02: user.id/accessHash come straight from the GramJS response, so in
+      // production they already ARE big-integer objects — pass them through
+      // unchanged (the casts only bridge the LongLike duck-type to the TL type).
       const inputPeer = new Api.InputPeerUser({
-        userId: user.id,
-        accessHash: user.accessHash ?? BigInt(0),
+        userId: user.id as BigInteger,
+        accessHash: user.accessHash as BigInteger,
       })
       const fullResult = await this._governor.run(() =>
         this._client.invoke(new Api.users.GetFullUser({ id: inputPeer }))
@@ -296,12 +314,24 @@ export class TargetResolver {
   }
 }
 
-// ── Minimal shape for API user objects ────────────────────────────────────────
-// Used internally to type both real Api.User and mock user objects
+// ── Minimal shapes for API objects ────────────────────────────────────────────
+
+/**
+ * Duck-type for GramJS `long` values (CR-02): the runtime deserializer produces
+ * `big-integer` library objects — plain objects with a decimal toString(), NOT
+ * native bigint. The mock client mirrors this shape. Never use `typeof x ===
+ * 'bigint'` or `===` on these values — duck-type on toString() instead.
+ */
+interface LongLike {
+  toString(): string
+}
+
+// Minimal shape for API user objects —
+// used internally to type both real Api.User and mock user objects
 
 interface ApiUserShape {
-  id: bigint
-  accessHash?: bigint | null
+  id: LongLike
+  accessHash?: LongLike | null
   firstName?: string
   lastName?: string
   username?: string | null

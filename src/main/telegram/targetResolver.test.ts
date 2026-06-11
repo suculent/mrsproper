@@ -81,6 +81,38 @@ describe('TargetResolver.resolve — username path (TGT-01, TGT-03)', () => {
     expect(last.target.id).toBe(largeId)
   })
 
+  it('resolves when GramJS returns big-integer ID objects, not native bigint (CR-02)', async () => {
+    const { resolver, states, client } = makeResolver({
+      resolveUsernameResult: {
+        userId: '111111111',
+        username: 'bigintobj',
+        firstName: 'BigIntObj',
+        accessHash: '0',
+      },
+    })
+
+    // Sanity: the mock's peer IDs are `big-integer` objects (the real GramJS
+    // deserializer shape) — typeof 'object', NOT 'bigint'. Any resolver code
+    // that duck-types with `typeof === 'bigint'` or compares IDs with `===`
+    // must fail against this shape.
+    const raw = (await client.invoke({ className: 'contacts.ResolveUsername' })) as {
+      peer: { userId: unknown }
+      users: Array<{ id: unknown }>
+    }
+    expect(typeof raw.peer.userId).toBe('object')
+    expect(typeof raw.users[0].id).toBe('object')
+    // Two separate responses produce distinct object instances — reference
+    // equality between peer.userId and users[].id can never hold.
+    expect(raw.peer.userId === raw.users[0].id).toBe(false)
+
+    await resolver.resolve('@bigintobj')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('resolved')
+    const resolved = last as Extract<TargetState, { step: 'resolved' }>
+    expect(resolved.target.id).toBe('111111111')
+  })
+
   it('state transitions through resolving → resolved', async () => {
     const { resolver, states } = makeResolver({
       resolveUsernameResult: {

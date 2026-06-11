@@ -14,7 +14,15 @@
  *   - err.errorMessage === 'PASSWORD_HASH_INVALID'
  *   - err.errorMessage === 'AUTH_KEY_UNREGISTERED'
  *   - err.errorMessage === 'FLOOD_WAIT_<n>' AND err.seconds === n (FloodWaitError shape)
+ *
+ * Long/ID shape (CR-02 — verified against installed telegram@2.26.22):
+ *   GramJS `long` fields (peer.userId, user.id, user.accessHash) are `big-integer`
+ *   library objects (typeof === 'object'), NOT native bigint. The mock returns
+ *   bigInt(...) instances so tests exercise the exact production shape — code that
+ *   does `typeof x === 'bigint'` or compares IDs with `===` MUST fail here too.
  */
+
+import bigInt from 'big-integer'
 
 export type MockRPCErrorCode =
   | 'SESSION_PASSWORD_NEEDED'
@@ -181,11 +189,12 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
           accessHash: 'mock-access-hash',
         }
         return {
-          peer: { userId: BigInt(r.userId) },
+          // CR-02: big-integer instances — the real GramJS deserializer shape.
+          peer: { userId: bigInt(r.userId) },
           users: [
             {
-              id: BigInt(r.userId),
-              accessHash: BigInt(r.accessHash.replace(/[^0-9-]/g, '0').slice(0, 15) || '0'),
+              id: bigInt(r.userId),
+              accessHash: bigInt(r.accessHash.replace(/[^0-9-]/g, '0').slice(0, 15) || '0'),
               firstName: r.firstName,
               lastName: undefined,
               username: r.username,
@@ -211,11 +220,12 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
           accessHash: '0',
         }
         return {
-          peer: { userId: BigInt(r.userId) },
+          // CR-02: big-integer instances — the real GramJS deserializer shape.
+          peer: { userId: bigInt(r.userId) },
           users: [
             {
-              id: BigInt(r.userId),
-              accessHash: BigInt(0),
+              id: bigInt(r.userId),
+              accessHash: bigInt.zero,
               firstName: r.firstName,
               lastName: undefined,
               username: r.username ?? null,
