@@ -17,14 +17,11 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
     <div className="flex flex-col min-h-screen bg-background">
       {/* Slim top header band — secondary surface (UI-SPEC App shell layout) */}
       <header className="bg-secondary border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
-        {/* App name — Display size */}
-        <span className="text-display font-semibold text-foreground">MrProper</span>
+        {/* Left side: logged-in user identity */}
+        <IdentityDisplay identity={identity} />
 
-        {/* Right side: identity + settings */}
-        <div className="flex items-center gap-3">
-          <IdentityDisplay identity={identity} />
-          <SettingsMenu />
-        </div>
+        {/* Right side: settings wheel */}
+        <SettingsMenu />
       </header>
 
       {/* Main content area — stubbed workflow regions */}
