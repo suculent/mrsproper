@@ -89,7 +89,11 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
-  const win = createWindow()
+  // Track the CURRENT window (review WR-03): on macOS the app keeps running after
+  // the window closes, and 'activate' creates a new one. All push emitters below
+  // close over this mutable binding so re-activated windows keep receiving
+  // auth-state (and governor) events instead of targeting the destroyed original.
+  let currentWin = createWindow()
 
   // ── After app ready: safeStorage is available (Pitfall 3 — guard post-ready) ──
   // Create the secrets store backed by the real Electron safeStorage
@@ -134,7 +138,7 @@ app.whenReady().then(async () => {
       },
     },
     onStateChange: (state: AuthState) => {
-      emitAuthState(win, state)
+      emitAuthState(currentWin, state)
     },
     onSessionWipe: () => {
       secretsStore.wipeSession()
@@ -147,7 +151,9 @@ app.whenReady().then(async () => {
   })
 
   // ── Register IPC handlers ─────────────────────────────────────────────────
-  registerAuthChannels(win, sm)
+  // Handlers close over sm (request/response), not the window — safe across
+  // window re-creation on macOS re-activation.
+  registerAuthChannels(currentWin, sm)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.
@@ -156,7 +162,8 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      // Rebind the push-event target to the freshly created window (WR-03).
+      currentWin = createWindow()
     }
   })
 })
