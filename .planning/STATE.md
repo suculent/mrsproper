@@ -108,6 +108,12 @@ Recent decisions affecting current work:
 - Make country rows clickable in login-form CountryPicker (`2026-06-11-country-picker-rows-clickable.md`, area: ui)
 - Default country Czechia (+420) in CountryPicker (`2026-06-11-default-country-czechia.md`, area: ui)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260611-t1h | Rename MrProper to MrsProper across code/identifiers + fix visible macOS app name to Mrs. Proper | 2026-06-11 | 618d5a9 | [260611-t1h-rename-mrproper-to-mrsproper-across-code](./quick/260611-t1h-rename-mrproper-to-mrsproper-across-code/) |
+
 ### Blockers/Concerns
 
 [Issues that affect future work]
