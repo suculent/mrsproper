@@ -155,7 +155,7 @@ Plans:
 **Wave 3** *(parallel — both blocked on Wave 2)*
 
 - [x] 04-03-PLAN.md — GroupEnumerator.ts: dialog enumeration + type classification + rights detection (GREEN tests)
-- [ ] 04-04-PLAN.md — MembershipScanner.ts: per-target membership scan with streaming progress (GREEN tests)
+- [x] 04-04-PLAN.md — MembershipScanner.ts: per-target membership scan with streaming progress (GREEN tests)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -254,7 +254,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 3/10 | In Progress|  |
+| 4. Group Enumeration, Membership & Rights | 4/10 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
