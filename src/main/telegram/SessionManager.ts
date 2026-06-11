@@ -26,10 +26,12 @@
 
 import { Api } from 'telegram'
 import type { AuthState, SubmitPhone, SubmitCode, SubmitPassword, LogoutResult, Identity } from '@shared/authTypes'
+import type { GovernorEvent } from '@shared/opTypes'
 import type { SecretsStore } from '../storage/secrets'
 import { AuthFlow } from './authFlow'
 import { classifyTelegramError } from './errors'
 import { floodWaitSeconds, FloodWaitController } from './floodWait'
+import { RateLimitGovernor } from './governor'
 
 // ── Dead session error codes (RESEARCH Pattern 3 + Code Examples) ─────────
 
@@ -95,6 +97,8 @@ export interface SessionManagerOptions {
   onSessionPersist?: (sessionString: string) => void
   /** API credentials — used by AuthFlow for sendCode / signInWithPassword. */
   apiCreds?: { apiId: number; apiHash: string }
+  /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry) — wired to IPC in production. */
+  onGovernorEvent?: (event: GovernorEvent) => void
 }
 
 // ── SessionManager ─────────────────────────────────────────────────────────
@@ -107,6 +111,7 @@ export class SessionManager {
   private readonly _onSessionPersist: ((sessionString: string) => void) | undefined
   private readonly _apiCreds: { apiId: number; apiHash: string }
   private readonly _floodController: FloodWaitController
+  private readonly _governor: RateLimitGovernor
 
   private _currentState: AuthState = { step: 'idle' }
   private _authFlow: AuthFlow | null = null
@@ -127,6 +132,10 @@ export class SessionManager {
     this._onSessionPersist = options.onSessionPersist
     this._apiCreds = options.apiCreds ?? { apiId: 0, apiHash: '' }
     this._floodController = new FloodWaitController()
+    this._governor = new RateLimitGovernor({
+      client: options.client,
+      onEvent: options.onGovernorEvent,
+    })
   }
 
   // ── State accessor ─────────────────────────────────────────────────────────
@@ -347,8 +356,8 @@ export class SessionManager {
   }
 
   private async _fetchIdentity(): Promise<Identity> {
-    const me = await this._client.getMe()
-    const photo = await this._client.downloadProfilePhoto(me)
+    const me = await this._governor.run(() => this._client.getMe()) as Awaited<ReturnType<SessionManagerClient['getMe']>>
+    const photo = await this._governor.run(() => this._client.downloadProfilePhoto(me))
 
     const name = [me.firstName, me.lastName].filter(Boolean).join(' ').trim() || me.firstName || ''
     const avatar =
