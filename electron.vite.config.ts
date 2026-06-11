@@ -4,7 +4,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import { config as loadDotenv } from 'dotenv'
 
-// Load .env (gitignored) at build time so MRPROPER_API_ID/MRPROPER_API_HASH
+// Load .env (gitignored) at build time so MRSPROPER_API_ID/MRSPROPER_API_HASH
 // are available in process.env for the define substitution below (D-04, AUTH-03).
 loadDotenv()
 
@@ -51,8 +51,8 @@ export default defineConfig({
       },
     },
     define: {
-      'import.meta.env.MRPROPER_API_ID': JSON.stringify(process.env.MRPROPER_API_ID),
-      'import.meta.env.MRPROPER_API_HASH': JSON.stringify(process.env.MRPROPER_API_HASH),
+      'import.meta.env.MRSPROPER_API_ID': JSON.stringify(process.env.MRSPROPER_API_ID),
+      'import.meta.env.MRSPROPER_API_HASH': JSON.stringify(process.env.MRSPROPER_API_HASH),
     },
     build: {
       outDir: 'out/main',

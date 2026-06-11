@@ -5,7 +5,7 @@
 # macOS dev launch note (Pitfall 6):
 #   Unsigned builds trigger Gatekeeper on other machines.
 #   Launch method: right-click -> Open, or:
-#     xattr -dr com.apple.quarantine /path/to/MrProper.app
+#     xattr -dr com.apple.quarantine /path/to/MrsProper.app
 #   This is expected for dev/test builds. Real signing arrives in Phase 7.
 
 appId: cz.corpus.mrsproper

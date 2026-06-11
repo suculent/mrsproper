@@ -14,13 +14,13 @@ import { join } from 'node:path'
 
 // RED: This import will fail until we can inject env at test time.
 // config.ts exists (plan 01 created it) but API_ID/API_HASH are undefined
-// in test mode unless MRPROPER_API_ID/MRPROPER_API_HASH are injected.
+// in test mode unless MRSPROPER_API_ID/MRSPROPER_API_HASH are injected.
 // Plans 03/04 add the test env injection or a testable validateConfig() export.
 import { API_ID, API_HASH } from './config'
 
 describe('AUTH-03: api_id/api_hash present at build (config.ts)', () => {
-  it('AUTH-03: API_ID is a positive integer (injected via MRPROPER_API_ID env)', () => {
-    // This test relies on MRPROPER_API_ID being set in the test environment.
+  it('AUTH-03: API_ID is a positive integer (injected via MRSPROPER_API_ID env)', () => {
+    // This test relies on MRSPROPER_API_ID being set in the test environment.
     // In CI, it is provided as a secret; locally, from the untracked .env file.
     // RED: will fail until env injection is wired — that is expected in Wave 0.
     expect(typeof API_ID).toBe('number')
@@ -28,7 +28,7 @@ describe('AUTH-03: api_id/api_hash present at build (config.ts)', () => {
     expect(API_ID).toBeGreaterThan(0)
   })
 
-  it('AUTH-03: API_HASH is a non-empty string (injected via MRPROPER_API_HASH env)', () => {
+  it('AUTH-03: API_HASH is a non-empty string (injected via MRSPROPER_API_HASH env)', () => {
     // RED: will fail until env injection is wired — that is expected in Wave 0.
     expect(typeof API_HASH).toBe('string')
     expect(API_HASH.length).toBeGreaterThan(0)
