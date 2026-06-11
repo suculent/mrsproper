@@ -170,6 +170,43 @@ describe('RateLimitGovernor — FLOOD_WAIT ceiling (EXE-02)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// WR-06: bounded FLOOD_WAIT budget per operation
+// ---------------------------------------------------------------------------
+
+describe('RateLimitGovernor — flood budget (WR-06)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('persistent FLOOD_WAIT exhausts the flood budget and throws instead of looping forever', async () => {
+    vi.useFakeTimers()
+
+    const invokeMock = vi.fn(async (_req?: unknown) => {
+      throw makeFloodError(1)
+    })
+    const client = { invoke: invokeMock }
+
+    const events: GovernorEvent[] = []
+    const governor = new RateLimitGovernor({
+      client,
+      onEvent: (event) => events.push(event),
+    })
+
+    const runPromise = governor.run(() => client.invoke({}))
+
+    // Advance well past 3 flood sleeps (1s + jitter each)
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    await expect(runPromise).rejects.toThrow()
+
+    // 1 initial attempt + 3 budgeted flood retries = 4 calls, then give up
+    expect(invokeMock).toHaveBeenCalledTimes(4)
+    // Budget exhaustion surfaces as a wait-too-long event (Phase 5 can pause the job)
+    expect(events.some((e) => e.type === 'wait-too-long')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // EXE-03: PEER_FLOOD hard-stop
 // ---------------------------------------------------------------------------
 

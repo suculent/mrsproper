@@ -54,6 +54,17 @@ export interface GovernorOptions {
 /** Maximum FLOOD_WAIT seconds the governor will sleep for (D-12 / T-02-04). */
 const FLOOD_CEILING_S = 3600
 
+/**
+ * Maximum FLOOD_WAITs absorbed for a SINGLE operation before giving up (review WR-06).
+ * Without this cap, a server returning FLOOD_WAIT on every attempt loops forever —
+ * and because EXE-01 serializes everything through _tail, one pathological call would
+ * starve every subsequently enqueued operation (including logout) indefinitely.
+ * Exceeding the budget emits a 'wait-too-long' event and re-throws the flood error.
+ * NOTE: an AbortSignal-based cancellation lever is deliberately deferred to Phase 5
+ * (job-abort API) — this budget is the Phase 2 safety net.
+ */
+const MAX_FLOOD_WAITS_PER_OP = 3
+
 /** Maximum transient (NETWORK/retry) retry attempts before throwing (D-14 / T-02-07). */
 const MAX_TRANSIENT_RETRIES = 3
 
@@ -116,6 +127,7 @@ export class RateLimitGovernor {
    */
   private async _executeWithPolicy<T>(fn: () => Promise<T>): Promise<T> {
     let transientAttempts = 0
+    let floodWaits = 0
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -137,6 +149,14 @@ export class RateLimitGovernor {
 
           // D-12 / T-02-04: ceiling check — waits above 3600s throw rather than blocking.
           if (seconds > FLOOD_CEILING_S) {
+            this._onEvent({ type: 'wait-too-long', seconds })
+            throw err
+          }
+
+          // WR-06: bounded flood budget per operation — a persistently flooding call
+          // must not retry forever and starve the serialized pipeline (EXE-01).
+          floodWaits += 1
+          if (floodWaits > MAX_FLOOD_WAITS_PER_OP) {
             this._onEvent({ type: 'wait-too-long', seconds })
             throw err
           }
