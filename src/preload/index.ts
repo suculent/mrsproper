@@ -14,7 +14,7 @@ import {
 // contextBridge exposes ONLY whitelisted functions to the renderer.
 // The renderer never gets the GramJS client, session string, or raw ipcRenderer.
 // This is the D-02 trust boundary.
-contextBridge.exposeInMainWorld('mrproper', {
+contextBridge.exposeInMainWorld('mrsproper', {
   submitPhone: (p: { dialCode: string; national: string }) =>
     ipcRenderer.invoke('auth:submitPhone', p),
   submitCode: (p: { code: string }) =>
