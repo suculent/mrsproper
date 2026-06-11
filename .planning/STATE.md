@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-06-11T22:42:43.944Z"
+status: verifying
+stopped_at: Completed 04-10-PLAN.md
+last_updated: "2026-06-11T23:12:20.547Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 25
-  completed_plans: 24
-  percent: 33
+  completed_plans: 25
+  percent: 44
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 Phase: 04 (group-enumeration-membership-rights) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-11
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [██████████] 96%
 | Phase 04-group-enumeration-membership-rights P04 | 3 | 2 tasks | 2 files |
 | Phase 04 P05 | 4 | 2 tasks | 4 files |
 | Phase 04-group-enumeration-membership-rights P08 | 8 | 1 tasks | 1 files |
+| Phase 04 P10 | 45 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-05: AuthState uses authorized not loggedIn
 - [Phase ?]: 04-05: security gate for IPC retryGroup
 - [Phase ?]: GroupsPane auto-start and abort behavior
+- [Phase ?]: Supergroup creator canAct uses OR logic: creator===true is sufficient independent of adminRights (Api.Channel branch, GroupEnumerator)
+- [Phase ?]: GramJS entity access: pass id+accessHash from dialog entity map, never reconstruct accessHash as BigInt(0) — causes CastError
+- [Phase ?]: MembershipScanner public surface: getState() is the canonical method (getScanState() typo never existed in final implementation)
 
 ### Pending Todos
 
@@ -143,6 +147,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T22:42:43.939Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-06-11T23:12:20.541Z
+Stopped at: Completed 04-10-PLAN.md
 Resume file: None
