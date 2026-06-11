@@ -111,7 +111,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-03-PLAN.md — TargetResolver.ts (username + phone via ResolvePhone, bio, avatar) + targetChannels.ts (IPC handlers) — GREEN all tests
+- [x] 03-03-PLAN.md — TargetResolver.ts (username + phone via ResolvePhone, bio, avatar) + targetChannels.ts (IPC handlers) — GREEN all tests
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -190,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
-| 3. Target Resolution & Verification | 2/5 | In Progress|  |
+| 3. Target Resolution & Verification | 3/5 | In Progress|  |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
