@@ -107,7 +107,7 @@ Plans:
 **Wave 1** *(Plans 01 and 02 run in parallel — no file overlap)*
 
 - [x] 03-01-PLAN.md — Shared contracts: targetTypes.ts, extend channels.ts/opTypes.ts, extend operationErrors + test + mock client
-- [ ] 03-02-PLAN.md — Badge component (shadcn add) + RED test stubs: targetResolver.test.ts + targetChannels.test.ts
+- [x] 03-02-PLAN.md — Badge component (shadcn add) + RED test stubs: targetResolver.test.ts + targetChannels.test.ts
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -190,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
-| 3. Target Resolution & Verification | 1/5 | In Progress|  |
+| 3. Target Resolution & Verification | 2/5 | In Progress|  |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |

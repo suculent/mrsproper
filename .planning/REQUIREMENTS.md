@@ -24,9 +24,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Visual Verification
 
-- [ ] **VRF-01**: App displays the target's avatar for visual confirmation
-- [ ] **VRF-02**: App shows text identity (name, username, numeric ID, bio) alongside the avatar
-- [ ] **VRF-03**: When no avatar is available, app shows a clear no-photo fallback plus available identity details, and allows the user to proceed
+- [x] **VRF-01**: App displays the target's avatar for visual confirmation
+- [x] **VRF-02**: App shows text identity (name, username, numeric ID, bio) alongside the avatar
+- [x] **VRF-03**: When no avatar is available, app shows a clear no-photo fallback plus available identity details, and allows the user to proceed
 
 ### Group Enumeration & Selection
 
@@ -113,9 +113,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | TGT-02 | Phase 3 | Complete |
 | TGT-03 | Phase 3 | Complete |
 | TGT-04 | Phase 3 | Complete |
-| VRF-01 | Phase 3 | Pending |
-| VRF-02 | Phase 3 | Pending |
-| VRF-03 | Phase 3 | Pending |
+| VRF-01 | Phase 3 | Complete |
+| VRF-02 | Phase 3 | Complete |
+| VRF-03 | Phase 3 | Complete |
 | GRP-01 | Phase 4 | Pending |
 | GRP-02 | Phase 4 | Pending |
 | GRP-03 | Phase 4 | Pending |
