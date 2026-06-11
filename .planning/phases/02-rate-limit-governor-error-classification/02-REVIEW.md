@@ -1,11 +1,13 @@
 ---
 phase: 02-rate-limit-governor-error-classification
-reviewed: 2026-06-11T10:31:41Z
+reviewed: 2026-06-11T14:04:11Z
 depth: standard
-files_reviewed: 7
+files_reviewed: 9
 files_reviewed_list:
   - src/main/index.ts
+  - src/main/telegram/SessionManager.test.ts
   - src/main/telegram/SessionManager.ts
+  - src/main/telegram/__mocks__/telegramClient.ts
   - src/main/telegram/governor.test.ts
   - src/main/telegram/governor.ts
   - src/main/telegram/operationErrors.test.ts
@@ -13,195 +15,203 @@ files_reviewed_list:
   - src/shared/opTypes.ts
 findings:
   critical: 1
-  warning: 8
+  warning: 9
   info: 5
-  total: 14
+  total: 15
 status: issues_found
 ---
 
-# Phase 2: Code Review Report
+# Phase 2: Code Review Report (post-gap-closure 02-04)
 
-**Reviewed:** 2026-06-11T10:31:41Z
+**Reviewed:** 2026-06-11T14:04:11Z
 **Depth:** standard
-**Files Reviewed:** 7
+**Files Reviewed:** 9
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Phase 2 rate-limit governor, RPC error classifier, shared operation types, and the governor wiring into SessionManager / main index. The core invariants hold: PEER_FLOOD is checked before any FLOOD_WAIT parsing (operationErrors.ts:61 precedes :68), jitter is strictly additive (governor.ts:154-155), the 3600s ceiling throws instead of sleeping (governor.ts:139-142), `errorMessage` (not `message`) is the branch field, and the serialization tail-chain is correct (the tail never rejects, so a failed operation cannot wedge the queue). The `floodSleepThreshold: 0` claim in index.ts was verified against GramJS source (`Object.assign` merge + `Math.min(value || 0, 86400)` setter — 0 survives). All 15 phase tests pass.
+This review replaces the prior 02-REVIEW.md and reflects the state after gap-closure plan 02-04 (auth.LogOut routed through `governor.run()`, logout mock reworked to `logoutErrorCode: MockRPCErrorCode`, governor.test.ts tsc fixes, SESSION_INVALID disposition comments aligned to 'fail').
 
-However: the classifier's SESSION_INVALID disposition contradicts the shared-type contract it claims to implement (hard-stop vs fail — a dead session mid-bulk-job will NOT abort the job), the FLOOD_WAIT detector over-matches any GramJS error carrying a `.seconds` field (SLOWMODE_WAIT, FLOOD_TEST_PHONE_WAIT), governor events are never wired to IPC in production so a launch-time FLOOD_WAIT silently stalls the app for up to an hour, and `tsc -p tsconfig.node.json` fails with three NEW errors introduced by this phase's test file (on top of the known Phase-1 baseline).
+What holds up under scrutiny: PEER_FLOOD is checked before any flood-wait parsing (operationErrors.ts:61 precedes :68), the 3600s ceiling throws before sleeping, transient retry is bounded at 3 attempts with the documented backoff, the hand-rolled tail-chain serializes correctly and cannot wedge on rejection (`.then(resolve, reject)` handlers never throw, so `_tail` never rejects), and the prior review's CR-01 (SESSION_INVALID contract contradiction) was resolved by aligning the opTypes.ts/governor.ts comments to the 'fail' decision. All 19 tests across the three in-scope suites pass (verified by running them).
 
-Known pre-existing baseline items (Phase 1 tsc errors in authChannels/secrets.test/mocks/authFlow/config/SessionManager unused symbols, 2 failing AUTH-03 config env tests) are excluded per instructions.
+What does not hold up:
+
+1. **`SessionManager.initialize()` destroys a valid persisted session on any transient error** — launching the app offline wipes the on-disk session and forces full re-login (Critical).
+2. **The reviewed files still fail strict typecheck.** `npx tsc --noEmit -p tsconfig.node.json` reports 6 errors in the in-scope files — including TS2345 on the exact line gap-closure 02-04 added (`new Api.auth.LogOut({})` at SessionManager.ts:288; `auth.LogOut` takes no constructor argument per the installed GramJS d.ts).
+3. **Governor events are still not wired to IPC in production** (`onGovernorEvent` never passed in index.ts), so with `floodSleepThreshold: 0` every FLOOD_WAIT on a governed call is an invisible hang of up to ~1 hour. This was flagged in the prior review and remains open.
+4. The governor has no cap on consecutive FLOOD_WAIT retries and no cancellation, and `logout()`'s D-17 wipe now queues behind that unbounded chain.
+
+Out-of-scope observation (not counted in findings): `tsc -p tsconfig.node.json` also fails in `src/main/ipc/authChannels.ts:58` (unused `win`), `src/main/storage/secrets.test.ts:12-14` (unused imports), `src/main/telegram/authFlow.ts:165` (unused `err`), and `src/main/telegram/config.ts:5-6` (missing `ImportMetaEnv` augmentation). The 2 failing config.test.ts cases are the known AUTH-03 env-injection baseline.
 
 ## Critical Issues
 
-### CR-01: SESSION_INVALID disposition contradicts the shared contract — dead session mid-job will not hard-stop
-
-**File:** `src/main/telegram/operationErrors.ts:79-81`, contradicted by `src/shared/opTypes.ts:14` and `:57`, and `src/main/telegram/governor.ts:128`
-**Issue:** The shared contract that this phase declares as its source of truth (`opTypes.ts:5` — "Plans 02-02 and 02-03 implement against these exact shapes") defines `hard-stop` as "PEER_FLOOD / session-invalid: abort the job immediately" (opTypes.ts:14), and the `hard-stop` GovernorEvent doc says "PEER_FLOOD **or session-invalid** surfaced — job must hard-stop" (opTypes.ts:57). The governor comment repeats this: "PEER_FLOOD or session-invalid — abort immediately" (governor.ts:128). But the classifier maps all `SESSION_INVALID_ERRORS` to `disposition: 'fail'` (operationErrors.ts:80), which `opTypes.ts:13` defines as "unrecoverable but non-fatal: surface error, **continue job**."
-
-Consequences:
-1. A session revoked mid-bulk-removal (AUTH_KEY_UNREGISTERED, SESSION_REVOKED) will not emit a `hard-stop` event, so the Phase 5 executor built against the documented contract will continue iterating remaining groups, issuing N more doomed RPC calls with a dead auth key, while the user believes removals are proceeding.
-2. The `hard-stop` event's `code: OperationErrorCode` field can in practice only ever be `'PEER_FLOOD'`, making part of the event contract dead.
-
-Semantically, continuing a destructive bulk job after the session dies is wrong for this product regardless of which document wins — every subsequent call fails, and the user needs to re-login. The tests (operationErrors.test.ts:87-97) assert the `'fail'` behavior, so tests and implementation agree with each other but both disagree with the typed contract.
-
-**Fix:** Make session-invalid a hard-stop, matching the contract:
-```typescript
-// operationErrors.ts
-if (SESSION_INVALID_ERRORS.has(errorMessage)) {
-  return { code: 'SESSION_INVALID', disposition: 'hard-stop' }
-}
-```
-Update operationErrors.test.ts:87-97 to expect `'hard-stop'`. If `'fail'` is genuinely the intended design, then opTypes.ts:14, opTypes.ts:57, and governor.ts:128 must all be corrected instead — but the abort-on-dead-session semantics are the defensible choice for a bulk destructive tool.
-
-## Warnings
-
-### WR-01: FLOOD_WAIT detection over-matches any error carrying a numeric `.seconds` field
-
-**File:** `src/main/telegram/operationErrors.ts:68` (via `src/main/telegram/floodWait.ts:41-42`)
-**Issue:** `floodWaitSeconds()` returns `err.seconds` for ANY error with a numeric `.seconds` property, before ever inspecting `errorMessage`. Verified in GramJS source (`node_modules/telegram/errors/RPCErrorList.js`): `SlowModeWaitError` (SLOWMODE_WAIT_X) and `FloodTestPhoneWaitError` (FLOOD_TEST_PHONE_WAIT_X) also carry `.seconds`. Both would be classified `code: 'FLOOD_WAIT', disposition: 'wait'` and silently slept on by the governor, mislabeled in every emitted event. Additionally, the regex fallback on plain `err.message` means any wrapped/re-thrown error whose message merely *mentions* "FLOOD_WAIT_30" classifies as a flood wait. The classifier header claims to be "the SINGLE translation layer" for all Phase 3+ operations (getParticipants, EditBanned, etc.), where these adjacent error types are reachable.
-**Fix:** Require the FLOOD_WAIT code to be present before trusting `.seconds`:
-```typescript
-// operationErrors.ts — gate on the canonical errorMessage prefix
-const waitSeconds =
-  errorMessage.startsWith('FLOOD_WAIT') ? floodWaitSeconds(err) : null
-```
-(or tighten `floodWaitSeconds()` itself to check `errorMessage` starts with `FLOOD_WAIT` before reading `.seconds` — note floodWait.ts is shared with the login path, so gating in operationErrors.ts is the lower-risk change.)
-
-### WR-02: Any error without `errorMessage` is classified NETWORK and retried — masks programming errors
-
-**File:** `src/main/telegram/operationErrors.ts:86-88`, `src/main/telegram/governor.ts:165-183`
-**Issue:** Branch 4 treats every error lacking `.errorMessage` as a transient network failure with `disposition: 'retry'`. That includes `TypeError`/`RangeError`/any bug thrown from the caller-supplied `fn` (e.g., `cannot read property of undefined`). The governor will then retry a deterministic programming error 4 times with ~7s of backoff before surfacing it, emitting misleading `retry-attempt` events to the UI, and finally throwing the raw error labeled as if it were network trouble.
-**Fix:** Narrow the network branch — e.g., exclude obvious programmer-error types and/or match known network shapes:
-```typescript
-if (!errorMessage) {
-  if (err instanceof TypeError || err instanceof RangeError || err instanceof SyntaxError) {
-    return { code: 'UNKNOWN', disposition: 'fail' }
-  }
-  return { code: 'NETWORK', disposition: 'retry' }
-}
-```
-
-### WR-03: Unbounded consecutive FLOOD_WAIT loop — no cumulative budget or escalation
-
-**File:** `src/main/telegram/governor.ts:134-163`
-**Issue:** FLOOD_WAIT retries are explicitly excluded from the transient budget (line 161) and there is no counter or cumulative-wait ceiling for repeated floods on the same operation. The 3600s ceiling (D-12) is per-wait only. If Telegram repeatedly returns sub-ceiling waits (e.g., FLOOD_WAIT_3500 over and over — exactly the pattern when a shared api_id is being throttled, a risk CLAUDE.md calls out), a single `run()` call blocks the entire serialized queue indefinitely, emitting only flood-ticks, with no event that lets Phase 5 or the user abort or distinguish "stuck forever" from "almost done."
-**Fix:** Track consecutive flood retries (or cumulative slept seconds) per operation and surface via the existing escape hatch after a bound, e.g.:
-```typescript
-if (++floodRetries > MAX_FLOOD_RETRIES || (cumulativeWaitS += seconds) > FLOOD_CEILING_S) {
-  this._onEvent({ type: 'wait-too-long', seconds })
-  throw err
-}
-```
-
-### WR-04: Governor events are never wired in production — launch-time FLOOD_WAIT silently stalls the app up to 1 hour
-
-**File:** `src/main/index.ts:117-144` (missing `onGovernorEvent`), `src/main/telegram/SessionManager.ts:101` (doc claims "wired to IPC in production")
-**Issue:** `SessionManagerOptions.onGovernorEvent` is documented as "wired to IPC in production," but `main/index.ts` constructs SessionManager without it, so every governor event (`flood-tick`, `hard-stop`, `wait-too-long`, `retry-attempt`) is dropped into the `(() => {})` default (governor.ts:77). Combined with this phase's `floodSleepThreshold: 0` change (index.ts:113), a FLOOD_WAIT on `getMe()` during `initialize()` now reaches the governor, which sleeps up to 3600s + jitter — during which no auth state has been emitted and no countdown is visible. The window is already shown (`ready-to-show`), so the user stares at a stuck launch screen for up to an hour with zero feedback. At the Phase 1 baseline (`floodSleepThreshold: 5`), waits >5s threw immediately instead.
-**Fix:** Wire the callback in index.ts (and have the renderer at minimum log/display it):
-```typescript
-onGovernorEvent: (event) => {
-  if (!win.isDestroyed()) win.webContents.send('governor:event', event)
-},
-```
-If full UI consumption is deferred to Phase 5, either bound the startup sleep (e.g., treat floods during `initialize()` as dead-session-style "route to idle without wipe") or correct the misleading doc comment and accept/record the stall as a known gap.
-
-### WR-05: `_onEvent` consumer exceptions are unguarded — can replace the classified error or crash the main process
-
-**File:** `src/main/telegram/governor.ts:130, 148, 172-176`
-**Issue:** The governor invokes the consumer-supplied `onEvent` callback with no try/catch.
-1. Hard-stop path (line 130): if `_onEvent` throws, that exception propagates instead of the original PEER_FLOOD error — the caller receives the consumer's bug and the real abort cause is lost.
-2. Flood-tick path (line 148): the callback runs inside a real `setInterval` tick (floodWait.ts:95). A throw there is an uncaught exception in the Electron main process — a crash — and the interval handle is never cleared. The obvious future consumer, `webContents.send` on a window closed mid-countdown, throws exactly this way unless every consumer remembers to guard.
-**Fix:** Make emission non-throwing once at the source:
-```typescript
-private _safeEmit(event: GovernorEvent): void {
-  try { this._onEvent(event) } catch { /* consumer bug must not alter governor flow */ }
-}
-```
-and use `_safeEmit` at all four emission sites.
-
-### WR-06: `initialize()` wipes a valid persisted session on ANY transient error — offline launch destroys credentials
+### CR-01: Offline or transient-error launch destroys a valid persisted session
 
 **File:** `src/main/telegram/SessionManager.ts:179-189`
-**Issue:** The catch block in `initialize()` wipes the session (`_wipeSessionLocally()` → `secretsStore.wipeSession()` in production) for every non-dead-session error, including: `connect()` failure when the machine is offline at launch, and `_fetchIdentity()` failures after the governor's 3-retry NETWORK budget is exhausted (~7s of outage). The result: launching MrProper without internet permanently destroys the encrypted session and forces a full phone+code+2FA re-login. This phase routed `_fetchIdentity` through the governor specifically to harden this path (retries), but the catch-all wipe defeats that hardening for any failure that outlasts the budget — and `connect()` is not governed at all. (Lines pre-date this phase but sit in a reviewed file and directly interact with this phase's retry changes; not on the excluded baseline list.)
-**Fix:** Only wipe on confirmed dead sessions; preserve the session on transient failures:
-```typescript
+**Issue:** `initialize()` wipes the session for ANY error, not just dead-session errors:
+
+```ts
 } catch (err) {
   if (isDeadSessionError(err)) {
     this._wipeSessionLocally()
     this._emit({ step: 'idle' })
     return
   }
-  // Transient (offline, flood, network): keep the persisted session, surface error state
-  this._emit({ step: 'error', code: 'NETWORK', retryStep: 'phone' })
+  // Other connection error — still route to login safely
+  this._wipeSessionLocally()   // ← also wipes on plain NETWORK errors
+  this._emit({ step: 'idle' })
 }
 ```
 
-### WR-07: Governor rethrows raw GramJS errors — classification is discarded and callers must re-classify
+If the user launches the app with no network connectivity (offline laptop, captive portal, Telegram briefly unreachable), `client.connect()` rejects with a plain network error, `isDeadSessionError()` is false, and execution falls through to `_wipeSessionLocally()` — which fires `onSessionWipe` → `secretsStore.wipeSession()` in production (`index.ts:136-138`), deleting the encrypted on-disk session. A fully valid login (phone + code + 2FA) is destroyed by a transient condition that the project's own classifier marks `disposition: 'retry'` (`operationErrors.ts:86-88`).
 
-**File:** `src/main/telegram/governor.ts:131, 141, 168, 187`
-**Issue:** Every failure path throws the original raw `err` (containing raw Telegram strings in `message`/`errorMessage`) after computing — and discarding — the `ClassifiedOperationError`. The phase invariant says no raw Telegram strings cross layer boundaries; T-02-06 sanitizes the *event* channel, but the `run()` rejection channel delivers raw GramJS errors. Phase 5 callers must call `classifyRpcError` a second time on every rejection (duplicated work, risk of divergence if the two call sites drift), and any caller that naively forwards `error.message` over IPC leaks raw Telegram strings to the renderer.
-**Fix:** Throw a typed error carrying the classification, preserving the original via `cause`:
-```typescript
-export class GovernorError extends Error {
-  constructor(readonly classified: ClassifiedOperationError, cause: unknown) {
-    super(`Operation failed: ${classified.code}`, { cause })
+The same wipe also fires if `_fetchIdentity()` (line 175) fails: a FLOOD_WAIT > 3600s on `getMe`, or three exhausted NETWORK retries, propagates into this catch and wipes the session.
+
+**Fix:** Wipe only on dead-session errors (and the explicit `!isAuthorized` branch); on other errors keep the session and route to idle (or a dedicated offline/retry state):
+
+```ts
+} catch (err) {
+  if (isDeadSessionError(err)) {
+    this._wipeSessionLocally()
+    this._emit({ step: 'idle' })
+    return
   }
+  // Transient error — session may still be valid. Do NOT wipe.
+  this._emit({ step: 'idle' })
 }
-// in _executeWithPolicy: throw new GovernorError(classified, err)
 ```
 
-### WR-08: New TypeScript errors introduced by this phase — node project type-check fails on new code
+There is no test for "initialize with a network error does not wipe" — add one (the mock needs a plain-Error `connectError` variant; today `MockRPCErrorCode` only produces RPC-shaped errors).
 
-**File:** `src/main/telegram/governor.test.ts:13, 185, 211`
-**Issue:** `npx tsc --noEmit -p tsconfig.node.json` reports three errors in this brand-new file (definitionally not part of the known Phase-1 baseline):
-- Line 13: TS6196 — `Disposition` imported but never used.
-- Lines 185, 211: TS2554 "Expected 0 arguments, but got 1" — `client.invoke({})` called against mocks typed as zero-arg (`vi.fn(async () => {...})`). The `createMockClient` factory has the same flaw (`invokeImpl?: () => Promise<unknown>`, line 43-47) at every `client.invoke({})` call site that happens to dodge inference.
-Tests pass at runtime because vitest does not type-check, but the project's stated rationale for TypeScript is "strong typing matters when a typo triggers a destructive `EditBanned` call" — adding new type errors erodes the gate that is supposed to catch that. (Note: the root `tsconfig.json` is solution-style with `files: []`, so a bare `npx tsc --noEmit` reports nothing — anyone verifying with that command gets a false clean.)
+## Warnings
+
+### WR-01: In-scope files fail strict typecheck (6 errors), including the gap-closure line itself
+
+**File:** `src/main/telegram/SessionManager.ts:288, 30, 33, 113`; `src/main/telegram/SessionManager.test.ts:13`
+**Issue:** `npx tsc --noEmit -p tsconfig.node.json` (strict) fails. In-scope errors:
+
+- `SessionManager.ts(288,78): TS2345: Argument of type '{}' is not assignable to parameter of type 'void'.` — `new Api.auth.LogOut({})`. Verified against `node_modules/telegram/tl/api.d.ts:21245`: `class LogOut extends Request<void, auth.TypeLoggedOut>` — no constructor argument. This is the exact line added by 02-04. Runtime-harmless, but it breaks the typecheck gate in a project whose stated TypeScript rationale is "strong typing matters when a typo triggers a destructive EditBanned call."
+- `SessionManager.ts(30,1): TS6133` — `SecretsStore` imported, never used.
+- `SessionManager.ts(33,10): TS6133` — `floodWaitSeconds` imported, never used.
+- `SessionManager.ts(113,20): TS6133` — `_floodController` declared and constructed (line 134) but never used; the controller now lives inside the governor, this field is dead residue.
+- `SessionManager.test.ts(13,32 / 13,36): TS6133` — `vi` and `beforeEach` imported, never used.
+
+`electron-vite build` is transform-only (no typecheck) and package.json has no `typecheck` script, so nothing catches these.
+
 **Fix:**
-```typescript
-import type { GovernorEvent } from '@shared/opTypes' // drop Disposition
-
-function createMockClient(invokeImpl?: (req?: unknown) => Promise<unknown>) { ... }
-const invokeMock = vi.fn(async (_req?: unknown) => { throw makePeerFloodError() })
+```ts
+// SessionManager.ts:288
+await this._governor.run(() => this._client.invoke(new Api.auth.LogOut()))
 ```
+Remove the `SecretsStore` and `floodWaitSeconds` imports, the `_floodController` field and its construction; trim the test import to `import { describe, it, expect } from 'vitest'`. Add a `"typecheck"` script so this regression class is caught going forward.
+
+### WR-02: Production CSP may never be applied — `file://` loads bypass header injection and index.html has no CSP meta tag
+
+**File:** `src/main/index.ts:54-72`; `src/renderer/index.html:3-7`
+**Issue:** The strict production CSP is delivered only via `webRequest.onHeadersReceived`, but the packaged app loads the renderer with `loadFile` (`file://`, line 82). Header-based CSP for `file://` documents is unreliable in Electron (no real HTTP response headers; Electron's security guidance prescribes a `<meta http-equiv="Content-Security-Policy">` tag for file-loaded content). `src/renderer/index.html` has no CSP meta tag, so if header injection does not apply to the `file://` document in the shipped Electron version, the packaged renderer runs with NO CSP while the code comment asserts "Production (packaged): strict." Sandbox + contextIsolation limit blast radius, but the declared defense-in-depth control is unverified.
+
+**Fix:** Add the strict CSP as a meta tag in `index.html` (inject the dev-relaxed variant in dev via electron-vite), or verify in a packaged build that an inline-script violation is actually blocked. Keep header injection for the dev server path.
+
+### WR-03: macOS re-activation creates a window that is never wired to SessionManager state
+
+**File:** `src/main/index.ts:154-158`
+**Issue:** `app.on('activate')` calls `createWindow()` and discards the result. `emitAuthState` stays bound to the original `win` (line 133-135). On macOS the app keeps running after the window closes (`window-all-closed` skips darwin); after re-activation, every pushed auth-state event targets the destroyed original window — `emitAuthState`'s `isDestroyed()` guard means they are silently dropped, never delivered to the new window. The re-activated UI only sees state via pull (`AUTH_GET_STATE` / handler return values); all async push transitions (and any future governor events) are lost. Standard macOS lifecycle → degraded UI.
+
+**Fix:** Track the current window (`let currentWin = createWindow()`, reassigned in `activate`) and emit to it: `onStateChange: (s) => emitAuthState(currentWin, s)`. The IPC handlers already close over `sm`, so only the emit target needs rebinding.
+
+### WR-04: `onGovernorEvent` is never wired in production — FLOOD_WAIT during initialize/logout is an invisible hang (carried over from prior review, still open)
+
+**File:** `src/main/index.ts:117-144`; `src/main/telegram/SessionManager.ts:100-101`
+**Issue:** `SessionManagerOptions.onGovernorEvent` is documented as "wired to IPC in production," but `index.ts` never passes it, so the governor's emitter defaults to a no-op (`governor.ts:77`). With `floodSleepThreshold: 0` (index.ts:113), every FLOOD_WAIT on the governed calls (`getMe` / `downloadProfilePhoto` in `_fetchIdentity`, `auth.LogOut` in `logout`) reaches the governor, which sleeps up to 3600s + jitter while emitting flood-tick events into the void. The user sees a frozen launch or a dead logout button for up to an hour with zero feedback — D-09's whole purpose defeated for every governor-routed call that exists today.
+
+**Fix:** Wire a minimal bridge in index.ts (new channel constant in `src/shared/channels.ts`):
+```ts
+onGovernorEvent: (event) => {
+  if (!win.isDestroyed()) win.webContents.send(OP_GOVERNOR_EVENT, event)
+},
+```
+or at minimum log governor events in main so the hang is diagnosable. If wiring is deliberately deferred to Phase 5, correct the doc comment and record the deferral.
+
+### WR-05: D-17 logout wipe is deferred behind the governor's serial queue and unbounded flood retries
+
+**File:** `src/main/telegram/SessionManager.ts:284-305`; `src/main/telegram/governor.ts:101-103`
+**Issue:** Routing `auth.LogOut` through `governor.run()` (the 02-04 change) has two side effects:
+1. Logout queues behind whatever is already in `_tail`. If a prior governed call is mid-FLOOD_WAIT sleep (up to 3600s + jitter), the `finally` block performing the D-17 local wipe and `idle` emit cannot run until the chain drains — the user's explicit "log me out" is blocked for up to an hour.
+2. If `auth.LogOut` itself draws a FLOOD_WAIT ≤ 3600s, the governor sleeps and retries indefinitely (WR-06) before `logout()` reaches catch/finally at all. D-17 says the local wipe ALWAYS happens; in practice it happens only after the governor eventually settles, and there is no cancellation mechanism to force it.
+
+**Fix:** Decouple the local wipe from server-call completion — wipe immediately (or after a bounded timeout) and let the revocation race a deadline:
+```ts
+const revoke = this._governor.run(() => this._client.invoke(new Api.auth.LogOut()))
+const serverRevoked = await Promise.race([
+  revoke.then(() => true, () => false),
+  new Promise<boolean>((r) => setTimeout(() => r(false), LOGOUT_TIMEOUT_MS)),
+])
+// disconnect + _wipeSessionLocally() + emit idle unconditionally here
+```
+or give the governor an abort API (see WR-06).
+
+### WR-06: Governor FLOOD_WAIT retries are unbounded with no cancellation — one pathological call starves the entire serialized pipeline
+
+**File:** `src/main/telegram/governor.ts:134-162`
+**Issue:** The `wait` path retries with no cap on consecutive FLOOD_WAITs or cumulative wait ("FLOOD_WAIT retries are NOT counted against transient budget", line 161). Each individual wait is capped at 3600s (D-12), but a server returning FLOOD_WAIT_3000 on every attempt loops forever: sleep ~50 min → retry → FLOOD_WAIT → sleep → … Because EXE-01 serializes everything through `_tail`, every subsequently enqueued operation — including logout (WR-05) — is starved indefinitely. `RateLimitGovernor` exposes no `abort()`/`AbortSignal`, so nothing short of process exit recovers.
+
+**Fix:** Add a consecutive-FLOOD_WAIT budget (e.g., max 3 consecutive waits or a cumulative ceiling, then throw with a `wait-too-long`-style event), and/or accept an `AbortSignal` in `run()` that is checked before each retry and short-circuits the sleep. This also provides Phase 5's job-abort lever.
+
+### WR-07: `floodWaitSeconds` over-matches — any GramJS FloodError-family error with `.seconds` is typed as FLOOD_WAIT, and the value is unvalidated
+
+**File:** `src/main/telegram/floodWait.ts:41-42`; `src/main/telegram/operationErrors.ts:68-75`; `src/main/telegram/governor.ts:136, 146-156`
+**Issue:** `floodWaitSeconds()` returns any numeric `err.seconds` before looking at the message. Verified in `node_modules/telegram/errors/RPCErrorList.js`: `SlowModeWaitError`, `FloodTestPhoneWaitError`, and `MsgWaitError` all extend `FloodError` and set `.seconds`. Consequences:
+- `SLOWMODE_WAIT_n` etc. are classified as `code: 'FLOOD_WAIT'` — a typed code that misreports the actual condition, in the module whose stated contract is "NO raw Telegram string crosses a layer boundary" precisely so consumers can trust the code.
+- The value is not validated: `seconds <= 0` or non-finite flows into the wait path. With `seconds = 0` (also reachable via the governor's `retryAfterSeconds ?? 0` default), `startFloodCountdown(0, …)` can emit `flood-tick` with `remaining: -1`; a negative `seconds` yields a negative `setTimeout` → effectively delay-free retry, which combined with WR-06's unbounded loop becomes a tight retry loop against Telegram.
+
+**Fix:** In `classifyRpcError`, confirm the flood family before trusting `.seconds` (e.g., require `FLOOD_WAIT_`/known wait prefixes on `errorMessage`, or map SLOWMODE_WAIT to its own code at Phase 5), and clamp: treat non-finite or `<= 0` seconds as not-a-wait. In the governor, skip starting the countdown when `seconds === 0`.
+
+### WR-08: SESSION_INVALID → 'fail' means a dead session mid-bulk-job neither hard-stops nor triggers session cleanup outside initialize()
+
+**File:** `src/main/telegram/operationErrors.ts:79-81`; `src/shared/opTypes.ts:14, 57`
+**Issue:** Gap-closure 02-04 resolved the prior review's contract contradiction by documenting that SESSION_INVALID maps to `'fail'` ("surface error, continue job"). The residual behavioral risk stands and is now load-bearing for Phase 5: when the session dies mid-job (AUTH_KEY_UNREGISTERED), every remaining per-group call is doomed, yet the executor consuming `'fail'` will keep iterating N groups, issuing N doomed RPCs on a dead auth key. The governor also emits no event for `'fail'` dispositions, and nothing routes an operational dead-session detection back to SessionManager's wipe/idle handling (that only exists inside `initialize()`'s catch).
+**Fix:** Record an explicit Phase 5 requirement: the executor must treat SESSION_INVALID as job-fatal (abort remaining groups) and notify SessionManager to wipe + route to login — or revisit the disposition (a dedicated `'session-fail'` or hard-stop with its own code) before Phase 5 builds on `'fail'`.
+
+### WR-09: `SessionManager.restore()` cannot restore anything — contradicts its own documentation
+
+**File:** `src/main/telegram/SessionManager.ts:192-199, 343-351`
+**Issue:** `restore()` claims to read "the persisted session string from the secrets store," but `_restoreSession()` reads only the in-memory `_encryptedSession` field, which is always `undefined` on a freshly constructed SessionManager (it is populated only by `_persistSession()` within the same process lifetime). On a new instance, `restore()` always degenerates to `initialize(undefined)` → idle, silently discarding any on-disk session. Production index.ts bypasses it (reads `secretsStore.restoreSession()` directly), so today it is dead code — but it is a loaded API: any future caller following the docstring gets silent session loss.
+**Fix:** Delete `restore()`, or inject a `restoreSession(): string | null` callback symmetric to `onSessionPersist` and read from the real store. At minimum, correct the docstring.
 
 ## Info
 
-### IN-01: `GovernorOptions.client` is a dead parameter
+### IN-01: Stale "RED test" headers in all three test files
 
-**File:** `src/main/telegram/governor.ts:35-39, 76`
-**Issue:** The constructor accepts a required `client` with a required `invoke()` and immediately discards it (`void options.client`). The governor never invokes the client; callers capture their own reference via closure. Every consumer (SessionManager:135-138, all tests) is forced to supply an unused dependency, and the `GovernorClient` interface implies a contract that does not exist.
-**Fix:** Remove `client` from `GovernorOptions` (and the `GovernorClient` interface) until a phase actually needs it, or mark it optional.
+**File:** `src/main/telegram/SessionManager.test.ts:1-19`; `src/main/telegram/governor.test.ts:1-17`; `src/main/telegram/operationErrors.test.ts:1-14`
+**Issue:** All three files still claim the implementations do not exist and the imports "WILL FAIL with 'Cannot find module' — that is the correct RED state." The modules exist and all 19 tests pass. Misleading to future readers.
+**Fix:** Rewrite headers to describe what each suite verifies; drop the RED-state narrative.
 
-### IN-02: `resultPromise.catch(() => {})` silences fire-and-forget failures without any logging
+### IN-02: Governor constructor requires a client it explicitly discards
 
-**File:** `src/main/telegram/governor.ts:108`
-**Issue:** The pre-attached no-op rejection handler is needed to suppress premature unhandled-rejection warnings under fake timers, but it also means a Phase 5 caller that forgets to await/handle `run()` will have its failure (including hard-stops) vanish with no trace.
-**Fix:** Log in the suppression handler (main-process logger or `console.error` until one exists) so dropped rejections leave evidence.
+**File:** `src/main/telegram/governor.ts:35-39, 72-78`
+**Issue:** `GovernorOptions.client` is required and `GovernorClient.invoke` is a required method, yet the constructor does `void options.client` and never uses it. Callers (SessionManager, every test) are forced to construct a client solely to satisfy the type. A required-but-unused dependency will confuse Phase 3+ implementers about who actually invokes the client.
+**Fix:** Make `client` optional or remove it from `GovernorOptions` until a governor-internal use exists.
 
-### IN-03: Countdown reaches 0 up to ~5s before the operation actually resumes
+### IN-03: Nested `governor.run()` calls deadlock — undocumented footgun for Phase 3+
 
-**File:** `src/main/telegram/governor.ts:146-156`
-**Issue:** The FloodWaitController counts down exactly `seconds` (first tick at `seconds - 1`, reaching 0 at `seconds`), while the governor sleeps `seconds + jitter` (jitter up to 5s). The UI will display "0s remaining" while the queue is still paused for up to 5 more seconds. Also, the initial value `seconds` is never emitted — the first tick lands a full second after the wait starts.
-**Fix:** Start the countdown from `Math.ceil(seconds + jitterSeconds)` (compute jitter before starting the countdown), and/or emit an initial tick synchronously.
+**File:** `src/main/telegram/governor.ts:89-111`
+**Issue:** If a governed `fn` awaits `governor.run(...)` on the same instance, the inner call chains behind the outer one in `_tail` and never starts — permanent deadlock. Current callers are sequential, not nested, so it's latent, but the class doc tells Phase 3+ that "every call funnels through this class" without warning against reentrancy.
+**Fix:** Add a prominent doc warning, or detect reentrancy (in-flight flag / AsyncLocalStorage) and throw a descriptive error.
 
-### IN-04: macOS re-activation creates a window with no auth-state wiring
-
-**File:** `src/main/index.ts:154-158`
-**Issue:** The `activate` handler calls `createWindow()` but `emitAuthState`/`onStateChange` remain closed over the original (now destroyed) `win`, and `registerAuthChannels` was bound once to it. The `isDestroyed()` guard in `emitAuthState` prevents a crash, but the re-created window never receives `auth:state` events — the renderer is stuck at its initial state until restart. Pre-existing (Phase 1 lines), noted because the file is in scope and Phase 5 will rely on the same window reference for governor events.
-**Fix:** Track the current window in a mutable reference used by both `emitAuthState` and the future governor-event emitter, and re-assign it in the `activate` handler.
-
-### IN-05: Misleading test name — "succeeds on retry 2" succeeds on the first retry
+### IN-04: Test name "succeeds on retry 2" — the test succeeds on retry 1
 
 **File:** `src/main/telegram/governor.test.ts:222-244`
-**Issue:** The mock fails once and succeeds on the second call, i.e., the first retry (`expect(invokeMock).toHaveBeenCalledTimes(2)`), not "retry 2." The name will mislead anyone using it to reason about the retry budget.
-**Fix:** Rename to "transient error that succeeds on the first retry resolves successfully."
+**Issue:** The mock fails once and succeeds on the second call (`toHaveBeenCalledTimes(2)`), i.e., success on the FIRST retry. The name misstates coverage.
+**Fix:** Rename to "succeeds on first retry," or add a second failing attempt if retry-2 coverage was intended.
+
+### IN-05: Inline `require('electron')` in each storage callback
+
+**File:** `src/main/index.ts:120-131`
+**Issue:** Each storage callback does `require('electron')` per invocation. `safeStorage` can be imported at the top alongside `app`/`BrowserWindow`; only its use must be deferred past `ready`, which these callbacks already are (constructed inside `app.whenReady()`). Mixing CJS `require` into the otherwise ESM-style module obscures the dependency.
+**Fix:** Add `safeStorage` to the existing top-level electron import and reference it directly.
 
 ---
 
-_Reviewed: 2026-06-11T10:31:41Z_
+_Reviewed: 2026-06-11T14:04:11Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
