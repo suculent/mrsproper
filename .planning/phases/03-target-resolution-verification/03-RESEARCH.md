@@ -19,11 +19,11 @@
 - D-05: No target history in v1.
 - D-06: No numeric-ID input in v1 — digits always mean phone.
 
-**Phone lookup contact side-effect:**
-- D-07: Phone lookup uses `contacts.ImportContacts` mechanism; app asks per lookup whether to keep or remove the imported contact.
-- D-08: Keep-or-remove dialog appears after successful resolution. Failed lookups auto-clean the imported contact silently — no dialog.
-- D-09: Pre-existing contacts never touched. If phone is already in contacts, resolve directly — no import, no dialog, never offer deletion.
-- D-10: Inline disclosure hint near field when phone mode is detected. No blocking modal.
+**Phone lookup (REVISED 2026-06-11):**
+- D-07 (REVISED): Phone lookup uses `contacts.ResolvePhone` — direct phone-to-peer resolution with no contact import and no contact pollution. No keep/remove dialog, no cleanup path, no pre-existing-contact special case.
+- D-08 (OBSOLETE): ~~Keep-or-remove dialog~~ — not applicable under ResolvePhone.
+- D-09 (OBSOLETE): ~~Pre-existing contacts guard~~ — trivially satisfied; app never touches contacts.
+- D-10 (REVISED): Inline disclosure hint when phone mode detected: phone lookup only works if their privacy settings allow being found by phone number. No contact-import disclosure needed.
 
 **Identity card & confirmation:**
 - D-11: Explicit confirm gate — "Yes, this is the person" button unlocks next step.
@@ -55,7 +55,7 @@ Exact detected-mode indicator design, country-guess source (locale vs IP), card 
 | ID | Description | Research Support |
 |----|-------------|------------------|
 | TGT-01 | User can specify the target by username | `contacts.ResolveUsername` — verified in telegram@2.26.22 |
-| TGT-02 | User can specify the target by phone number | `contacts.ImportContacts` — verified; `User.contact` flag for D-09 pre-existing check |
+| TGT-02 | User can specify the target by phone number | `contacts.ResolvePhone` (D-07 REVISED) — verified in telegram@2.26.22; Layer 214; no contact import |
 | TGT-03 | App resolves to stable numeric user ID early, acts by that ID throughout | `user.id` (bigint) from resolution result → `.toString()` for stable string ID; `accessHash` held in main only |
 | TGT-04 | Distinct message per cause: username not found, phone not a contact, no public profile | `USERNAME_NOT_OCCUPIED` RPCError; empty `ImportedContacts.imported`; access_hash-zero guard |
 | VRF-01 | Display target's avatar for visual confirmation | `client.downloadProfilePhoto(user)` — returns `Buffer.alloc(0)` for hidden/missing photos |
@@ -68,9 +68,9 @@ Exact detected-mode indicator design, country-guess source (locale vs IP), card 
 
 ## Summary
 
-Phase 3 resolves a typed username or phone number to a stable Telegram numeric user ID (bigint, serialized as string), fetches the target's identity for visual confirmation, and gates further action behind an explicit confirmation step. The core technical work is three GramJS API calls wrapped in the Phase 2 governor — username resolution via `contacts.ResolveUsername`, bio fetch via `users.GetFullUser`, and avatar download via `client.downloadProfilePhoto` — plus the phone path through `contacts.ImportContacts` (locked by D-07..D-10).
+Phase 3 resolves a typed username or phone number to a stable Telegram numeric user ID (bigint, serialized as string), fetches the target's identity for visual confirmation, and gates further action behind an explicit confirmation step. The core technical work is three GramJS API calls wrapped in the Phase 2 governor — username resolution via `contacts.ResolveUsername`, bio fetch via `users.GetFullUser`, and avatar download via `client.downloadProfilePhoto` — plus the phone path through `contacts.ResolvePhone` (D-07 REVISED 2026-06-11 — no contact import, no keep/remove dialog).
 
-All GramJS mechanics were verified directly against `telegram@2.26.22` installed in the project. Critical finding: `user.id` is a `bigint` that exceeds JavaScript's safe integer range for large Telegram IDs, requiring `.toString()` for all serialization. A second critical finding: `contacts.ResolvePhone` (Telegram Layer 214, constructor `0x8af94344`) is already present in `telegram@2.26.22` and provides clean phone resolution without contact pollution — but CONTEXT.md D-07..D-10 explicitly lock the `ImportContacts` flow with a keep/remove dialog. This alternative is documented in Open Questions for the user's awareness.
+All GramJS mechanics were verified directly against `telegram@2.26.22` installed in the project. Critical finding: `user.id` is a `bigint` that exceeds JavaScript's safe integer range for large Telegram IDs, requiring `.toString()` for all serialization. A second critical finding (the open question that drove D-07 revision): `contacts.ResolvePhone` (Telegram Layer 214, constructor `0x8af94344`) is already present in `telegram@2.26.22` and provides clean phone resolution without contact pollution — D-07 was revised to use it (approved 2026-06-11). See Open Questions (RESOLVED) below.
 
 The renderer side follows the established authStore/authClient/preload/IPC pattern exactly. A new `TargetResolver` service in main holds the resolved target (including `accessHash`) and emits typed `TargetState` snapshots to the renderer via a new `target:state` push channel. The renderer receives everything needed for display but never the `accessHash` — that stays in main for downstream Phase 4 use.
 
@@ -89,11 +89,11 @@ The renderer side follows the established authStore/authClient/preload/IPC patte
 | Entity resolution (username / phone) | Main Process / API | — | Telegram calls must stay in main; governor lives in main |
 | Bio fetch (`users.GetFullUser`) | Main Process / API | — | Second governor-routed API call; result serialized to DTO |
 | Avatar download (`downloadProfilePhoto`) | Main Process / API | — | Third governor-routed API call; bytes serialized to Uint8Array |
-| Contact import side-effect detection | Main Process / API | — | `User.contact` field inspection after `ImportContacts` |
-| Contact cleanup (`DeleteByPhones` / `DeleteContacts`) | Main Process / API | — | Governor-routed API call |
+| Contact import side-effect detection | N/A — OBSOLETE | — | `contacts.ResolvePhone` adds nothing to contacts (D-07 REVISED) |
+| Contact cleanup (`DeleteByPhones` / `DeleteContacts`) | N/A — OBSOLETE | — | No contact was imported; no cleanup needed (D-07 REVISED) |
 | Resolved target state (including `accessHash`) | Main Process | — | `accessHash` must NOT cross to renderer (security boundary) |
 | FLOOD_WAIT countdown display | Browser/Renderer | Main (event source) | Renderer subscribes to `OP_GOVERNOR_EVENT` for `flood-tick` |
-| Keep-or-remove dialog | Browser/Renderer | Main (command recipient) | Dialog is UI; choice dispatches `target:keepContact` / `target:removeContact` IPC |
+| Keep-or-remove dialog | N/A — OBSOLETE | — | Not needed under `contacts.ResolvePhone`; D-08 obsolete (D-07 REVISED) |
 | Identity card display + confirm gate | Browser/Renderer | — | Purely UI; reads typed TargetState from targetStore |
 
 ---
@@ -152,25 +152,21 @@ TargetInput.tsx             window.mrproper            targetChannels.ts
   |                           .resolveTarget()  ──►    ipcMain.handle('target:resolve')
   | (Find / Enter)             .confirmTarget()         ipcMain.handle('target:confirm')
   |                            .resetTarget()           ipcMain.handle('target:reset')
-  ▼                            .keepContact()           ipcMain.handle('target:keepContact')
-targetStore.ts                 .removeContact()         ipcMain.handle('target:removeContact')
-  |                                                          |
-  | useSyncExternalStore                                     ▼
+  ▼                                                          |
+targetStore.ts                                              ▼
   |                                                  TargetResolver.ts
-  ◄── target:state (push) ◄── ipcRenderer.on ◄──         |  (holds resolved User entity
-                                                           |   + accessHash in main only)
+  | useSyncExternalStore                              (holds resolved User entity
+  |                                                   + accessHash in main only)
+  ◄── target:state (push) ◄── ipcRenderer.on ◄──          |
+                                                    RateLimitGovernor.run()
   ◄── op:governorEvent ◄───── ipcRenderer.on ◄──          |
-      (flood-tick for Find                        RateLimitGovernor.run()
-       button countdown)                                   |
-                                                  ┌────────┴──────────┐
-                                        USERNAME: contacts.ResolveUsername
-                                        PHONE:    contacts.ImportContacts
+      (flood-tick for Find                         ┌────────┴──────────┐
+       button countdown)               USERNAME: contacts.ResolveUsername
+                                       PHONE:    contacts.ResolvePhone (D-07 REVISED)
                                                            |
                                                   users.GetFullUser (bio)
                                                            |
                                                   downloadProfilePhoto (avatar)
-                                                           |
-                                        (on failure) contacts.DeleteByPhones
 ```
 
 ### Recommended Project Structure (additions only)
@@ -190,8 +186,8 @@ src/
 │   └── target/
 │       ├── TargetInput.tsx       # New: smart single-field input with mode detection
 │       ├── TargetCard.tsx        # New: identity card with confirm gate
-│       ├── KeepOrRemoveDialog.tsx # New: post-phone-import dialog (D-07/D-08)
 │       └── resolveCopy.ts        # New: all resolution strings (extends errorCopy pattern)
+│       # Note: KeepOrRemoveDialog.tsx removed — not needed under ResolvePhone (D-07 REVISED)
 ├── shared/
 │   ├── targetTypes.ts           # New: TargetState, TargetErrorCode, ResolvedTargetDTO
 │   └── channels.ts              # Extended: add TARGET_* channel constants
@@ -266,7 +262,9 @@ async resolveByUsername(username: string): Promise<ResolvedTargetDTO> {
 }
 ```
 
-### Pattern 3: Phone Resolution via `contacts.ImportContacts`
+### Pattern 3: Phone Resolution via `contacts.ImportContacts` (OBSOLETE — superseded by `contacts.ResolvePhone` per D-07 REVISED)
+
+> **This pattern is obsolete.** D-07 was revised 2026-06-11 to use `contacts.ResolvePhone` (no contact import, no contact pollution, no cleanup path, no keep/remove dialog). The code below is retained for reference only. Executors MUST NOT implement this pattern. See Pattern below for `contacts.ResolvePhone` usage (implemented in TargetResolver.ts Plan 03-01).
 
 ```typescript
 // Source: verified against telegram@2.26.22 Api.contacts.ImportContacts
@@ -362,7 +360,7 @@ export type TargetState =
   | { step: 'idle' }
   | { step: 'resolving' }
   | { step: 'resolved'; target: ResolvedTargetDTO }
-  | { step: 'pendingContact'; target: ResolvedTargetDTO }  // D-07 keep/remove dialog
+  // Note: 'pendingContact' step removed — not needed under contacts.ResolvePhone (D-07 REVISED)
   | { step: 'confirmed'; target: ResolvedTargetDTO }
   | { step: 'error'; code: TargetErrorCode; input: string }
 ```
@@ -649,7 +647,7 @@ export function guessCountryFromLocale(): CountryOption {
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| `contacts.ImportContacts` as only phone resolution method | `contacts.ResolvePhone` added (Layer 214) | Telegram schema update | Phase 3 locked decisions (D-07..D-10) still require `ImportContacts`; `ResolvePhone` available as future simplification |
+| `contacts.ImportContacts` as only phone resolution method | `contacts.ResolvePhone` added (Layer 214) | Telegram schema update | **D-07 REVISED 2026-06-11 — Phase 3 now uses `ResolvePhone`.** `ImportContacts` path is obsolete (Pattern 3 marked obsolete). |
 | `keytar` for OS credential storage | Electron `safeStorage` | Electron 15+ | Already adopted in Phase 1 |
 | `getEntity()` for entity resolution | Direct `invoke(ResolveUsername)` for classified errors | Always the right approach for error classification | Applied in Phase 3 |
 
@@ -672,17 +670,15 @@ export function guessCountryFromLocale(): CountryOption {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`contacts.ResolvePhone` vs. `contacts.ImportContacts` (locked decision revisit)**
-   - What we know: `contacts.ResolvePhone` (Telegram Layer 214, constructor `0x8af94344`) is present in `telegram@2.26.22`. It directly resolves a phone to `contacts.ResolvedPeer` without contact pollution. Error: `PHONE_NOT_OCCUPIED`.
-   - What's locked: D-07..D-10 explicitly specify the `ImportContacts` flow with a keep/remove dialog.
-   - Recommendation: Surface this to the user. If they want the cleaner implementation, D-07..D-10 can be revised before planning starts. `ResolvePhone` eliminates the keep/remove dialog entirely and requires no contact cleanup — significantly simpler. The phone privacy restriction (only resolves if settings allow) applies equally to both methods.
+1. **`contacts.ResolvePhone` vs. `contacts.ImportContacts` — RESOLVED 2026-06-11**
+   - What we found: `contacts.ResolvePhone` (Telegram Layer 214, constructor `0x8af94344`) is present in `telegram@2.26.22`. It directly resolves a phone to `contacts.ResolvedPeer` without contact pollution. Error: `PHONE_NOT_OCCUPIED`.
+   - Decision: D-07 was revised to use `contacts.ResolvePhone`. User approved the switch at planning time (2026-06-11). This eliminates the keep/remove dialog, contact cleanup path, pre-existing-contact special case, and `KeepOrRemoveDialog.tsx` entirely. The phone privacy restriction (lookup works only if the target's settings allow being found by phone number) applies equally to both methods.
+   - D-07 REVISED, D-08 OBSOLETE, D-09 OBSOLETE, D-10 REVISED — all reflected in CONTEXT.md.
 
-2. **`User.contact` flag behavior for pre-existing contacts**
-   - What we know: Telegram's API returns `User.contact = true` when the user is in your contacts. After `ImportContacts` for an already-known phone, the resulting User object should have `contact = true` already.
-   - What's unclear: Whether `contact` reflects the state before or after the import in the returned `ImportedContacts.users` array.
-   - Recommendation: Add a unit test that mocks `ImportContacts` with `contact: true` in the returned user and verifies the dialog is suppressed. Verify against a real account in manual testing.
+2. **`User.contact` flag behavior — MOOT under ResolvePhone**
+   - `contacts.ResolvePhone` never adds the looked-up phone to the admin's contacts. The `User.contact` flag is irrelevant — there is no contact import to clean up or detect. This question does not apply to Phase 3 implementation.
 
 ---
 
@@ -720,8 +716,8 @@ export function guessCountryFromLocale(): CountryOption {
 | TGT-01 | Username resolves to User entity via `ResolveUsername` | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
 | TGT-01 | `USERNAME_NOT_OCCUPIED` → `TARGET_USERNAME_NOT_FOUND` error code | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
 | TGT-01 | `classifyRpcError` maps `USERNAME_NOT_OCCUPIED` to `TARGET_USERNAME_NOT_FOUND` | unit | `npm test -- src/main/telegram/operationErrors.test.ts` | ✅ (extend existing) |
-| TGT-02 | Phone resolves via `ImportContacts`; `User.contact` flag drives dialog | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
-| TGT-02 | Empty `imported` → `TARGET_PHONE_NOT_FOUND` + silent cleanup | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
+| TGT-02 | Phone resolves via `contacts.ResolvePhone`; `PHONE_NOT_OCCUPIED` → TARGET_PHONE_NOT_FOUND | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
+| TGT-02 | `PHONE_NOT_OCCUPIED` RPCError → `TARGET_PHONE_NOT_FOUND` (no cleanup needed) | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
 | TGT-03 | Resolved user ID is stored as `bigint.toString()`; Number() overflow confirmed | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
 | TGT-04 | All 3 error codes produced with correct `disposition: 'fail'` | unit | `npm test -- src/main/telegram/operationErrors.test.ts` | ✅ (extend existing) |
 | VRF-01 | Empty buffer from `downloadProfilePhoto` → `avatar: null` | unit | `npm test -- src/main/telegram/targetResolver.test.ts` | ❌ Wave 0 |
@@ -764,7 +760,7 @@ export function guessCountryFromLocale(): CountryOption {
 | `accessHash` exfiltration via IPC | Information Disclosure | `accessHash` never included in `ResolvedTargetDTO`; stays in `TargetResolver` main-only state |
 | Wrong person confirmed via stale UI | Spoofing | Two-gate design: visual confirm (Phase 3) + final review with numeric ID (Phase 6) |
 | Input injection via pasted Telegram links | Tampering | Normalization + Zod validation on the string before governor.run(); username validated against `/^[a-zA-Z0-9_]{5,32}$/` |
-| Contact pollution without user knowledge | Privacy | D-10 inline disclosure; D-07..D-09 keep/remove flow; D-09 pre-existing guard |
+| Contact pollution without user knowledge | Privacy | D-10 inline disclosure (revised); contacts.ResolvePhone adds nothing to contacts — no import, no pollution, no cleanup needed (D-07 REVISED) |
 | Resolution of wrong account due to bigint truncation | Tampering | `user.id.toString()` for all serialization; never `Number(user.id)` |
 
 ---
