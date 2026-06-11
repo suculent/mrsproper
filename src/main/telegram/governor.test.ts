@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import type { GovernorEvent, Disposition } from '@shared/opTypes'
+import type { GovernorEvent } from '@shared/opTypes'
 
 // RED: This import will fail — governor.ts does not exist yet (Wave 0).
 // Plan 02-02 creates: src/main/telegram/governor.ts
@@ -40,7 +40,7 @@ function makeTransientError(): Error {
 }
 
 /** Inline mock client factory — minimal surface, just invoke. */
-function createMockClient(invokeImpl?: () => Promise<unknown>) {
+function createMockClient(invokeImpl?: (req?: unknown) => Promise<unknown>) {
   return {
     invoke: invokeImpl ? vi.fn(invokeImpl) : vi.fn().mockResolvedValue({}),
   }
@@ -175,7 +175,7 @@ describe('RateLimitGovernor — FLOOD_WAIT ceiling (EXE-02)', () => {
 
 describe('RateLimitGovernor — PEER_FLOOD hard-stop (EXE-03)', () => {
   it('PEER_FLOOD → governor throws immediately with no retry (invoke called exactly once)', async () => {
-    const invokeMock = vi.fn(async () => {
+    const invokeMock = vi.fn(async (_req?: unknown) => {
       throw makePeerFloodError()
     })
     const client = { invoke: invokeMock }
@@ -201,7 +201,7 @@ describe('RateLimitGovernor — transient retry (D-14)', () => {
   it('transient error retries up to 3 times then throws', async () => {
     vi.useFakeTimers()
 
-    const invokeMock = vi.fn(async () => {
+    const invokeMock = vi.fn(async (_req?: unknown) => {
       throw makeTransientError()
     })
     const client = { invoke: invokeMock }

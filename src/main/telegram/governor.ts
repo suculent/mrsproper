@@ -125,7 +125,7 @@ export class RateLimitGovernor {
         const classified: ClassifiedOperationError = classifyRpcError(err)
 
         if (classified.disposition === 'hard-stop') {
-          // PEER_FLOOD or session-invalid — abort immediately, no retry (EXE-03 / D-13).
+          // PEER_FLOOD — abort immediately, no retry (EXE-03 / D-13).
           // Emit hard-stop event BEFORE re-throwing so Phase 5 can abort the job.
           this._onEvent({ type: 'hard-stop', code: classified.code })
           throw err

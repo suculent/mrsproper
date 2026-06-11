@@ -11,7 +11,7 @@
  *   retry     — transient network/timeout: bounded retry with backoff
  *   skip      — reserved for Phase 5 (e.g. USER_NOT_PARTICIPANT — skip this group, continue job)
  *   fail      — unrecoverable but non-fatal: surface error, continue job
- *   hard-stop — PEER_FLOOD / session-invalid: abort the job immediately, no retry
+ *   hard-stop — PEER_FLOOD: abort the job immediately, no retry (SESSION_INVALID maps to 'fail' — see operationErrors.ts)
  */
 export type Disposition = 'wait' | 'retry' | 'skip' | 'fail' | 'hard-stop'
 
@@ -54,7 +54,7 @@ export type GovernorEvent =
       remaining: number
     }
   | {
-      /** PEER_FLOOD or session-invalid surfaced — job must hard-stop. */
+      /** PEER_FLOOD surfaced — job must hard-stop. SESSION_INVALID maps to 'fail' disposition (operationErrors.ts). */
       type: 'hard-stop'
       code: OperationErrorCode
     }
