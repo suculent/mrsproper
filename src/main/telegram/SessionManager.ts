@@ -107,6 +107,7 @@ export class SessionManager {
 
   private _currentState: AuthState = { step: 'idle' }
   private _authFlow: AuthFlow | null = null
+  private _connected = false
 
   // In-memory encrypted session store (mirrors SecretsStore behaviour)
   private _encryptedSession: Buffer | undefined = undefined
@@ -146,6 +147,7 @@ export class SessionManager {
 
     try {
       await this._client.connect()
+      this._connected = true
       const isAuthorized = await this._client.checkAuthorization()
 
       if (!isAuthorized) {
@@ -189,6 +191,17 @@ export class SessionManager {
    * Creates a fresh AuthFlow for this login session.
    */
   async submitPhone(payload: SubmitPhone): Promise<void> {
+    // GramJS requires a connected client before sendCode. On a fresh launch
+    // initialize() routes straight to idle without connecting, so connect lazily
+    // here (idempotent via the _connected guard) before the login path runs.
+    try {
+      await this._ensureConnected()
+    } catch (err) {
+      const classified = classifyTelegramError(err)
+      this._emit({ step: 'error', code: classified.code, retryStep: 'phone' })
+      return
+    }
+
     this._authFlow = new AuthFlow(
       this._client as Parameters<typeof AuthFlow.prototype.submitPhone>[0] extends never
         ? never
@@ -283,6 +296,7 @@ export class SessionManager {
       } catch {
         // Best-effort disconnect — don't let this block the wipe
       }
+      this._connected = false
       // ALWAYS wipe (D-17)
       this._wipeSessionLocally()
       this._emit({ step: 'idle' })
@@ -292,6 +306,16 @@ export class SessionManager {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Connect the GramJS client once. Idempotent — subsequent calls are no-ops
+   * while the connection is live. Required before sendCode on a fresh login.
+   */
+  private async _ensureConnected(): Promise<void> {
+    if (this._connected) return
+    await this._client.connect()
+    this._connected = true
+  }
 
   private _persistSession(sessionString: string): void {
     try {
