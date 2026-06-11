@@ -208,10 +208,8 @@ export class SessionManager {
     }
 
     this._authFlow = new AuthFlow(
-      this._client as Parameters<typeof AuthFlow.prototype.submitPhone>[0] extends never
-        ? never
-        : // cast: AuthFlowClient is compatible with SessionManagerClient
-          this._client as unknown as import('./authFlow').AuthFlowClient,
+      // cast: AuthFlowClient is compatible with SessionManagerClient
+      this._client as unknown as import('./authFlow').AuthFlowClient,
       this._apiCreds,
       (state) => {
         // On authorized: persist session
