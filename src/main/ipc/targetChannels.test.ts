@@ -173,6 +173,45 @@ describe('registerTargetChannels — target:resolve Zod validation (T-03-04)', (
     // In either case the resolver.resolve() must NOT have been invoked
     expect(resolver.resolve).not.toHaveBeenCalled()
   })
+
+  it('target:resolve with whitespace-only input is rejected at the boundary (WR-04/IN-03)', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+
+    registerTargetChannels(win as never, resolver as never)
+
+    // '   ' trims to '' — must fail .min(1) and never reach the resolver
+    // (a whitespace-only input would otherwise spend a governed API call).
+    await expect(
+      capturedHandlers['target:resolve']({}, { input: '   ' })
+    ).rejects.toThrow()
+    expect(resolver.resolve).not.toHaveBeenCalled()
+  })
+
+  it('target:resolve with input longer than 64 chars is rejected at the boundary (WR-04)', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+
+    registerTargetChannels(win as never, resolver as never)
+
+    // Usernames max out at 32 chars, E.164 phones at 15 digits — anything past
+    // the 64-char bound is garbage that must not reach the Telegram API.
+    await expect(
+      capturedHandlers['target:resolve']({}, { input: 'a'.repeat(65) })
+    ).rejects.toThrow()
+    expect(resolver.resolve).not.toHaveBeenCalled()
+  })
+
+  it('target:resolve accepts a normal username payload within bounds (WR-04 sanity)', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+
+    registerTargetChannels(win as never, resolver as never)
+
+    await capturedHandlers['target:resolve']({}, { input: '@validuser' })
+
+    expect(resolver.resolve).toHaveBeenCalledWith('@validuser')
+  })
 })
 
 // ---------------------------------------------------------------------------

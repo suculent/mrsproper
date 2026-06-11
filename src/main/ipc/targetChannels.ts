@@ -30,9 +30,14 @@ import {
 import type { TargetState } from '@shared/targetTypes'
 
 // ── Zod schema for inbound IPC payloads (V5 — validate every payload) ────────
+// WR-04: bounded — Telegram usernames max out at 32 chars and E.164 phones at
+// 15 digits; 64 comfortably covers `https://t.me/` + username/phone forms.
+// An unbounded string from a compromised renderer would otherwise flow into a
+// governed ResolveUsername/ResolvePhone call on the wire. `.trim()` also
+// rejects whitespace-only payloads (IN-03) before they waste an API call.
 
 const ResolveTargetSchema = z.object({
-  input: z.string().min(1),
+  input: z.string().trim().min(1).max(64),
 })
 
 // ── IPC handler registration ───────────────────────────────────────────────────
