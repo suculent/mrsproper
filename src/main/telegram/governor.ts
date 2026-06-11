@@ -162,12 +162,16 @@ export class RateLimitGovernor {
           }
 
           // Start countdown (D-09: emits flood-tick events at 1 Hz via FloodWaitController).
-          // The countdown and the sleep run independently.
-          this._floodController.start(
-            seconds,
-            (tick) => this._onEvent({ type: 'flood-tick', remaining: tick.remaining }),
-            () => {}
-          )
+          // The countdown and the sleep run independently. Skip for seconds <= 0
+          // (WR-07: the classifier now clamps these, but the `?? 0` default above can
+          // still yield 0 — a zero-length countdown would tick with remaining: -1).
+          if (seconds > 0) {
+            this._floodController.start(
+              seconds,
+              (tick) => this._onEvent({ type: 'flood-tick', remaining: tick.remaining }),
+              () => {}
+            )
+          }
 
           // D-10: sleep for seconds + additive jitter.
           // Jitter J = clamp(0.1 * seconds, 1s, 5s); sleep = (seconds + random * J) * 1000ms.

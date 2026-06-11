@@ -101,3 +101,46 @@ describe('classifyRpcError — full taxonomy (D-04)', () => {
     expect(result.disposition).toBe<Disposition>('fail')
   })
 })
+
+// ---------------------------------------------------------------------------
+// WR-07: flood-wait shape confirmation + seconds validation
+// ---------------------------------------------------------------------------
+
+describe('classifyRpcError — flood-wait over-match guards (WR-07)', () => {
+  it('SLOWMODE_WAIT_22 with .seconds → NOT classified as FLOOD_WAIT (disposition fail)', () => {
+    // GramJS SlowModeWaitError extends FloodError and sets .seconds — must not
+    // be reported under the FLOOD_WAIT code.
+    const result = classifyRpcError(makeRPCError('SLOWMODE_WAIT_22', 22))
+    expect(result.code).not.toBe<OperationErrorCode>('FLOOD_WAIT')
+    expect(result.disposition).toBe<Disposition>('fail')
+  })
+
+  it('flood error with seconds = 0 → not a wait (would otherwise retry delay-free)', () => {
+    const result = classifyRpcError(makeRPCError('FLOOD_WAIT_0', 0))
+    expect(result.disposition).not.toBe<Disposition>('wait')
+  })
+
+  it('flood error with negative seconds → not a wait', () => {
+    const result = classifyRpcError(makeRPCError('FLOOD_WAIT_5', -5))
+    expect(result.disposition).not.toBe<Disposition>('wait')
+  })
+
+  it('real GramJS FloodWaitError shape (prose errorMessage, class name) → wait', () => {
+    // Installed telegram@2.26.22: FloodWaitError carries a PROSE errorMessage
+    // ("A wait of N seconds is required…"), NOT "FLOOD_WAIT_n" — the class name
+    // is the reliable signal for converted RPC errors.
+    class FloodWaitError extends Error {
+      errorMessage: string
+      seconds: number
+      constructor(seconds: number) {
+        super(`420: A wait of ${seconds} seconds is required (caused by messages.GetDialogs)`)
+        this.errorMessage = `A wait of ${seconds} seconds is required (caused by messages.GetDialogs)`
+        this.seconds = seconds
+      }
+    }
+    const result = classifyRpcError(new FloodWaitError(42))
+    expect(result.code).toBe<OperationErrorCode>('FLOOD_WAIT')
+    expect(result.disposition).toBe<Disposition>('wait')
+    expect(result.retryAfterSeconds).toBe(42)
+  })
+})

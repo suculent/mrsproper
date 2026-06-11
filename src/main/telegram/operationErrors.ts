@@ -35,6 +35,27 @@ const SESSION_INVALID_ERRORS = new Set([
   'AUTH_KEY_INVALID',
 ])
 
+// ── Flood-wait shape confirmation (review WR-07) ───────────────────────────
+// floodWaitSeconds() returns ANY numeric err.seconds — but GramJS SlowModeWaitError,
+// FloodTestPhoneWaitError, and MsgWaitError all extend FloodError and set .seconds
+// too. Trusting .seconds alone misclassifies SLOWMODE_WAIT etc. as FLOOD_WAIT.
+//
+// Shape check (verified against installed telegram@2.26.22):
+//   - Real GramJS FloodWaitError instances carry a PROSE errorMessage
+//     ("A wait of N seconds is required (caused by …)") — NOT "FLOOD_WAIT_n" —
+//     so the constructor name is the reliable signal for class instances.
+//   - Raw RPC-shaped errors (and our mocks) carry the literal FLOOD_WAIT_<n> token
+//     in errorMessage/message.
+// Note: "FLOOD_WAIT" is NOT a substring of "SLOWMODE_WAIT_n" or
+// "FLOOD_TEST_PHONE_WAIT_n", so the token match cannot over-match those.
+
+function isFloodWaitShaped(err: unknown, errorMessage: string): boolean {
+  const ctorName = (err as { constructor?: { name?: string } })?.constructor?.name ?? ''
+  if (ctorName === 'FloodWaitError') return true
+  const haystack = errorMessage || ((err as { message?: string })?.message ?? '')
+  return /\bFLOOD_WAIT(_\d+)?\b/.test(haystack)
+}
+
 // ── Classifier ─────────────────────────────────────────────────────────────
 
 /**
@@ -42,7 +63,8 @@ const SESSION_INVALID_ERRORS = new Set([
  *
  * Branch order (CRITICAL — Pitfall 1 demands PEER_FLOOD check BEFORE FloodWaitError):
  *   1. errorMessage === 'PEER_FLOOD'        → hard-stop (Pitfall 1 protection)
- *   2. floodWaitSeconds(err) !== null        → wait (shared primitive per D-03)
+ *   2. flood-wait shaped AND seconds valid   → wait (shared primitive per D-03;
+ *      WR-07: shape-confirmed against SLOWMODE_WAIT etc., seconds clamped > 0)
  *   3. SESSION_INVALID_ERRORS.has(errorMsg) → fail
  *   4. !errorMessage (network failure)      → retry
  *   5. unmapped RPCError                    → fail
@@ -64,9 +86,18 @@ export function classifyRpcError(err: unknown): ClassifiedOperationError {
 
   // ── 2. FLOOD_WAIT_n — timed wait, retryable (D-03: shared primitive) ──
   // Uses floodWaitSeconds() from floodWait.ts — one source of truth for wait duration.
+  // WR-07 guards: (a) confirm the error is actually flood-wait shaped — other
+  // FloodError subclasses (SLOWMODE_WAIT…) also carry .seconds; (b) clamp the
+  // value — non-finite or <= 0 seconds is NOT a wait (a 0/negative wait would
+  // produce a delay-free retry loop in the governor).
 
   const waitSeconds = floodWaitSeconds(err)
-  if (waitSeconds !== null) {
+  if (
+    waitSeconds !== null &&
+    isFloodWaitShaped(err, errorMessage) &&
+    Number.isFinite(waitSeconds) &&
+    waitSeconds > 0
+  ) {
     return {
       code: 'FLOOD_WAIT',
       disposition: 'wait',
