@@ -118,6 +118,14 @@ describe('classifyRpcError — target resolution codes (TGT-04)', () => {
     expect(result.code).toBe<OperationErrorCode>('TARGET_PHONE_NOT_FOUND')
     expect(result.disposition).toBe<Disposition>('fail')
   })
+
+  it('TARGET_NO_PUBLIC_PROFILE → code TARGET_NO_PUBLIC_PROFILE, disposition fail (CR-03)', () => {
+    // Synthetic resolver error (channel/group peer, not a user) — must map to
+    // its own code, never fall through to UNKNOWN or NETWORK.
+    const result = classifyRpcError(makeRPCError('TARGET_NO_PUBLIC_PROFILE'))
+    expect(result.code).toBe<OperationErrorCode>('TARGET_NO_PUBLIC_PROFILE')
+    expect(result.disposition).toBe<Disposition>('fail')
+  })
 })
 
 // ---------------------------------------------------------------------------

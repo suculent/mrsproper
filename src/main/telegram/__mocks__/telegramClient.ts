@@ -85,6 +85,11 @@ export interface MockClientConfig {
   // ── Phase 3: target resolution mock controls ─────────────────────────────
   /** If set, invoke (ResolveUsername) will throw this error. */
   resolveUsernameError?: MockRPCErrorCode
+  /**
+   * If true, invoke (ResolveUsername) resolves to a CHANNEL peer (no userId) —
+   * simulates a public channel/group username (CR-03: no public user profile).
+   */
+  resolveUsernameChannelPeer?: boolean
   /** If set, invoke (ResolveUsername) returns this resolved peer data. */
   resolveUsernameResult?: {
     userId: string
@@ -181,6 +186,14 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       if (ctorName === 'ResolveUsername' || (request as { className?: string })?.className === 'contacts.ResolveUsername') {
         if (config.resolveUsernameError) {
           throw makeRPCError(config.resolveUsernameError)
+        }
+        if (config.resolveUsernameChannelPeer) {
+          // Channel/group peer — PeerChannel has channelId, NOT userId (CR-03).
+          return {
+            peer: { channelId: bigInt('987654321') },
+            users: [],
+            chats: [{ id: bigInt('987654321'), title: 'Mock Channel' }],
+          }
         }
         const r = config.resolveUsernameResult ?? {
           userId: '111111111',

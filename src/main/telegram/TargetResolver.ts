@@ -179,10 +179,12 @@ export class TargetResolver {
     // bigint — duck-type on presence and compare via decimal-string form.
     const peerUserId = (resolved.peer as { userId?: LongLike } | null | undefined)?.userId
     if (peerUserId === undefined || peerUserId === null) {
-      // Peer is not a user — treat as no public profile
-      const err = { errorMessage: 'TARGET_NO_PUBLIC_PROFILE' }
-      const classified = classifyRpcError(err)
-      throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), classified)
+      // Peer is not a user — treat as no public profile. CR-03: the thrown
+      // error must carry errorMessage so the outer catch in resolve() can
+      // classify it (an error without errorMessage misclassifies as NETWORK).
+      throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), {
+        errorMessage: 'TARGET_NO_PUBLIC_PROFILE',
+      })
     }
     const peerIdStr = peerUserId.toString()
 
@@ -223,9 +225,10 @@ export class TargetResolver {
     // CR-02: same big-integer duck-typing as the username path — see comments there.
     const peerUserId = (resolved.peer as { userId?: LongLike } | null | undefined)?.userId
     if (peerUserId === undefined || peerUserId === null) {
-      const err = { errorMessage: 'TARGET_NO_PUBLIC_PROFILE' }
-      const classified = classifyRpcError(err)
-      throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), classified)
+      // CR-03: carry errorMessage so the outer catch classifies correctly.
+      throw Object.assign(new Error('TARGET_NO_PUBLIC_PROFILE'), {
+        errorMessage: 'TARGET_NO_PUBLIC_PROFILE',
+      })
     }
     const peerIdStr = peerUserId.toString()
 

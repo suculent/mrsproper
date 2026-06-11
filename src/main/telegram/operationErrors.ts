@@ -125,6 +125,13 @@ export function classifyRpcError(err: unknown): ClassifiedOperationError {
     return { code: 'TARGET_PHONE_NOT_FOUND', disposition: 'fail' }
   }
 
+  // Phase 3: synthetic resolver error (CR-03) — the resolved peer is a
+  // channel/group, not a user (TargetResolver throws this itself; it is not a
+  // raw Telegram code). Must map here or it falls through to UNKNOWN/NETWORK.
+  if (errorMessage === 'TARGET_NO_PUBLIC_PROFILE') {
+    return { code: 'TARGET_NO_PUBLIC_PROFILE', disposition: 'fail' }
+  }
+
   // ── 4. Network / connection errors — no errorMessage field ──
   // Plain Error objects (e.g., fetch failed, connection reset) have no .errorMessage.
 

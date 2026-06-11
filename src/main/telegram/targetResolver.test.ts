@@ -147,6 +147,19 @@ describe('TargetResolver.resolve — username not found (TGT-04)', () => {
     const errState = last as Extract<TargetState, { step: 'error' }>
     expect(errState.code).toBe('TARGET_USERNAME_NOT_FOUND')
   })
+
+  it('channel/group peer (no userId) → error code TARGET_NO_PUBLIC_PROFILE, not NETWORK (CR-03)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameChannelPeer: true,
+    })
+
+    await resolver.resolve('@somechannel')
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('error')
+    const errState = last as Extract<TargetState, { step: 'error' }>
+    expect(errState.code).toBe('TARGET_NO_PUBLIC_PROFILE')
+  })
 })
 
 // ---------------------------------------------------------------------------
