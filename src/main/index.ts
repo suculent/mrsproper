@@ -4,6 +4,7 @@ import { TelegramClient } from 'telegram'
 import { StringSession } from 'telegram/sessions'
 import { SessionManager } from './telegram/SessionManager'
 import { TargetResolver } from './telegram/TargetResolver'
+import { RateLimitGovernor } from './telegram/governor'
 import { createSecretsStore } from './storage/secrets'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
 import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
@@ -125,8 +126,27 @@ app.whenReady().then(async () => {
     }
   )
 
+  // ── ONE account-wide RateLimitGovernor (WR-01) ────────────────────────────
+  // EXE-01's concurrency=1 serialization is enforced per governor instance.
+  // SessionManager, TargetResolver, and every Phase 4+ consumer share THIS
+  // instance so no two governed Telegram calls can ever run concurrently —
+  // "no feature can flood the account" must hold across features, not per-feature.
+  const governor = new RateLimitGovernor({
+    client: client as unknown as ConstructorParameters<typeof RateLimitGovernor>[0]['client'],
+    // WR-04 (Phase 2): with floodSleepThreshold=0 every FLOOD_WAIT on governed
+    // calls reaches the governor — forward typed GovernorEvents to the renderer
+    // and log them in main so a flood pause is always diagnosable.
+    onEvent: (event: GovernorEvent) => {
+      console.log('[governor]', JSON.stringify(event))
+      if (!currentWin.isDestroyed()) {
+        currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
+      }
+    },
+  })
+
   const sm = new SessionManager({
     client: client as unknown as ConstructorParameters<typeof SessionManager>[0]['client'],
+    governor,
     storage: {
       isEncryptionAvailable: () => {
         const { safeStorage } = require('electron')
@@ -154,16 +174,6 @@ app.whenReady().then(async () => {
     // WR-09: symmetric read path so sm.restore() can actually reach the durable store.
     restoreSession: () => secretsStore.restoreSession(),
     apiCreds: { apiId: API_ID, apiHash: API_HASH },
-    // WR-04: with floodSleepThreshold=0 every FLOOD_WAIT on governed calls reaches
-    // the governor — without this bridge those sleeps (up to 3600s) are invisible
-    // hangs. Forward typed GovernorEvents to the renderer and log them in main so
-    // a flood pause is always diagnosable.
-    onGovernorEvent: (event: GovernorEvent) => {
-      console.log('[governor]', JSON.stringify(event))
-      if (!currentWin.isDestroyed()) {
-        currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
-      }
-    },
   })
 
   // ── Register IPC handlers ─────────────────────────────────────────────────
@@ -172,19 +182,15 @@ app.whenReady().then(async () => {
   registerAuthChannels(currentWin, sm)
 
   // ── Wire TargetResolver ───────────────────────────────────────────────────
-  // Shares the same TelegramClient as SessionManager — no new connection, no auth.
-  // emitTargetState and onGovernorEvent both close over currentWin via lambda so
-  // re-activated windows keep receiving events without re-registering (WR-03).
+  // Shares the same TelegramClient AND the same account-wide governor as
+  // SessionManager (WR-01) — no new connection, no auth, one serial queue.
+  // emitTargetState closes over currentWin via lambda so re-activated windows
+  // keep receiving events without re-registering (WR-03).
   const resolver = new TargetResolver({
     client: client as unknown as ConstructorParameters<typeof TargetResolver>[0]['client'],
+    governor,
     onStateChange: (state) => {
       emitTargetState(currentWin, state)
-    },
-    onGovernorEvent: (event: GovernorEvent) => {
-      console.log('[resolver-governor]', JSON.stringify(event))
-      if (!currentWin.isDestroyed()) {
-        currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
-      }
     },
   })
   registerTargetChannels(currentWin, resolver)

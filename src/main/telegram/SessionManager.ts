@@ -111,7 +111,15 @@ export interface SessionManagerOptions {
   restoreSession?: () => string | null
   /** API credentials — used by AuthFlow for sendCode / signInWithPassword. */
   apiCreds?: { apiId: number; apiHash: string }
-  /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry) — wired to IPC in production. */
+  /**
+   * The shared account-wide RateLimitGovernor (WR-01). In production this is
+   * the SAME instance TargetResolver (and Phase 4+ consumers) use — EXE-01's
+   * concurrency=1 guarantee is per-instance, so all features over one client
+   * MUST share one governor. When omitted, a private instance is constructed
+   * (wired to onGovernorEvent) — test convenience only.
+   */
+  governor?: RateLimitGovernor
+  /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry) — only used when `governor` is not injected. */
   onGovernorEvent?: (event: GovernorEvent) => void
 }
 
@@ -146,10 +154,14 @@ export class SessionManager {
     this._onSessionPersist = options.onSessionPersist
     this._restoreSessionFromStore = options.restoreSession
     this._apiCreds = options.apiCreds ?? { apiId: 0, apiHash: '' }
-    this._governor = new RateLimitGovernor({
-      client: options.client,
-      onEvent: options.onGovernorEvent,
-    })
+    // WR-01: prefer the injected account-wide governor; construct a private
+    // one only when none is supplied (unit tests).
+    this._governor =
+      options.governor ??
+      new RateLimitGovernor({
+        client: options.client,
+        onEvent: options.onGovernorEvent,
+      })
   }
 
   // ── State accessor ─────────────────────────────────────────────────────────

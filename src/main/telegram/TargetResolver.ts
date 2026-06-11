@@ -51,8 +51,16 @@ export interface TargetResolverOptions {
   client: TargetResolverClient
   /** Called whenever the target state changes (wired to win.webContents.send in production). */
   onStateChange: (state: TargetState) => void
-  /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry). */
-  onGovernorEvent: (event: GovernorEvent) => void
+  /**
+   * The shared account-wide RateLimitGovernor (WR-01). In production this is
+   * the SAME instance SessionManager uses — EXE-01's concurrency=1 guarantee
+   * is per-instance, so all features over one client MUST share one governor.
+   * Optional only as a test convenience: when omitted, a private instance is
+   * constructed (wired to onGovernorEvent).
+   */
+  governor?: RateLimitGovernor
+  /** Called on governor events (FLOOD_WAIT ticks, hard-stop, retry) — only used when `governor` is not injected. */
+  onGovernorEvent?: (event: GovernorEvent) => void
 }
 
 // ── TargetResolver ─────────────────────────────────────────────────────────────
@@ -68,10 +76,14 @@ export class TargetResolver {
 
   constructor(options: TargetResolverOptions) {
     this._client = options.client
-    this._governor = new RateLimitGovernor({
-      client: options.client,
-      onEvent: options.onGovernorEvent,
-    })
+    // WR-01: prefer the injected account-wide governor; construct a private
+    // one only when none is supplied (unit tests).
+    this._governor =
+      options.governor ??
+      new RateLimitGovernor({
+        client: options.client,
+        onEvent: options.onGovernorEvent,
+      })
     this._emit = (state) => {
       this._currentState = state
       options.onStateChange(state)
