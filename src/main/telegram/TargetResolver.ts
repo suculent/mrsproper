@@ -293,15 +293,24 @@ export class TargetResolver {
   /**
    * Fetch avatar via downloadProfilePhoto (VRF-01).
    * Empty buffer (length === 0) or null → avatar: null (D-12 fallback).
+   * Graceful degradation (WR-02, mirrors _fetchBio): a thrown download error
+   * (expired file reference, transient network failure after the governor's
+   * retry budget) must NOT abort an already-successful identity resolution —
+   * D-12 documents the no-photo fallback (initials avatar + notice) for
+   * exactly this case.
    */
   private async _fetchAvatar(user: ApiUserShape): Promise<Uint8Array | null> {
-    const photoBuffer = await this._governor.run(() =>
-      this._client.downloadProfilePhoto(user)
-    )
-    if (photoBuffer && (photoBuffer as Buffer | Uint8Array).length > 0) {
-      return new Uint8Array(photoBuffer as Buffer | Uint8Array)
+    try {
+      const photoBuffer = await this._governor.run(() =>
+        this._client.downloadProfilePhoto(user)
+      )
+      if (photoBuffer && (photoBuffer as Buffer | Uint8Array).length > 0) {
+        return new Uint8Array(photoBuffer as Buffer | Uint8Array)
+      }
+      return null
+    } catch {
+      return null // D-12: fall back to initials avatar + no-photo notice
     }
-    return null
   }
 
   /**

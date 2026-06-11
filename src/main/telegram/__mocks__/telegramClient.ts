@@ -110,6 +110,13 @@ export interface MockClientConfig {
   getFullUserResult?: { about: string | null }
   /** If set, invoke (GetFullUser) will throw this error. */
   getFullUserError?: MockRPCErrorCode
+  /**
+   * If set, downloadProfilePhoto throws an RPC-shaped error with this
+   * errorMessage — simulates an expired file reference / photo-download RPC
+   * failure (WR-02). RPC-shaped (not a plain Error) so the governor classifies
+   * it as 'fail' and throws immediately instead of running NETWORK backoff.
+   */
+  downloadProfilePhotoError?: string
 }
 
 const DEFAULT_IDENTITY = {
@@ -308,6 +315,11 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
     },
 
     downloadProfilePhoto: async (_entity: unknown): Promise<Buffer | null> => {
+      if (config.downloadProfilePhotoError) {
+        throw Object.assign(new Error(config.downloadProfilePhotoError), {
+          errorMessage: config.downloadProfilePhotoError,
+        })
+      }
       const id = config.identity ?? DEFAULT_IDENTITY
       if (!id.hasPhoto) return null
       return Buffer.from([0x89, 0x50, 0x4e, 0x47]) // minimal PNG magic bytes

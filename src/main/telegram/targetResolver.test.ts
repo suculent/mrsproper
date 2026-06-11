@@ -289,6 +289,25 @@ describe('TargetResolver.resolve — avatar and bio (VRF-01, VRF-02)', () => {
     expect(last.target.avatar).toBeNull()
   })
 
+  it('downloadProfilePhoto throws → avatar is null but state is still resolved (WR-02 graceful degradation)', async () => {
+    const { resolver, states } = makeResolver({
+      resolveUsernameResult: {
+        userId: '104',
+        username: 'photofail',
+        firstName: 'PhotoFail',
+        accessHash: '0',
+      },
+      downloadProfilePhotoError: 'FILE_REFERENCE_EXPIRED',
+    })
+
+    await resolver.resolve('@photofail')
+
+    const last = states[states.length - 1] as Extract<TargetState, { step: 'resolved' }>
+    // A failed avatar download must NOT abort the successful identity resolution
+    expect(last.step).toBe('resolved')
+    expect(last.target.avatar).toBeNull()
+  })
+
   it('GetFullUser succeeds → target.bio is populated (VRF-02)', async () => {
     const { resolver, states } = makeResolver({
       resolveUsernameResult: {
