@@ -41,14 +41,22 @@ function createWindow(): BrowserWindow {
     )
   })
 
-  // Content-Security-Policy: allow only local bundle (no remote URLs - SSRF mitigation)
+  // Content-Security-Policy.
+  // Production (packaged): strict — local bundle only, no remote connections. The renderer
+  // never talks to the network directly (MTProto runs in the main process), so connect-src
+  // 'none' is correct for the shipped app.
+  // Development: the Vite dev server needs an inline React-refresh preamble ('unsafe-inline'),
+  // eval-based HMR ('unsafe-eval'), and a websocket back to localhost (connect-src), so a
+  // strict CSP blanks the renderer. Relax ONLY in dev.
+  const isDevRenderer = !app.isPackaged && !!process.env['ELECTRON_RENDERER_URL']
+  const csp = isDevRenderer
+    ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*; object-src 'none';"
+    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';"
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';",
-        ],
+        'Content-Security-Policy': [csp],
       },
     })
   })
