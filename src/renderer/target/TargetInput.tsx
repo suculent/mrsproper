@@ -147,11 +147,14 @@ export function TargetInput(): React.JSX.Element {
       // Normalize pasted links inline
       const norm = normalizeInput(value)
       // If normalization changed the value significantly (t.me link pasted), use normalized
-      // otherwise use raw to allow natural editing
+      // otherwise use raw to allow natural editing.
+      // WR-05: genuine URL pastes ONLY — a leading '@' is NOT a link. Rewriting
+      // '@' live made typing the placeholder's own format impossible (every '@'
+      // keystroke vanished). The leading '@' is stripped during dispatch
+      // normalization instead (D-04 — detectMode/buildDispatchValue already
+      // operate on the normalized value).
       const isLink =
-        value.trim().match(/^https?:\/\//i) ??
-        value.trim().match(/^t\.me\//i) ??
-        value.trim().match(/^@/)
+        value.trim().match(/^https?:\/\//i) ?? value.trim().match(/^t\.me\//i)
       setRawInput(isLink ? norm : value)
       if (localError) setLocalError(null)
     },
