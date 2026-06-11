@@ -227,8 +227,10 @@ describe('enumerateAtLogin — success', () => {
 
 describe('enumerateAtLogin — error', () => {
   it('emits error state on getDialogs failure', async () => {
+    // Use UNKNOWN error to avoid governor retry/sleep loops (FLOOD_WAIT causes 30s sleep).
+    // The RPC error PEER_FLOOD maps to hard-stop disposition — immediate throw, no sleep.
     const { enumerator, emitted } = makeEnumerator({
-      getDialogsError: 'FLOOD_WAIT_30' as any,
+      getDialogsError: 'PEER_FLOOD' as any,
     })
     await enumerator.enumerateAtLogin()
     const errorState = emitted.find((s) => s.step === 'error')
