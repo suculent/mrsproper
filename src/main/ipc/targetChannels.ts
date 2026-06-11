@@ -1,0 +1,95 @@
+/**
+ * IPC handler registrations for target resolution — the ONLY renderer surface for target ops.
+ *
+ * Security (V5):
+ *   - Every inbound IPC payload is zod-validated BEFORE delegating to TargetResolver.
+ *   - Malformed payloads throw ZodError and NEVER reach resolver.resolve().
+ *   - Handlers return serializable DTOs only (TargetState) — never GramJS objects or accessHash.
+ *
+ * Trust boundary (T-03-06):
+ *   - The renderer sends only whitelisted TARGET_* channels with typed payloads.
+ *   - No accessHash, no client reference, no GramJS object crosses this boundary.
+ *   - ResolvedTargetDTO has no accessHash field by construction (T-03-01).
+ *
+ * Channel constants from src/shared/channels.ts (single source of truth).
+ * Zod schema mirrors the IPC DTO from src/shared/targetTypes.ts.
+ *
+ * Modeled exactly on src/main/ipc/authChannels.ts.
+ */
+
+import { ipcMain, BrowserWindow } from 'electron'
+import { z } from 'zod'
+import type { TargetResolver } from '../telegram/TargetResolver'
+import {
+  TARGET_RESOLVE,
+  TARGET_CONFIRM,
+  TARGET_RESET,
+  TARGET_GET_STATE,
+  TARGET_STATE,
+} from '@shared/channels'
+import type { TargetState } from '@shared/targetTypes'
+
+// ── Zod schema for inbound IPC payloads (V5 — validate every payload) ────────
+
+const ResolveTargetSchema = z.object({
+  input: z.string().min(1),
+})
+
+// ── IPC handler registration ───────────────────────────────────────────────────
+
+/**
+ * Register all target IPC handlers on ipcMain.
+ *
+ * Handlers:
+ *   TARGET_RESOLVE   — validates payload (Zod), calls resolver.resolve(), returns new state
+ *   TARGET_CONFIRM   — calls resolver.confirm(), returns new state
+ *   TARGET_RESET     — calls resolver.reset(), returns new state
+ *   TARGET_GET_STATE — returns current state
+ *
+ * State push (target:state) is wired in main/index.ts via the TargetResolver onStateChange
+ * callback → emitTargetState(). Handlers do NOT push state themselves.
+ *
+ * @param win       The main BrowserWindow (used for webContents.send via emitTargetState)
+ * @param resolver  The TargetResolver instance (constructed in main/index.ts)
+ */
+export function registerTargetChannels(win: BrowserWindow, resolver: TargetResolver): void {
+  // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
+  void win
+
+  // ── Handle: target:resolve ───────────────────────────────────────────────
+  ipcMain.handle(TARGET_RESOLVE, async (_event, payload: unknown) => {
+    const parsed = ResolveTargetSchema.parse(payload) // throws ZodError on malformed input
+    await resolver.resolve(parsed.input)
+    return resolver.getState()
+  })
+
+  // ── Handle: target:confirm ───────────────────────────────────────────────
+  ipcMain.handle(TARGET_CONFIRM, () => {
+    resolver.confirm()
+    return resolver.getState()
+  })
+
+  // ── Handle: target:reset ─────────────────────────────────────────────────
+  ipcMain.handle(TARGET_RESET, () => {
+    resolver.reset()
+    return resolver.getState()
+  })
+
+  // ── Handle: target:getState ──────────────────────────────────────────────
+  ipcMain.handle(TARGET_GET_STATE, () => {
+    return resolver.getState()
+  })
+}
+
+// ── State push helper ─────────────────────────────────────────────────────────
+
+/**
+ * Emit a TargetState event to the renderer.
+ * Called by the TargetResolver's onStateChange callback (wired in main/index.ts).
+ * Identical pattern to emitAuthState in authChannels.ts.
+ */
+export function emitTargetState(win: BrowserWindow, state: TargetState): void {
+  if (!win.isDestroyed()) {
+    win.webContents.send(TARGET_STATE, state)
+  }
+}
