@@ -20,6 +20,7 @@ A group admin can confidently remove the right person from every relevant commun
 - ✓ Log in to a Telegram user account via MTProto (phone + code + 2FA password) — Phase 1 (no-2FA confirmed; real-2FA path implemented, confirmation pending a 2FA account)
 - ✓ App ships with its own api_id/api_hash (no per-user registration required) — Phase 1
 - ✓ Persist the session encrypted on disk so re-login isn't needed every launch; provide a logout that clears it — Phase 1 (confirmed)
+- ✓ All Telegram calls route through one serialized, rate-limited governor: FLOOD_WAIT honored by sleep+jitter+resume with countdown events, PEER_FLOOD hard-stops with no retry, single typed error classifier — Phase 2 (17/17 verified; removal-job consumer lands in Phase 5)
 
 ### Active
 
@@ -98,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-11 after Phase 1 (Foundation — Auth, Session & Portable Shell) completion*
+*Last updated: 2026-06-11 after Phase 2 (Rate-Limit Governor & Error Classification) completion*
