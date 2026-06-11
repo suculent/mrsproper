@@ -215,7 +215,8 @@ export function TargetCard(): React.JSX.Element | null {
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className="text-label text-muted-foreground hover:text-foreground px-0"
+                size="sm"
+                className="text-label text-muted-foreground hover:text-foreground"
                 onClick={() => void targetActions.resetTarget()}
                 type="button"
               >
