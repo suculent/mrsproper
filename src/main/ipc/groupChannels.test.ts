@@ -60,12 +60,15 @@ function makeMockEnumerator() {
   }
 }
 
-/** Create a mock MembershipScanner stub. */
-function makeMockScanner() {
+/** Create a mock MembershipScanner stub.
+ * Uses the real MembershipScanner type to ensure mock stays aligned with the
+ * class's actual public API — if a method is renamed or removed in MembershipScanner,
+ * TypeScript will flag the mock here (Defect 4 regression guard). */
+function makeMockScanner(): Pick<import('../telegram/MembershipScanner').MembershipScanner, 'scan' | 'abortScan' | 'getState' | 'retryGroup'> {
   return {
     scan: vi.fn((): Promise<void> => Promise.resolve()),
     abortScan: vi.fn((): void => undefined),
-    getScanState: vi.fn((): ScanState => ({ step: 'idle' })),
+    getState: vi.fn((): ScanState => ({ step: 'idle' })),
     retryGroup: vi.fn((): Promise<void> => Promise.resolve()),
   }
 }
@@ -128,7 +131,7 @@ describe('registerGroupChannels — scan:start', () => {
     Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
   })
 
-  it('calls scanner.scan() and returns ScanState', async () => {
+  it('calls scanner.scan() and returns ScanState from scanner.getState()', async () => {
     const win = makeMockWin()
     const enumerator = makeMockEnumerator()
     const scanner = makeMockScanner()
@@ -138,7 +141,9 @@ describe('registerGroupChannels — scan:start', () => {
     const result = (await capturedHandlers['scan:start']({}, undefined)) as ScanState
 
     expect(scanner.scan).toHaveBeenCalled()
-    expect(result).toBeDefined()
+    // Regression: handler must call scanner.getState() (not getScanState()) — Defect 4
+    expect(scanner.getState).toHaveBeenCalled()
+    expect(result.step).toBe('idle')
   })
 })
 
@@ -151,7 +156,7 @@ describe('registerGroupChannels — scan:abort', () => {
     Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
   })
 
-  it('calls scanner.abortScan() and returns ScanState', async () => {
+  it('calls scanner.abortScan() and returns ScanState from scanner.getState()', async () => {
     const win = makeMockWin()
     const enumerator = makeMockEnumerator()
     const scanner = makeMockScanner()
@@ -161,7 +166,9 @@ describe('registerGroupChannels — scan:abort', () => {
     const result = (await capturedHandlers['scan:abort']({}, undefined)) as ScanState
 
     expect(scanner.abortScan).toHaveBeenCalled()
-    expect(result).toBeDefined()
+    // Regression: handler must call scanner.getState() (not getScanState()) — Defect 4
+    expect(scanner.getState).toHaveBeenCalled()
+    expect(result.step).toBe('idle')
   })
 })
 
@@ -174,7 +181,7 @@ describe('registerGroupChannels — scan:getState', () => {
     Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
   })
 
-  it('returns scanner.getScanState()', async () => {
+  it('returns scanner.getState()', async () => {
     const win = makeMockWin()
     const enumerator = makeMockEnumerator()
     const scanner = makeMockScanner()
@@ -183,7 +190,7 @@ describe('registerGroupChannels — scan:getState', () => {
 
     const result = (await capturedHandlers['scan:getState']({}, undefined)) as ScanState
 
-    expect(scanner.getScanState).toHaveBeenCalled()
+    expect(scanner.getState).toHaveBeenCalled()
     expect(result.step).toBe('idle')
   })
 })

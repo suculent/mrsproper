@@ -51,7 +51,7 @@ const RetryGroupSchema = z.object({
  *   GROUPS_REFRESH     — calls enumerator.refresh(), returns new GroupsState
  *   SCAN_START         — calls scanner.scan() (no payload accepted), returns ScanState
  *   SCAN_ABORT         — calls scanner.abortScan(), returns ScanState
- *   SCAN_GET_STATE     — returns current ScanState from scanner.getScanState()
+ *   SCAN_GET_STATE     — returns current ScanState from scanner.getState()
  *   SCAN_RETRY_GROUP   — Zod-validates payload, security-checks dialogId (T-04-06),
  *                        calls scanner.retryGroup(dialogId)
  *
@@ -86,18 +86,18 @@ export function registerGroupChannels(
   // No payload accepted — target comes from TargetResolver in main process (T-04-07)
   ipcMain.handle(SCAN_START, async () => {
     await scanner.scan()
-    return scanner.getScanState()
+    return scanner.getState()
   })
 
   // ── Handle: scan:abort ───────────────────────────────────────────────────
   ipcMain.handle(SCAN_ABORT, () => {
     scanner.abortScan()
-    return scanner.getScanState()
+    return scanner.getState()
   })
 
   // ── Handle: scan:getState ────────────────────────────────────────────────
   ipcMain.handle(SCAN_GET_STATE, () => {
-    return scanner.getScanState()
+    return scanner.getState()
   })
 
   // ── Handle: scan:retryGroup ──────────────────────────────────────────────
