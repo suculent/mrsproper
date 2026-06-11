@@ -53,6 +53,11 @@ export interface MockClientConfig {
   isAuthorized?: boolean
   /** If set, connect will throw this error code. */
   connectError?: MockRPCErrorCode
+  /**
+   * If set, connect will throw a PLAIN Error (no errorMessage field) with this
+   * message — simulates an offline launch / network failure (not an RPC error).
+   */
+  connectPlainError?: string
   /** Simulated identity to return from getMe / downloadProfilePhoto. */
   identity?: {
     firstName: string
@@ -85,6 +90,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
   const client = {
     // ── Connection ──────────────────────────────────────────────────────────
     connect: async () => {
+      if (config.connectPlainError) {
+        throw new Error(config.connectPlainError)
+      }
       if (config.connectError) {
         throw makeRPCError(config.connectError)
       }

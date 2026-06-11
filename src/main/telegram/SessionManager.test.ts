@@ -42,6 +42,31 @@ describe('SessionManager — dead session handling', () => {
     // Should end up in idle (login screen) after wiping dead session
     expect(states[states.length - 1]).toBe('idle')
   })
+
+  it('transient error: plain network error on connect → session NOT wiped, routes to idle (CR-01)', async () => {
+    const storage = createMockSafeStorage({ available: true })
+    const client = createMockTelegramClient({
+      // Plain Error without errorMessage — what GramJS surfaces for offline/unreachable
+      connectPlainError: 'getaddrinfo ENOTFOUND telegram.org',
+      sessionString: 'still-valid-session-string',
+    })
+
+    const states: string[] = []
+    const wipeCalled = { value: false }
+
+    const manager = new SessionManager({
+      client,
+      storage,
+      onStateChange: (s) => states.push(s.step),
+      onSessionWipe: () => { wipeCalled.value = true },
+    })
+
+    await manager.initialize('still-valid-session-string')
+
+    // A transient failure must NOT destroy a valid persisted session
+    expect(wipeCalled.value).toBe(false)
+    expect(states[states.length - 1]).toBe('idle')
+  })
 })
 
 describe('SessionManager — logout behavior (AUTH-05, D-17)', () => {

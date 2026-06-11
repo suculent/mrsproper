@@ -183,8 +183,10 @@ export class SessionManager {
         this._emit({ step: 'idle' })
         return
       }
-      // Other connection error — still route to login safely
-      this._wipeSessionLocally()
+      // Transient error (offline launch, network failure, FLOOD_WAIT on getMe…) —
+      // the persisted session may still be perfectly valid. Do NOT wipe it; just
+      // route to idle so the user can retry. Wiping here destroyed a fully valid
+      // login on any offline launch (review CR-01).
       this._emit({ step: 'idle' })
     }
   }
