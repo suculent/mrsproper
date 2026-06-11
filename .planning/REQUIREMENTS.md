@@ -31,11 +31,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Group Enumeration & Selection
 
-- [ ] **GRP-01**: App lists only the groups where the target is actually a member (membership verified per group)
-- [ ] **GRP-02**: Each listed group is shown as a checkbox pre-checked for removal (default = remove from all)
-- [ ] **GRP-03**: User can uncheck groups to keep the target in selected groups
-- [ ] **GRP-04**: Groups where the user lacks ban/kick rights are shown greyed-out with a specific reason
-- [ ] **GRP-05**: App detects group type (basic group vs supergroup vs channel) to determine removal capability and the correct grey-out reason
+- [x] **GRP-01**: App lists only the groups where the target is actually a member (membership verified per group)
+- [x] **GRP-02**: Each listed group is shown as a checkbox pre-checked for removal (default = remove from all)
+- [x] **GRP-03**: User can uncheck groups to keep the target in selected groups
+- [x] **GRP-04**: Groups where the user lacks ban/kick rights are shown greyed-out with a specific reason
+- [x] **GRP-05**: App detects group type (basic group vs supergroup vs channel) to determine removal capability and the correct grey-out reason
 
 ### Removal Action
 
@@ -128,11 +128,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | VRF-01 | Phase 3 | Complete |
 | VRF-02 | Phase 3 | Complete |
 | VRF-03 | Phase 3 | Complete |
-| GRP-01 | Phase 4 | Pending |
-| GRP-02 | Phase 4 | Pending |
-| GRP-03 | Phase 4 | Pending |
-| GRP-04 | Phase 4 | Pending |
-| GRP-05 | Phase 4 | Pending |
+| GRP-01 | Phase 4 | Complete |
+| GRP-02 | Phase 4 | Complete |
+| GRP-03 | Phase 4 | Complete |
+| GRP-04 | Phase 4 | Complete |
+| GRP-05 | Phase 4 | Complete |
 | RMV-01 | Phase 5 | Pending |
 | RMV-02 | Phase 5 | Pending |
 | EXE-04 | Phase 5 | Pending |

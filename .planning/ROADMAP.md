@@ -150,7 +150,7 @@ Plans:
 
 **Wave 2** *(parallel with Wave 1 complete — shared contracts)*
 
-- [ ] 04-02-PLAN.md — Shared types: groupTypes.ts + channels.ts augmentation (GROUP_*/SCAN_* constants)
+- [x] 04-02-PLAN.md — Shared types: groupTypes.ts + channels.ts augmentation (GROUP_*/SCAN_* constants)
 
 **Wave 3** *(parallel — both blocked on Wave 2)*
 
@@ -254,7 +254,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 1/10 | In Progress|  |
+| 4. Group Enumeration, Membership & Rights | 2/10 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
