@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-06-11T16:08:13.323Z"
-last_activity: 2026-06-11 -- Phase 03 planning complete
+stopped_at: Completed 03-01 — shared type contracts for target resolution
+last_updated: "2026-06-11T16:35:29.208Z"
+last_activity: 2026-06-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 14
-  completed_plans: 9
+  completed_plans: 10
   percent: 29
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 3 — target resolution & verification
+**Current focus:** Phase 03 — target-resolution-verification
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
+Phase: 03 (target-resolution-verification) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 03 planning complete
+Last activity: 2026-06-11
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | Phase 02-rate-limit-governor-error-classification P01 | 3 | 2 tasks | 3 files |
 | Phase 02-rate-limit-governor-error-classification P03 | 15 | 2 tasks | 2 files |
 | Phase 02 P04 | 15 | 2 tasks | 6 files |
+| Phase 03 P01 | 3 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase ?]: secrets.ts
 - [Phase ?]: D-08 partial: getMe and downloadProfilePhoto route through governor.run(); auth.LogOut kept direct due to governor retry policy incompatibility
 - [Phase ?]: D-11: floodSleepThreshold=0 in TelegramClient for full FLOOD_WAIT governor visibility
+- [Phase ?]: T-03-01: ResolvedTargetDTO has no accessHash field by construction — TypeScript prevents accidental addition; accessHash stays in main for Phase 4
+- [Phase ?]: T-03-02: TARGET_* OperationErrorCode members carry disposition 'fail' (non-retryable) — resolution errors must not cause governor retry loops
+- [Phase ?]: Phase 3: opTypes.ts forward comment updated from 'Phase 5' to 'Phase 6' — 3 TARGET_* codes added in Phase 3
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T15:13:16.406Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-target-resolution-verification/03-UI-SPEC.md
+Last session: 2026-06-11T16:35:29.202Z
+Stopped at: Completed 03-01 — shared type contracts for target resolution
+Resume file: None

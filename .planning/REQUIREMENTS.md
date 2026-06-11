@@ -17,10 +17,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Target Resolution
 
-- [ ] **TGT-01**: User can specify the target by username
-- [ ] **TGT-02**: User can specify the target by phone number
-- [ ] **TGT-03**: App resolves the target to a stable numeric user ID early and acts by that ID throughout
-- [ ] **TGT-04**: App handles non-resolution gracefully with a distinct message per cause (username not found, phone not a contact, no public profile)
+- [x] **TGT-01**: User can specify the target by username
+- [x] **TGT-02**: User can specify the target by phone number
+- [x] **TGT-03**: App resolves the target to a stable numeric user ID early and acts by that ID throughout
+- [x] **TGT-04**: App handles non-resolution gracefully with a distinct message per cause (username not found, phone not a contact, no public profile)
 
 ### Visual Verification
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EXE-01 | Phase 2 | Complete |
 | EXE-02 | Phase 2 | Complete |
 | EXE-03 | Phase 2 | Complete |
-| TGT-01 | Phase 3 | Pending |
-| TGT-02 | Phase 3 | Pending |
-| TGT-03 | Phase 3 | Pending |
-| TGT-04 | Phase 3 | Pending |
+| TGT-01 | Phase 3 | Complete |
+| TGT-02 | Phase 3 | Complete |
+| TGT-03 | Phase 3 | Complete |
+| TGT-04 | Phase 3 | Complete |
 | VRF-01 | Phase 3 | Pending |
 | VRF-02 | Phase 3 | Pending |
 | VRF-03 | Phase 3 | Pending |
