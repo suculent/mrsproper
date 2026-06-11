@@ -103,6 +103,24 @@ describe('classifyRpcError — full taxonomy (D-04)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// TGT-04: target resolution cause-specific error codes (Phase 3)
+// ---------------------------------------------------------------------------
+
+describe('classifyRpcError — target resolution codes (TGT-04)', () => {
+  it('USERNAME_NOT_OCCUPIED → code TARGET_USERNAME_NOT_FOUND, disposition fail', () => {
+    const result = classifyRpcError(makeRPCError('USERNAME_NOT_OCCUPIED'))
+    expect(result.code).toBe<OperationErrorCode>('TARGET_USERNAME_NOT_FOUND')
+    expect(result.disposition).toBe<Disposition>('fail')
+  })
+
+  it('PHONE_NOT_OCCUPIED → code TARGET_PHONE_NOT_FOUND, disposition fail', () => {
+    const result = classifyRpcError(makeRPCError('PHONE_NOT_OCCUPIED'))
+    expect(result.code).toBe<OperationErrorCode>('TARGET_PHONE_NOT_FOUND')
+    expect(result.disposition).toBe<Disposition>('fail')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // WR-07: flood-wait shape confirmation + seconds validation
 // ---------------------------------------------------------------------------
 
