@@ -174,6 +174,33 @@ export class AuthFlow {
     }
   }
 
+  /**
+   * Resend the login code for the phone already submitted (D-12 "Resend").
+   * Actually re-issues sendCode and refreshes the phoneCodeHash — without this
+   * the Resend button emitted state but no new Telegram message was sent.
+   */
+  async resend(): Promise<void> {
+    if (!this._phoneNumber) {
+      this._emit({ step: 'error', code: 'UNKNOWN', retryStep: 'phone' })
+      return
+    }
+
+    this._emit({ step: 'sendingCode' })
+
+    try {
+      const { phoneCodeHash, isCodeViaApp } =
+        await this._client.sendCode(this._apiCreds, this._phoneNumber)
+      this._phoneCodeHash = phoneCodeHash
+      this._emit({
+        step: 'needCode',
+        sentTo: isCodeViaApp ? 'Telegram app' : 'SMS',
+        canResend: true,
+      })
+    } catch (err) {
+      this._handleError(err, 'code')
+    }
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   /**
@@ -193,8 +220,10 @@ export class AuthFlow {
   private _handleError(err: unknown, defaultRetryStep: 'phone' | 'code' | 'password'): void {
     const waitSeconds = floodWaitSeconds(err)
     if (waitSeconds !== null) {
-      // FLOOD_WAIT — start countdown (D-13)
-      const retryStep = defaultRetryStep === 'phone' ? 'code' : defaultRetryStep as 'code' | 'password'
+      // FLOOD_WAIT — start countdown (D-13). Keep the ACTUAL step the flood
+      // happened on: a flood during sendCode must return to the phone step
+      // afterward (no code was ever sent), not jump to a code step.
+      const retryStep = defaultRetryStep
       this._emit({
         step: 'floodWait',
         retryStep,
@@ -212,8 +241,11 @@ export class AuthFlow {
           })
         },
         () => {
-          // onDone: re-enable submit by returning to needCode / needPassword state
-          if (retryStep === 'code') {
+          // onDone: re-enable submit by returning to the originating step
+          if (retryStep === 'phone') {
+            // No code was sent — go back to phone entry, not a phantom code step
+            this._emit({ step: 'idle' })
+          } else if (retryStep === 'code') {
             this._emit({
               step: 'needCode',
               sentTo: 'Telegram app',

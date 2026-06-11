@@ -111,6 +111,7 @@ export class SessionManager {
   private _currentState: AuthState = { step: 'idle' }
   private _authFlow: AuthFlow | null = null
   private _connected = false
+  private _connectPromise: Promise<void> | null = null
 
   // In-memory encrypted session store (mirrors SecretsStore behaviour)
   private _encryptedSession: Buffer | undefined = undefined
@@ -258,23 +259,10 @@ export class SessionManager {
       this._emit({ step: 'error', code: 'UNKNOWN', retryStep: 'phone' })
       return
     }
-    // Resend by repeating submitPhone — AuthFlow resets its hash
-    // (AuthFlow.submitPhone will re-sendCode with the stored phone number)
-    // Since we don't store phone in SM separately, delegate back to authFlow internals
-    // The simplest correct implementation: emit needCode (caller's phone number preserved in authFlow)
-    this._emit({ step: 'sendingCode' })
-    try {
-      // Re-trigger sendCode on the same phone (AuthFlow stores _phoneNumber internally)
-      // We emit sendingCode then needCode directly as the resend acknowledgement
-      this._emit({
-        step: 'needCode',
-        sentTo: 'Telegram app',
-        canResend: true,
-      })
-    } catch (err) {
-      const classified = classifyTelegramError(err)
-      this._emit({ step: 'error', code: classified.code, retryStep: 'code' })
-    }
+    // Delegate to AuthFlow.resend(), which actually re-calls sendCode for the
+    // stored phone number and refreshes the phoneCodeHash. (Previously this only
+    // emitted needCode without dispatching a new code.)
+    await this._authFlow.resend()
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
@@ -317,8 +305,17 @@ export class SessionManager {
    */
   private async _ensureConnected(): Promise<void> {
     if (this._connected) return
-    await this._client.connect()
-    this._connected = true
+    // Cache the in-flight connect so two concurrent IPC calls don't both call
+    // client.connect() after passing the _connected=false guard.
+    if (!this._connectPromise) {
+      this._connectPromise = (async () => {
+        await this._client.connect()
+        this._connected = true
+      })().finally(() => {
+        this._connectPromise = null
+      })
+    }
+    await this._connectPromise
   }
 
   private _persistSession(sessionString: string): void {

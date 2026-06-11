@@ -45,6 +45,11 @@ function createWindow(): BrowserWindow {
   }
   mainWindow.webContents.on('did-finish-load', syncRendererTheme)
   nativeTheme.on('updated', syncRendererTheme)
+  // Remove the global nativeTheme listener when this window closes, otherwise a
+  // new listener accumulates every time createWindow() runs (macOS re-activation).
+  mainWindow.on('closed', () => {
+    nativeTheme.removeListener('updated', syncRendererTheme)
+  })
 
   // Content-Security-Policy.
   // Production (packaged): strict — local bundle only, no remote connections. The renderer

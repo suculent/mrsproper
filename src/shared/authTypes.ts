@@ -34,7 +34,7 @@ export type AuthState =
   | { step: 'needPassword'; hint?: string }
   | { step: 'authorized'; identity: Identity }
   | { step: 'error'; code: AuthErrorCode; retryStep: 'phone' | 'code' | 'password' }
-  | { step: 'floodWait'; retryStep: 'code' | 'password'; secondsRemaining: number }
+  | { step: 'floodWait'; retryStep: 'phone' | 'code' | 'password'; secondsRemaining: number }
 
 // IPC Data Transfer Objects — the typed payloads crossing the contextBridge trust boundary.
 export interface SubmitPhone {
