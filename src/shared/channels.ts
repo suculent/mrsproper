@@ -26,6 +26,18 @@ export const TARGET_RESET = 'target:reset' as const
 export const TARGET_GET_STATE = 'target:getState' as const
 export const TARGET_STATE = 'target:state' as const
 
+// Group enumeration and membership scan IPC channels (Phase 4).
+// Pattern mirrors the TARGET_* block directly above.
+export const GROUPS_GET_STATE = 'groups:getState' as const
+export const GROUPS_STATE = 'groups:state' as const      // push: main → renderer
+export const GROUPS_REFRESH = 'groups:refresh' as const
+
+export const SCAN_START = 'scan:start' as const
+export const SCAN_ABORT = 'scan:abort' as const
+export const SCAN_RETRY_GROUP = 'scan:retryGroup' as const
+export const SCAN_STATE = 'scan:state' as const          // push: main → renderer
+export const SCAN_GET_STATE = 'scan:getState' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -42,4 +54,12 @@ export const CHANNELS = {
   TARGET_RESET,
   TARGET_GET_STATE,
   TARGET_STATE,
+  GROUPS_GET_STATE,
+  GROUPS_STATE,
+  GROUPS_REFRESH,
+  SCAN_START,
+  SCAN_ABORT,
+  SCAN_RETRY_GROUP,
+  SCAN_STATE,
+  SCAN_GET_STATE,
 } as const
