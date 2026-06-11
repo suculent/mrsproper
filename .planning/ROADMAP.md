@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation — Auth, Session & Portable Shell** - Authenticated, encrypted-session Electron+GramJS app that launches on macOS and Windows (completed 2026-06-10)
 - [x] **Phase 2: Rate-Limit Governor & Error Classification** - Single serialized queue every Telegram call funnels through, with FLOOD_WAIT back-off and PEER_FLOOD hard-stop (completed 2026-06-11)
 - [ ] **Phase 3: Target Resolution & Verification** - Resolve a target to a stable numeric ID and visually confirm identity before any action (verification: gaps_found 2026-06-11)
+- [ ] **Phase 3.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name with candidate disambiguation, ending in the same identity-confirmation gate
 - [ ] **Phase 4: Group Enumeration, Membership & Rights** - Membership-verified, rights-aware checklist of the groups the target can be removed from
 - [ ] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report
 - [ ] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view
@@ -122,6 +123,23 @@ Plans:
 - [x] 03-05-PLAN.md — UI: resolveCopy.ts + TargetInput.tsx + TargetCard.tsx + replace stub region (has checkpoint)
 
 **UI hint**: yes
+
+### Phase 3.1: Target Search by Name (INSERTED)
+
+**Goal**: A user who knows only the target's first and/or last name can search for them, pick the right person from a disambiguation list of candidates (avatar + identity details per candidate), and land in the exact same resolved-target confirmation gate as username/phone resolution — so name search is a third entry path, not a parallel flow.
+**Depends on**: Phase 3
+**Requirements**: TGT-05
+**Success Criteria** (what must be TRUE):
+
+  1. User can enter a first + last name (or partial name) and the app returns matching Telegram users via a governor-routed search call (contacts.Search), honestly labeled by where matches come from (contacts vs global results)
+  2. When multiple candidates match, user sees a disambiguation list with avatar, name, @username, and numeric ID per candidate, and can pick one
+  3. Picking a candidate resolves them through the existing TargetResolver path (stable numeric ID, exactly-once resolution) and lands in the same TargetCard confirm gate as username/phone entry
+  4. When no candidates match, user gets a clear, accurate empty-state message (not an error and not a dead end — they can edit the search)
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 3.1 to break down)
 
 ### Phase 4: Group Enumeration, Membership & Rights
 

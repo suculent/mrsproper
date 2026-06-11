@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: "Completed 03-05 — UI layer: TargetCard, TargetInput, Mrs. Proper rename, icons"
-last_updated: "2026-06-11T17:15:32.299Z"
+last_updated: "2026-06-11T17:40:14.413Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
   total_plans: 14
   completed_plans: 14
-  percent: 43
+  percent: 38
 ---
 
 # Project State
@@ -68,6 +68,10 @@ Progress: [██████████] 100%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 3.1 inserted after Phase 3: Target Search by Name — forgotten v1 requirement (TGT-05): find deletion target by First + Last Name with candidate disambiguation, resolving through the standard confirmation gate (URGENT)
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
@@ -97,7 +101,7 @@ Recent decisions affecting current work:
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-None yet.
+- Make country rows clickable in login-form CountryPicker (`2026-06-11-country-picker-rows-clickable.md`, area: ui)
 
 ### Blockers/Concerns
 
