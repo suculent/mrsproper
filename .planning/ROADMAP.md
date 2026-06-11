@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation — Auth, Session & Portable Shell** - Authenticated, encrypted-session Electron+GramJS app that launches on macOS and Windows (completed 2026-06-10)
 - [x] **Phase 2: Rate-Limit Governor & Error Classification** - Single serialized queue every Telegram call funnels through, with FLOOD_WAIT back-off and PEER_FLOOD hard-stop (completed 2026-06-11)
-- [ ] **Phase 3: Target Resolution & Verification** - Resolve a target to a stable numeric ID and visually confirm identity before any action (verification: gaps_found 2026-06-11)
+- [x] **Phase 3: Target Resolution & Verification** - Resolve a target to a stable numeric ID and visually confirm identity before any action (verification: gaps_found 2026-06-11) (completed 2026-06-11)
 - [ ] **Phase 4: Group Enumeration, Membership & Rights** - Membership-verified, rights-aware checklist of the groups the target can be removed from
 - [ ] **Phase 4.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name via group-scoped participant search with candidate disambiguation, ending in the same identity-confirmation gate
 - [ ] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report
@@ -125,7 +125,7 @@ Plans:
 
 **Wave 6 (gap closure)** *(blocked on code-review fix commits)*
 
-- [ ] 03-06-PLAN.md — Verify CR-01/CR-02/CR-03 fixes, fix targetClient.ts Window augmentation (tsconfig.web TS errors), human API smoke test
+- [x] 03-06-PLAN.md — Verify CR-01/CR-02/CR-03 fixes, fix targetClient.ts Window augmentation (tsconfig.web TS errors), human API smoke test
 
 **UI hint**: yes
 
@@ -215,7 +215,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
-| 3. Target Resolution & Verification | 5/6 | Gap closure | - |
+| 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
