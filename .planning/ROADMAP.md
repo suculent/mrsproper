@@ -115,7 +115,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — Renderer wiring: targetClient.ts + targetStore.ts + extend preload/index.ts + wire TargetResolver in main/index.ts
+- [x] 03-04-PLAN.md — Renderer wiring: targetClient.ts + targetStore.ts + extend preload/index.ts + wire TargetResolver in main/index.ts
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -190,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
-| 3. Target Resolution & Verification | 3/5 | In Progress|  |
+| 3. Target Resolution & Verification | 4/5 | In Progress|  |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
