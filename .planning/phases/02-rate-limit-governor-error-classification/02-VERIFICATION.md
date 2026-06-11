@@ -1,36 +1,52 @@
 ---
 phase: 02-rate-limit-governor-error-classification
-verified: 2026-06-11T12:40:00Z
-status: gaps_found
-score: 16/17 must-haves verified
+verified: 2026-06-11T16:12:00Z
+status: passed
+score: 17/17 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "D-08: SessionManager.logout() routes the auth.LogOut invoke call via governor.run()"
-    status: failed
-    reason: "auth.LogOut invoke at SessionManager.ts:288 remains a direct this._client.invoke() call. Governor run() is called 2 times (getMe, downloadProfilePhoto), not 3. The plan's acceptance criterion '_governor.run count = 3' is not met."
-    artifacts:
-      - path: "src/main/telegram/SessionManager.ts"
-        issue: "Line 288: await this._client.invoke(new Api.auth.LogOut({})) — not routed through this._governor.run()"
-    missing:
-      - "Route auth.LogOut through governor.run() OR add a formal override accepting the deviation with rationale"
-  - truth: "New TypeScript errors introduced by Phase 2 (WR-08): 3 errors in governor.test.ts not present in Phase 1 baseline"
-    status: failed
-    reason: "tsc --noEmit -p tsconfig.node.json reports 3 new errors in governor.test.ts: TS6196 Disposition unused import (line 13), TS2554 Expected 0 arguments but got 1 (lines 185, 211). These files were created in Phase 2 and the errors are attributable to Phase 2. CLAUDE.md states 'strong typing matters when a typo triggers a destructive EditBanned call'. Introducing typed-interface violations in test files erodes the tsc gate."
-    artifacts:
-      - path: "src/main/telegram/governor.test.ts"
-        issue: "Line 13: 'Disposition' imported but never used (TS6196). Lines 185, 211: createMockClient().invoke({}) called against 0-arg vi.fn() type (TS2554)."
-    missing:
-      - "Remove unused Disposition import from governor.test.ts line 13"
-      - "Fix createMockClient factory: change invokeImpl type signature from '() => Promise<unknown>' to '(req?: unknown) => Promise<unknown>' so client.invoke({}) type-checks"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 16/17
+  gaps_closed:
+    - "D-08: auth.LogOut in SessionManager.logout() routed via governor.run() — _governor.run count = 3 (getMe, downloadProfilePhoto, LogOut)"
+    - "3 new tsc errors in governor.test.ts eliminated: unused Disposition import removed, invokeImpl signature widened to (req?: unknown), SESSION_REVOKED added to MockRPCErrorCode"
+    - "Misleading SESSION_INVALID hard-stop comments corrected in governor.ts:128 and opTypes.ts (CR-01)"
+  gaps_remaining: []
+  regressions: []
 human_verification: []
 ---
 
-# Phase 2: Rate-Limit Governor & Error Classification — Verification Report
+# Phase 2: Rate-Limit Governor & Error Classification — Re-Verification Report
 
 **Phase Goal:** Every Telegram call in the app routes through one serialized, rate-limited governor that honors FLOOD_WAIT by sleeping and resuming, and treats PEER_FLOOD as a distinct hard-stop — so no feature built later can flood the account.
-**Verified:** 2026-06-11T12:40:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-06-11T16:12:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap-closure plan 02-04
+
+## Gap Closure Evidence (02-04)
+
+The two blockers from the initial verification are confirmed closed in the codebase:
+
+**Gap 1 — D-08 auth.LogOut routing:**
+`grep -c "_governor.run" src/main/telegram/SessionManager.ts` returns **3**.
+Confirmed lines: 288 (LogOut), 359 (getMe), 360 (downloadProfilePhoto). The governor.run() wrapper at line 288 is:
+`await this._governor.run(() => this._client.invoke(new Api.auth.LogOut({})))`
+
+**Gap 2 — TypeScript errors in governor.test.ts:**
+`npx tsc --noEmit -p tsconfig.node.json 2>&1 | grep "governor.test.ts"` produces **no output**.
+- `Disposition` import removed from governor.test.ts — `grep "Disposition" governor.test.ts` returns nothing.
+- `createMockClient` factory now typed as `invokeImpl?: (req?: unknown) => Promise<unknown>` — confirmed at line 43.
+- `SESSION_REVOKED` added to `MockRPCErrorCode` union in telegramClient.ts — confirmed at line 25.
+- `logoutError` field renamed to `logoutErrorCode` — `grep "logoutError\b" telegramClient.ts` returns nothing.
+
+**CR-01 — Misleading SESSION_INVALID comments:**
+`grep "session-invalid" src/main/telegram/governor.ts` and `grep "session-invalid" src/shared/opTypes.ts` both return nothing.
+opTypes.ts line 14 now reads: `hard-stop — PEER_FLOOD: abort the job immediately, no retry (SESSION_INVALID maps to 'fail' — see operationErrors.ts)`.
+opTypes.ts line 57: `/** PEER_FLOOD surfaced — job must hard-stop. SESSION_INVALID maps to 'fail' disposition (operationErrors.ts). */`
+governor.ts line 128: `// PEER_FLOOD — abort immediately, no retry (EXE-03 / D-13).`
+
+**Pre-existing TS2345 (not a new regression):**
+`tsc` reports 14 total errors. The TS2345 at SessionManager.ts:288 (`Argument of type '{}' is not assignable to parameter of type 'void'`) is attributable to `new Api.auth.LogOut({})` constructor arg — the same `{}` argument was present in the pre-02-04 direct invoke call and is a pre-Phase-2 baseline error. The re_verification_context confirms: "the TS2345 at SessionManager.ts:288 predates Phase 2 gap closure". Zero net new tsc errors from Phase 2.
 
 ## Goal Achievement
 
@@ -54,29 +70,30 @@ human_verification: []
 | 14 | SessionManager constructs RateLimitGovernor in constructor (D-05) | VERIFIED | SessionManager.ts:114 (_governor field), :135 (constructor instantiation) |
 | 15 | _fetchIdentity() routes getMe and downloadProfilePhoto via governor.run() (D-08 partial) | VERIFIED | SessionManager.ts:359-360 |
 | 16 | floodSleepThreshold set to 0 in main/index.ts (D-11) | VERIFIED | index.ts:113 |
-| 17 | D-08: auth.LogOut routed via governor.run() | FAILED | SessionManager.ts:288 uses direct this._client.invoke() — _governor.run count = 2, not 3 |
+| 17 | D-08: auth.LogOut routed via governor.run() | VERIFIED | SessionManager.ts:288 — `this._governor.run(() => this._client.invoke(new Api.auth.LogOut({})))`. grep -c returns 3. |
 
-**Score:** 16/17 truths verified
+**Score:** 17/17 truths verified
 
 ### Roadmap Success Criteria
 
 | SC | Criterion | Status | Notes |
 |----|-----------|--------|-------|
-| SC1 | All Telegram requests through single serialized queue, no parallel blasting | PARTIAL | getMe + downloadProfilePhoto serialized. auth.LogOut bypasses queue. Infrastructure calls (connect, checkAuthorization, disconnect) correctly excluded per D-06. |
-| SC2 | FLOOD_WAIT_X: governor sleeps duration+jitter, resumes, emits countdown event | VERIFIED | governor.ts implements all three: setTimeout sleep, FloodWaitController countdown ticks, 3600s ceiling. 2 test clusters GREEN. |
+| SC1 | All Telegram requests through single serialized queue, no parallel blasting | VERIFIED | getMe, downloadProfilePhoto, auth.LogOut all serialized via _governor.run(). Infrastructure calls (connect, checkAuthorization, disconnect) correctly excluded per D-06. |
+| SC2 | FLOOD_WAIT_X: governor sleeps duration+jitter, resumes, emits countdown event | VERIFIED | governor.ts implements all three: setTimeout sleep, FloodWaitController countdown ticks, 3600s ceiling. Test clusters GREEN. |
 | SC3 | PEER_FLOOD classified distinctly from FLOOD_WAIT, hard-stops with no retry | VERIFIED | PEER_FLOOD-first branch, 'hard-stop' disposition, governor emits event and throws without retry. |
-| SC4 | Single classification function maps RPC errors to typed enum, mock-client tests | VERIFIED | classifyRpcError() exists, maps to Disposition enum (wait/retry/fail/hard-stop), 15/15 tests GREEN (8 operationErrors + 7 governor). |
+| SC4 | Single classification function maps RPC errors to typed enum, mock-client tests | VERIFIED | classifyRpcError() exists, maps to Disposition enum (wait/retry/fail/hard-stop), 15/15 tests GREEN. |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/shared/opTypes.ts` | Disposition, OperationErrorCode, ClassifiedOperationError, GovernorEvent | VERIFIED | All 4 types exported. All 4 GovernorEvent discriminants present. No raw Telegram strings. |
-| `src/main/telegram/operationErrors.ts` | classifyRpcError() — PEER_FLOOD-first taxonomy | VERIFIED | Exports classifyRpcError. PEER_FLOOD→hard-stop at line 61. Does NOT import from ./errors (D-02). Uses floodWaitSeconds from ./floodWait (D-03). |
-| `src/main/telegram/governor.ts` | RateLimitGovernor with run() — EXE-01/02/03 | VERIFIED | Exports RateLimitGovernor and GovernorClient. _tail chain present (2+ refs). FLOOD_CEILING_S defined and used. FloodWaitController used. No p-queue import. |
-| `src/main/telegram/governor.test.ts` | 5 describe blocks, GREEN, RED-state resolved | VERIFIED | 5 describe blocks (serialization, FLOOD_WAIT, ceiling, PEER_FLOOD, transient retry). 7/7 tests GREEN. |
-| `src/main/telegram/operationErrors.test.ts` | 2 describe blocks, GREEN | VERIFIED | 2 describe blocks (PEER_FLOOD distinct, full taxonomy). 8/8 tests GREEN. |
-| `src/main/telegram/SessionManager.ts` | _governor field, D-08 routing | PARTIAL | _governor field present, getMe+downloadProfilePhoto routed. auth.LogOut NOT routed (documented deviation). |
+| `src/shared/opTypes.ts` | Disposition, OperationErrorCode, ClassifiedOperationError, GovernorEvent | VERIFIED | All 4 types exported. All 4 GovernorEvent discriminants present. SESSION_INVALID comments corrected (CR-01). |
+| `src/main/telegram/operationErrors.ts` | classifyRpcError() — PEER_FLOOD-first taxonomy | VERIFIED | Exports classifyRpcError. PEER_FLOOD→hard-stop at line 61. |
+| `src/main/telegram/governor.ts` | RateLimitGovernor with run() — EXE-01/02/03 | VERIFIED | Exports RateLimitGovernor and GovernorClient. _tail chain present. FLOOD_CEILING_S defined and used. FloodWaitController used. session-invalid comment corrected (CR-01). |
+| `src/main/telegram/governor.test.ts` | 5 describe blocks, GREEN, tsc-clean | VERIFIED | 5 describe blocks, 7/7 tests GREEN. Zero tsc errors (Disposition import removed, invokeImpl widened). |
+| `src/main/telegram/operationErrors.test.ts` | 2 describe blocks, GREEN | VERIFIED | 2 describe blocks, 8/8 tests GREEN. |
+| `src/main/telegram/SessionManager.ts` | _governor field, full D-08 routing | VERIFIED | _governor field present. getMe, downloadProfilePhoto, auth.LogOut all routed — _governor.run count = 3. |
+| `src/main/telegram/__mocks__/telegramClient.ts` | logoutErrorCode field, SESSION_REVOKED in union | VERIFIED | logoutErrorCode field at line 67. SESSION_REVOKED at line 25 of MockRPCErrorCode union. logoutError field absent. |
 | `src/main/index.ts` | floodSleepThreshold: 0, D-11 comment | VERIFIED | Line 113: floodSleepThreshold: 0. D-11 comment with rationale present. |
 
 ### Key Link Verification
@@ -88,8 +105,8 @@ human_verification: []
 | `governor.ts` | `opTypes.ts` | import type { GovernorEvent, ClassifiedOperationError } | WIRED | Line 26 import, used throughout |
 | `operationErrors.ts` | `opTypes.ts` | import type { ClassifiedOperationError } | WIRED | Line 24 import, return type |
 | `operationErrors.ts` | `floodWait.ts` | import { floodWaitSeconds } | WIRED | Line 25 import, line 68 call |
-| `SessionManager.ts` | `governor.ts` | import { RateLimitGovernor } | WIRED | Line 34 import, lines 114/135/359-360 |
-| `governor.run()` | `auth.LogOut` | NOT via governor.run() | NOT_WIRED | SessionManager.ts:288 uses direct client.invoke |
+| `SessionManager.ts` | `governor.ts` | import { RateLimitGovernor } | WIRED | Line 34 import, lines 114/135/288/359-360 |
+| `SessionManager.logout()` | `RateLimitGovernor.run()` | `this._governor.run(() => this._client.invoke(new Api.auth.LogOut({})))` | WIRED | SessionManager.ts:288 — D-08 fully compliant |
 
 ### Data-Flow Trace (Level 4)
 
@@ -100,7 +117,10 @@ Not applicable for this phase — no data-rendering artifacts. All artifacts are
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
 | Governor + classifier tests GREEN | `npx vitest run governor.test.ts operationErrors.test.ts` | 15 passed (0 failed) | PASS |
+| SessionManager logout tests GREEN | `npx vitest run SessionManager.test.ts` | 4 passed (0 failed) | PASS |
 | Full suite no regressions | `npx vitest run` | 72/74 passing (2 pre-existing AUTH-03) | PASS |
+| governor.test.ts tsc clean | `tsc --noEmit ... \| grep "governor.test.ts"` | no output | PASS |
+| Total tsc errors unchanged | `tsc --noEmit ...` | 14 errors (same as pre-02-04 baseline) | PASS |
 
 ### Probe Execution
 
@@ -110,60 +130,25 @@ No probes declared for this phase.
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| EXE-01 | 02-01, 02-02, 02-03 | All Telegram calls through single serialized rate-limited governor | PARTIAL | Governor serializes via _tail chain. _fetchIdentity calls routed. auth.LogOut not routed. Infrastructure calls correctly excluded per D-06. |
-| EXE-02 | 02-01, 02-02 | Honor FLOOD_WAIT by sleeping server-specified time and resuming | SATISFIED | governor.ts:134-162 implements full FLOOD_WAIT policy: sleep+jitter, countdown ticks, 3600s ceiling. 3 test clusters GREEN. |
-| EXE-03 | 02-01, 02-02 | Detect PEER_FLOOD distinctly, hard-stop with no retry | SATISFIED | PEER_FLOOD-first check (operationErrors.ts:61), hard-stop disposition, governor emits event and throws. PEER_FLOOD test clusters GREEN. |
+| EXE-01 | 02-01, 02-02, 02-03, 02-04 | All Telegram calls through single serialized rate-limited governor | SATISFIED | Governor serializes via _tail chain. All three Telegram invoke calls in SessionManager (getMe, downloadProfilePhoto, auth.LogOut) routed through _governor.run(). Infrastructure calls correctly excluded per D-06. |
+| EXE-02 | 02-01, 02-02 | Honor FLOOD_WAIT by sleeping server-specified time and resuming | SATISFIED | governor.ts implements full FLOOD_WAIT policy: sleep+jitter, countdown ticks, 3600s ceiling. Test clusters GREEN. |
+| EXE-03 | 02-01, 02-02 | Detect PEER_FLOOD distinctly, hard-stop with no retry | SATISFIED | PEER_FLOOD-first check (operationErrors.ts:61), hard-stop disposition, governor emits event and throws. Test clusters GREEN. |
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| `governor.test.ts` | 13 | TS6196: Disposition imported but never used | WARNING | Erodes TypeScript gate in test infrastructure. Project explicitly values strong typing for destructive call protection. |
-| `governor.test.ts` | 185, 211 | TS2554: client.invoke({}) called against 0-arg vi.fn() mock type | WARNING | Test mock interface mismatch — invoke() on GovernorClient accepts `request: unknown` but createMockClient factory types it as `() => Promise<unknown>`. Tests pass at runtime (vitest doesn't type-check) but tsc gate fails. |
-| `governor.ts` | 128 | Misleading comment: "PEER_FLOOD or session-invalid — abort immediately" | WARNING | SESSION_INVALID maps to 'fail' not 'hard-stop', so this path NEVER fires for SESSION_INVALID. Comment contradicts behavior. (CR-01 from code review.) |
-
 No TBD, FIXME, or XXX debt markers found in any Phase 2 files.
+No stub patterns, empty returns, or placeholder values found in Phase 2 files.
+The CR-01 misleading comment issue from the initial verification was resolved by plan 02-04 (governor.ts:128 and two opTypes.ts docstrings corrected).
 
-### Internal Consistency Issue: SESSION_INVALID Disposition (CR-01)
+### Human Verification Required
 
-**Not a ROADMAP blocker but documents a contract mismatch:**
-
-`opTypes.ts:14` documents `hard-stop` as "PEER_FLOOD / session-invalid: abort the job immediately" and the `hard-stop` GovernorEvent docstring says "PEER_FLOOD **or session-invalid** surfaced — job must hard-stop." Governor.ts:128 repeats this comment. However, `operationErrors.ts:79-81` maps `SESSION_INVALID_ERRORS` to `disposition: 'fail'`, and tests assert `'fail'` (operationErrors.test.ts:87-97).
-
-Practical consequence: A dead-session mid-bulk-job will NOT emit a `hard-stop` GovernorEvent. Phase 5's executor will receive the error via the rejection path (governor propagates fail immediately without retry, which is correct behavior), but cannot distinguish SESSION_INVALID from other fail cases via events alone. The ROADMAP SC3 only requires PEER_FLOOD to be hard-stopped, so SC3 is met. The comment/docstring in opTypes.ts and governor.ts is misleading and should be corrected.
+None. All acceptance criteria verified programmatically.
 
 ### Gaps Summary
 
-**Gap 1: D-08 auth.LogOut not routed through governor.run() (BLOCKER vs plan must_have)**
-
-The plan's must_have `"D-08: SessionManager.logout() routes the auth.LogOut invoke call via governor.run()"` is literally not met. `_governor.run` is called 2 times (getMe, downloadProfilePhoto), not 3. The deviation was discovered during execution when the existing test mock (`logoutError: new Error('NETWORK_TIMEOUT')`) triggered the NETWORK→retry path, causing 7s of real-time backoff that exceeded the 5-second test timeout.
-
-The deviation is well-documented and the rationale is sound (auth.LogOut is best-effort by design; the governor's retry policy is incompatible with this semantics when mocks throw plain Errors). In production with a real Telegram server, a LogOut RPCError would carry `.errorMessage` (e.g., 'SESSION_REVOKED'), which classifies as 'fail' (no retry), so the incompatibility is specific to the mock pattern.
-
-The gap does NOT affect the ROADMAP SC1's core concern about parallel blasting — auth.LogOut is never called concurrently and is not a volume-flood risk. However, the phase goal wording ("Every Telegram call") and the plan must_have are not satisfied.
-
-**Resolution options:**
-1. Add an override accepting the deviation — the root cause is a mock-typing issue, not a functional one.
-2. Fix the mock and re-route logout through governor.
-
-To accept the deviation, add to VERIFICATION.md frontmatter:
-```yaml
-overrides:
-  - must_have: "D-08: SessionManager.logout() routes the auth.LogOut invoke call via governor.run()"
-    reason: "auth.LogOut is best-effort by design; governor retry policy is incompatible with best-effort semantics when tests use plain Error mocks (no .errorMessage). In production, Telegram LogOut errors carry .errorMessage and would not trigger retry. The flood risk SC1 addresses is bulk parallel blasting, which auth.LogOut never performs."
-    accepted_by: "{your name}"
-    accepted_at: "{ISO timestamp}"
-```
-
-**Gap 2: 3 new TypeScript errors in governor.test.ts (WARNING)**
-
-The known Phase 1 baseline is ~17 tsc errors. Phase 2 introduces 3 additional errors in `governor.test.ts` (which Phase 2 created). These are:
-- Line 13: `Disposition` imported but never used (TS6196) — trivial fix, remove the import
-- Lines 185, 211: `createMockClient().invoke({})` called against 0-arg mock type (TS2554) — fix by changing `invokeImpl?: () => Promise<unknown>` to `invokeImpl?: (req?: unknown) => Promise<unknown>` in the factory
-
-These errors were present from Plan 01 of Phase 2 (when the test files were first created) and were not fixed during Plan 02 or 03. They are minor but erode the tsc gate that CLAUDE.md explicitly values for destructive operation safety.
+No gaps. All 17 must-have truths verified. The two blockers from the initial verification (D-08 auth.LogOut routing, 3 tsc errors in governor.test.ts) are confirmed closed in the codebase by gap-closure plan 02-04.
 
 ---
 
-_Verified: 2026-06-11T12:40:00Z_
+_Verified: 2026-06-11T16:12:00Z_
 _Verifier: Claude (gsd-verifier)_
