@@ -22,6 +22,7 @@ export type MockRPCErrorCode =
   | 'PHONE_CODE_EXPIRED'
   | 'PASSWORD_HASH_INVALID'
   | 'AUTH_KEY_UNREGISTERED'
+  | 'SESSION_REVOKED'
   | { type: 'FLOOD_WAIT'; seconds: number }
 
 /** Create an RPC-shaped error that matches GramJS RPCError + FloodWaitError shapes. */
@@ -35,8 +36,9 @@ function makeRPCError(code: MockRPCErrorCode): Error & { errorMessage: string; s
     err.seconds = code.seconds
     return err
   }
-  const err = new Error(code) as Error & { errorMessage: string }
-  err.errorMessage = code
+  const codeStr = code as string
+  const err = new Error(codeStr) as Error & { errorMessage: string }
+  err.errorMessage = codeStr
   return err
 }
 
@@ -61,8 +63,8 @@ export interface MockClientConfig {
   }
   /** Simulated session string (for session.save()). */
   sessionString?: string
-  /** If set, invoke (LogOut) will throw this error. */
-  logoutError?: Error
+  /** If set, invoke (LogOut) will throw an RPC-shaped error with this code. */
+  logoutErrorCode?: MockRPCErrorCode
 }
 
 const DEFAULT_IDENTITY = {
@@ -125,8 +127,8 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       }
 
       if (ctorName === 'LogOut' || (request as { className?: string })?.className === 'auth.LogOut') {
-        if (config.logoutError) {
-          throw config.logoutError
+        if (config.logoutErrorCode) {
+          throw makeRPCError(config.logoutErrorCode)
         }
         return { futureAuthToken: null }
       }

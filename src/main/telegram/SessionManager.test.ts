@@ -67,7 +67,7 @@ describe('SessionManager — logout behavior (AUTH-05, D-17)', () => {
     const storage = createMockSafeStorage({ available: true })
     const client = createMockTelegramClient({
       isAuthorized: true,
-      logoutError: new Error('NETWORK_TIMEOUT'),
+      logoutErrorCode: 'SESSION_REVOKED',
     })
 
     const wipeCalled = { value: false }
@@ -90,7 +90,7 @@ describe('SessionManager — logout behavior (AUTH-05, D-17)', () => {
     const storage = createMockSafeStorage({ available: true })
     const client = createMockTelegramClient({
       isAuthorized: true,
-      logoutError: new Error('SERVER_FAIL'),
+      logoutErrorCode: 'SESSION_REVOKED',
     })
 
     const states: string[] = []

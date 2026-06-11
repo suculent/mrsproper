@@ -285,7 +285,7 @@ export class SessionManager {
     let serverRevoked = false
 
     try {
-      await this._client.invoke(new Api.auth.LogOut({}))
+      await this._governor.run(() => this._client.invoke(new Api.auth.LogOut({})))
       serverRevoked = true
     } catch {
       serverRevoked = false
