@@ -21,13 +21,14 @@ A group admin can confidently remove the right person from every relevant commun
 - ✓ App ships with its own api_id/api_hash (no per-user registration required) — Phase 1
 - ✓ Persist the session encrypted on disk so re-login isn't needed every launch; provide a logout that clears it — Phase 1 (confirmed)
 - ✓ All Telegram calls route through one serialized, rate-limited governor: FLOOD_WAIT honored by sleep+jitter+resume with countdown events, PEER_FLOOD hard-stops with no retry, single typed error classifier — Phase 2 (17/17 verified; removal-job consumer lands in Phase 5)
+- ✓ Resolve a target person by username OR phone number — Phase 3 (4/4 verified incl. human-verified real-API smoke test; gap closure via code-review fixes + plan 03-06)
+- ✓ Show the target's avatar plus identity details (name, username, ID, bio) for visual verification, with a graceful "no photo" fallback — Phase 3 (TargetCard with confirm gate; app renamed Mrs. Proper with custom icons en route)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Resolve a target person by username OR phone number
-- [ ] Show the target's avatar plus identity details (name, username, ID, bio) for visual verification, with a graceful "no photo" fallback when the avatar is unavailable/hidden
+- [ ] Search for a target by First + Last Name across the admin's groups (group-scoped participant search, candidate disambiguation) — Phase 4.1
 - [ ] List only the groups where the target is actually a member (membership verified before display)
 - [ ] Present groups as a checklist pre-checked for removal (default = remove everywhere; uncheck to keep them in selected groups)
 - [ ] Show groups where the admin lacks kick rights as greyed-out with a reason (visible but not actionable)
@@ -99,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-11 after Phase 2 (Rate-Limit Governor & Error Classification) completion*
+*Last updated: 2026-06-11 after Phase 3 (Target Resolution & Verification) completion*
