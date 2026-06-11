@@ -21,11 +21,11 @@ A user can specify a target by username or phone number, have it resolved exactl
 - **D-05:** **No target history in v1** — a removal tool storing past targets is sensitive; each session starts clean. (Deliberate reversal of the "target history via electron-store" idea in the tech-stack notes.)
 - **D-06:** **No numeric-ID input in v1** — digits always mean phone. Numeric-ID lookup is unreliable without an access_hash and isn't in requirements.
 
-### Phone lookup contact side-effect
-- **D-07:** Phone lookup uses the required `contacts.ImportContacts` mechanism, and the app **asks per lookup** whether to keep or remove the imported contact — the user decides each time.
-- **D-08:** The keep-or-remove dialog appears **after successful resolution** ("Remove +420… from your contacts again?"). **Failed lookups auto-clean** the imported contact silently — no dialog.
-- **D-09:** **Pre-existing contacts are never touched.** If the phone is already in the admin's contacts, resolve directly — no import, no dialog, and never offer deletion of a contact the app didn't create. The keep/remove flow applies ONLY to app-imported contacts.
-- **D-10:** **Inline disclosure hint** near the field when phone mode is detected: phone lookup briefly adds the number to contacts (removable afterwards) and only works if the target's privacy settings allow it. No blocking modal.
+### Phone lookup (revised 2026-06-11 — research finding)
+- **D-07 (REVISED):** Phone lookup uses **`contacts.ResolvePhone`** (Telegram Layer 214, verified present in `telegram@2.26.22`) — direct phone-to-peer resolution with **no contact import and no contact pollution**. Supersedes the original ImportContacts decision: research found the cleaner API exists in the installed library, and the user approved the switch at plan time. No keep/remove dialog, no cleanup path, no pre-existing-contact special case.
+- **D-08 (OBSOLETE):** ~~Keep-or-remove dialog after successful resolution; failed lookups auto-clean~~ — not applicable under ResolvePhone (nothing is ever added to contacts).
+- **D-09 (OBSOLETE):** ~~Pre-existing contacts are never touched~~ — trivially satisfied under ResolvePhone (the app never touches contacts at all).
+- **D-10 (REVISED):** **Inline disclosure hint** near the field when phone mode is detected, simplified: phone lookup only works if the target's privacy settings allow being found by phone number. No contact-import disclosure needed. No blocking modal.
 
 ### Identity card & confirmation
 - **D-11:** **Explicit confirm gate** — the identity card has a "Yes, this is the person" button that unlocks the next step (group enumeration). This is the first of two deliberate gates (the Phase 6 final pre-removal review is the second).
@@ -91,8 +91,7 @@ A user can specify a target by username or phone number, have it resolved exactl
 ## Specific Ideas
 
 - The no-photo fallback should look like Telegram's own colored-initials avatars — familiar to every Telegram admin.
-- The keep-or-remove contact dialog phrasing should make clear the import already happened and worked ("Remove +420… from your contacts again?").
-- Phone-mode inline hint doubles as the privacy-limitation disclosure (works only if their settings allow lookup).
+- Phone-mode inline hint is the privacy-limitation disclosure (lookup works only if the target's settings allow being found by phone number).
 
 </specifics>
 
