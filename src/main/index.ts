@@ -5,7 +5,9 @@ import { StringSession } from 'telegram/sessions'
 import { SessionManager } from './telegram/SessionManager'
 import { createSecretsStore } from './storage/secrets'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
+import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
+import type { GovernorEvent } from '../shared/opTypes'
 
 // ── API credentials (injected at build time via electron.vite.config.ts define) ──
 // Loaded here lazily — safeStorage and electron ready must fire first (Pitfall 3).
@@ -148,6 +150,16 @@ app.whenReady().then(async () => {
       secretsStore.persistSession(sessionString)
     },
     apiCreds: { apiId: API_ID, apiHash: API_HASH },
+    // WR-04: with floodSleepThreshold=0 every FLOOD_WAIT on governed calls reaches
+    // the governor — without this bridge those sleeps (up to 3600s) are invisible
+    // hangs. Forward typed GovernorEvents to the renderer and log them in main so
+    // a flood pause is always diagnosable.
+    onGovernorEvent: (event: GovernorEvent) => {
+      console.log('[governor]', JSON.stringify(event))
+      if (!currentWin.isDestroyed()) {
+        currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
+      }
+    },
   })
 
   // ── Register IPC handlers ─────────────────────────────────────────────────

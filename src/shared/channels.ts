@@ -10,6 +10,11 @@ export const AUTH_LOGOUT = 'auth:logout' as const
 export const AUTH_STATE = 'auth:state' as const
 export const AUTH_FLOOD_TICK = 'auth:floodTick' as const
 
+// Governor → renderer push channel (Phase 2 D-09): typed GovernorEvent objects
+// (flood-tick countdowns, hard-stop, wait-too-long, retry-attempt). Wired in
+// main/index.ts; Phase 5's progress UI subscribes via the preload bridge.
+export const OP_GOVERNOR_EVENT = 'op:governorEvent' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -20,4 +25,5 @@ export const CHANNELS = {
   AUTH_LOGOUT,
   AUTH_STATE,
   AUTH_FLOOD_TICK,
+  OP_GOVERNOR_EVENT,
 } as const
