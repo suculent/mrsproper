@@ -1,0 +1,298 @@
+/**
+ * MembershipScanner — per-target membership scan with streaming progress.
+ *
+ * Owns:
+ *   - Iterating all known admin dialogs from GroupEnumerator
+ *   - Per-group membership check via appropriate GramJS call (GetParticipant for
+ *     supergroup/channel, GetFullChat for basic group)
+ *   - Streaming ScanState progress events (idle → scanning → complete | error)
+ *   - Per-group failure isolation: a single group error sets status=failed without
+ *     aborting the scan
+ *   - Generation-token pattern (D-15): each scan() call invalidates prior in-flight work
+ *   - abortScan(): increments generation + AbortController → emits idle
+ *   - retryGroup(dialogId): single-group re-check, merges result into existing complete state
+ *
+ * Security (T-04-04):
+ *   - Target is read ONLY from resolver.getResolvedUser() in the main process
+ *   - scan:start IPC channel carries NO payload — renderer cannot inject target ID or accessHash
+ *
+ * All Telegram API calls route through _governor.run() (mirrors GroupEnumerator pattern).
+ *
+ * RESEARCH Pitfall 1: after GetParticipant succeeds, check className for
+ * ChannelParticipantLeft / ChannelParticipantBanned before declaring member=true.
+ *
+ * USER_NOT_PARTICIPANT: caught via errorMessage === 'USER_NOT_PARTICIPANT' in the
+ * inner catch block (raw RPC string), not via classifyRpcError.
+ */
+
+import bigInt from 'big-integer'
+import { Api } from 'telegram'
+import type { ScanState, ScanProgressDTO, MembershipResultDTO, AdminDialogDTO } from '@shared/groupTypes'
+import type { RateLimitGovernor } from './governor'
+import type { GroupEnumerator } from './GroupEnumerator'
+
+// ── Injectable client interface ────────────────────────────────────────────
+
+export interface MembershipScannerClient {
+  invoke(request: unknown): Promise<unknown>
+}
+
+// ── Constructor options ─────────────────────────────────────────────────────
+
+export interface MembershipScannerOptions {
+  /** The TelegramClient (real or mock). */
+  client: MembershipScannerClient
+  /** Shared account-wide RateLimitGovernor — all Telegram calls must go through it. */
+  governor: RateLimitGovernor
+  /** GroupEnumerator — provides dialog list and entity map. */
+  enumerator: GroupEnumerator
+  /** TargetResolver — provides resolved user id and accessHash (main only, never renderer). */
+  resolver: { getResolvedUser(): { id: bigint; accessHash: bigint } | null }
+  /** Called whenever ScanState changes. Wired to win.webContents.send in production. */
+  onStateChange: (state: ScanState) => void
+}
+
+// ── MembershipScanner ───────────────────────────────────────────────────────
+
+export class MembershipScanner {
+  private readonly _client: MembershipScannerClient
+  private readonly _governor: RateLimitGovernor
+  private readonly _enumerator: GroupEnumerator
+  private readonly _resolver: { getResolvedUser(): { id: bigint; accessHash: bigint } | null }
+  private readonly _emit: (state: ScanState) => void
+
+  private _currentState: ScanState = { step: 'idle' }
+  /** Generation token (D-15): each scan() call increments this to invalidate prior in-flight scans. */
+  private _generation = 0
+  private _abortController: AbortController | null = null
+
+  constructor(options: MembershipScannerOptions) {
+    this._client = options.client
+    this._governor = options.governor
+    this._enumerator = options.enumerator
+    this._resolver = options.resolver
+    this._emit = (state) => {
+      this._currentState = state
+      options.onStateChange(state)
+    }
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
+
+  /**
+   * Run a full membership scan across all known admin dialogs.
+   *
+   * Security (T-04-04): reads target from this._resolver.getResolvedUser() — NO renderer
+   * payload is accepted. The scan:start IPC channel carries no target information.
+   *
+   * D-15: increments _generation at the start; each loop iteration checks if generation
+   * has been superseded (by a newer scan() or abortScan()) and exits early.
+   */
+  async scan(): Promise<void> {
+    // D-15: increment generation to invalidate any prior in-flight scan
+    const gen = ++this._generation
+
+    // Create a new AbortController for this scan
+    this._abortController = new AbortController()
+    const signal = this._abortController.signal
+
+    // Read target from resolver (T-04-04: never from renderer payload)
+    const resolved = this._resolver.getResolvedUser()
+    if (resolved === null) {
+      this._emit({ step: 'error', code: 'UNKNOWN' })
+      return
+    }
+
+    // Construct InputPeerUser from RESEARCH §Pattern 4
+    const inputUser = new Api.InputPeerUser({
+      userId: bigInt(resolved.id.toString()),
+      accessHash: bigInt(resolved.accessHash.toString()),
+    })
+
+    // Get dialogs from enumerator
+    const groupsState = this._enumerator.getState()
+    if (groupsState.step !== 'loaded') {
+      this._emit({ step: 'error', code: 'UNKNOWN' })
+      return
+    }
+
+    const dialogs = groupsState.dialogs
+    const total = dialogs.length
+    const results: MembershipResultDTO[] = []
+
+    // Emit initial scanning state
+    this._emit({ step: 'scanning', progress: { checked: 0, total }, results: [] })
+
+    for (const dialog of dialogs) {
+      // D-15: check if this scan has been superseded or aborted
+      if (gen !== this._generation || signal.aborted) {
+        return
+      }
+
+      let status: MembershipResultDTO['status']
+      try {
+        const isMember = await this._checkMembership(dialog, inputUser, resolved)
+        status = isMember ? 'member' : 'not-member'
+      } catch (_err) {
+        // Per-group failure isolation: mark as failed, continue scan
+        status = 'failed'
+      }
+
+      results.push({ dialogId: dialog.id, status })
+
+      // D-15: re-check after await
+      if (gen !== this._generation || signal.aborted) {
+        return
+      }
+
+      // Emit progress update
+      this._emit({
+        step: 'scanning',
+        progress: { checked: results.length, total },
+        results: [...results],
+      })
+    }
+
+    // D-15: final check before emitting complete
+    if (gen !== this._generation || signal.aborted) {
+      return
+    }
+
+    this._emit({ step: 'complete', results })
+  }
+
+  /** Abort the current scan — increments generation, aborts controller, emits idle. */
+  abortScan(): void {
+    this._generation++
+    if (this._abortController) {
+      this._abortController.abort()
+      this._abortController = null
+    }
+    this._emit({ step: 'idle' })
+  }
+
+  /** Return the current ScanState. */
+  getState(): ScanState {
+    return this._currentState
+  }
+
+  /**
+   * Re-run membership check for a single group.
+   * Merges the updated result into the current complete state's results array.
+   * No-op if current state is not 'complete' or resolver returns null.
+   */
+  async retryGroup(dialogId: string): Promise<void> {
+    if (this._currentState.step !== 'complete') return
+
+    const resolved = this._resolver.getResolvedUser()
+    if (resolved === null) return
+
+    const inputUser = new Api.InputPeerUser({
+      userId: bigInt(resolved.id.toString()),
+      accessHash: bigInt(resolved.accessHash.toString()),
+    })
+
+    const groupsState = this._enumerator.getState()
+    if (groupsState.step !== 'loaded') return
+
+    const dialog = groupsState.dialogs.find(d => d.id === dialogId)
+    if (!dialog) return
+
+    let status: MembershipResultDTO['status']
+    try {
+      const isMember = await this._checkMembership(dialog, inputUser, resolved)
+      status = isMember ? 'member' : 'not-member'
+    } catch (_err) {
+      status = 'failed'
+    }
+
+    // Merge updated result into the existing results array
+    const updatedResults = this._currentState.results.map(r =>
+      r.dialogId === dialogId ? { ...r, status } : r
+    )
+
+    this._emit({ step: 'complete', results: updatedResults })
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Check membership for a single dialog.
+   *
+   * Dispatch:
+   *   - Supergroup/channel: channels.GetParticipant
+   *     - USER_NOT_PARTICIPANT error → false (not a member)
+   *     - ChannelParticipantLeft / ChannelParticipantBanned → false (RESEARCH Pitfall 1)
+   *     - Any other participant type → true
+   *   - Basic group: messages.GetFullChat
+   *     - Scan participants array by .userId.toString() === target id
+   *   - Unexpected errors are re-thrown (outer scan loop catches → status=failed)
+   */
+  private async _checkMembership(
+    dialog: AdminDialogDTO,
+    inputUser: Api.InputPeerUser,
+    resolved: { id: bigint; accessHash: bigint }
+  ): Promise<boolean> {
+    const entity = this._enumerator.getDialogEntity(dialog.id)
+
+    if (dialog.type === 'supergroup' || dialog.type === 'broadcast-channel') {
+      // Use channels.GetParticipant for supergroups and channels
+      // Entity provides the channel input peer
+      const channelInput = entity as { channelId?: { toString(): string } } | null
+      const channelId = channelInput?.channelId?.toString() ?? dialog.id
+
+      try {
+        const result = await this._governor.run(() =>
+          this._client.invoke(
+            new Api.channels.GetParticipant({
+              channel: new Api.InputChannel({
+                channelId: bigInt(channelId),
+                accessHash: bigInt.zero,
+              }),
+              participant: inputUser,
+            })
+          )
+        ) as { participant: { className?: string } }
+
+        const participant = result.participant
+        // RESEARCH Pitfall 1: check for non-member participant subtypes before declaring member
+        const className = participant?.className ?? ''
+        if (className === 'ChannelParticipantLeft' || className === 'ChannelParticipantBanned') {
+          return false
+        }
+        return true
+      } catch (err) {
+        // USER_NOT_PARTICIPANT → not a member (not an error)
+        if ((err as { errorMessage?: string })?.errorMessage === 'USER_NOT_PARTICIPANT') {
+          return false
+        }
+        // Re-throw other errors — outer loop marks as failed
+        throw err
+      }
+    }
+
+    if (dialog.type === 'basic-group') {
+      // Use messages.GetFullChat for basic groups
+      const result = await this._governor.run(() =>
+        this._client.invoke(
+          new Api.messages.GetFullChat({
+            chatId: bigInt(dialog.id),
+          })
+        )
+      ) as {
+        fullChat: {
+          participants?: {
+            participants?: Array<{ userId?: { toString(): string } }>
+          }
+        }
+      }
+
+      const participants = result.fullChat?.participants?.participants ?? []
+      const targetIdStr = resolved.id.toString()
+      return participants.some(p => p.userId?.toString() === targetIdStr)
+    }
+
+    // Unknown type — return false (safe default)
+    return false
+  }
+}

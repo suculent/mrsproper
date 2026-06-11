@@ -258,7 +258,8 @@ describe('scan — failure isolation', () => {
   it('per-group error sets status=failed, does not abort rest of scan', async () => {
     const dialogs = [makeDialog('1', 'supergroup'), makeDialog('2', 'supergroup')]
     const mockClient = createMockTelegramClient({})
-    // Make the first group throw an unexpected error
+    // Make the first group throw an unexpected error — use errorMessage so governor
+    // classifies it as UNKNOWN/fail (not NETWORK/retry which would cause retries)
     let callCount = 0
     mockClient.invoke = async (request: unknown): Promise<unknown> => {
       const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
@@ -266,7 +267,7 @@ describe('scan — failure isolation', () => {
       if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
         callCount++
         if (callCount === 1) {
-          throw new Error('UNEXPECTED_ERROR')
+          throw Object.assign(new Error('SOME_RPC_ERROR'), { errorMessage: 'SOME_RPC_ERROR' })
         }
         return { participant: { className: 'ChannelParticipant', userId: { toString: () => '99' } } }
       }
@@ -338,7 +339,8 @@ describe('retryGroup', () => {
         const channelId = channelInput?.channelId?.toString() ?? ''
         if (channelId === '1' && !firstGroupFailed) {
           firstGroupFailed = true
-          throw new Error('UNEXPECTED_ERROR')
+          // Use errorMessage so governor classifies as UNKNOWN/fail (not NETWORK/retry)
+          throw Object.assign(new Error('SOME_RPC_ERROR'), { errorMessage: 'SOME_RPC_ERROR' })
         }
         return { participant: { className: 'ChannelParticipant', userId: { toString: () => '99' } } }
       }
