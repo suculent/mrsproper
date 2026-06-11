@@ -208,35 +208,35 @@ export function TargetCard(): React.JSX.Element | null {
           </Alert>
         )}
 
-        {/* Footer row (D-11, D-14) — hidden in confirmed state */}
-        {!isConfirmed && (
-          <div className="mt-2 flex flex-row justify-between items-center">
-            {/* Change target button (D-14) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="text-label text-muted-foreground hover:text-foreground px-0"
-                  onClick={() => void targetActions.resetTarget()}
-                  type="button"
-                >
-                  Change target
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Clears this person and any group selections
-              </TooltipContent>
-            </Tooltip>
+        {/* Footer row (D-11, D-14) */}
+        <div className="mt-2 flex flex-row justify-between items-center">
+          {/* Change target button (D-14) — present in both resolved and confirmed states */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className="text-label text-muted-foreground hover:text-foreground px-0"
+                onClick={() => void targetActions.resetTarget()}
+                type="button"
+              >
+                Change target
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Clears this person and any group selections
+            </TooltipContent>
+          </Tooltip>
 
-            {/* Confirm CTA (D-11) */}
+          {/* Confirm CTA (D-11) — only shown in resolved (pre-confirm) state */}
+          {!isConfirmed && (
             <Button
               type="button"
               onClick={() => void targetActions.confirmTarget()}
             >
               Yes, this is the person
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </TooltipProvider>
   )
