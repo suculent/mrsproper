@@ -25,6 +25,13 @@ let currentState: GroupsStoreState = {
 
 const listeners = new Set<Listener>()
 
+// CR-03: tracks the scan step seen on the previous onScanState call.
+// Initialized null so the first 'complete' event (transitioning from 'scanning')
+// is correctly identified as the first-completion and triggers the pre-check rebuild.
+// Module-level (like currentState and listeners) so it persists across React renders
+// and hook re-subscriptions.
+let _prevScanStep: ScanState['step'] | null = null
+
 function notify(): void {
   for (const l of listeners) l()
 }
@@ -49,21 +56,36 @@ function startSubscriptions(): void {
   })
 
   scanStateSub = groupsClient.onScanState((s: ScanState) => {
-    // D-02, D-06: when scan completes, pre-check all verified-member actionable groups
     if (s.step === 'complete') {
-      const groups = currentState.groups
-      if (groups.step === 'loaded') {
-        const checkedDialogIds = new Set(
-          s.results
-            .filter((r) => r.status === 'member')
-            .map((r) => r.dialogId)
-            .filter((id) => groups.dialogs.find((d) => d.id === id)?.canAct)
-        )
-        setState({ scan: s, checkedDialogIds })
+      if (_prevScanStep !== 'complete') {
+        // D-02, D-06 / CR-03: first 'complete' transition (from 'scanning').
+        // Pre-check all verified-member actionable groups. checkedDialogIds is
+        // rebuilt only on this first completion — not on retry-complete — so that
+        // manual deselections the user made survive retryGroup() emissions.
+        const groups = currentState.groups
+        if (groups.step === 'loaded') {
+          const checkedDialogIds = new Set(
+            s.results
+              .filter((r) => r.status === 'member')
+              .map((r) => r.dialogId)
+              .filter((id) => groups.dialogs.find((d) => d.id === id)?.canAct)
+          )
+          setState({ scan: s, checkedDialogIds })
+          _prevScanStep = s.step
+          return
+        }
+      } else {
+        // CR-03: retry-complete — scan step was already 'complete' before this event.
+        // Update scan state without rebuilding checkedDialogIds to preserve manual
+        // deselections the user made since the last first-completion.
+        setState({ scan: s })
+        _prevScanStep = s.step
         return
       }
     }
+    // idle / scanning / error branches — update scan state and track step
     setState({ scan: s })
+    _prevScanStep = s.step
   })
 
   // Bootstrap current state from main on first subscription

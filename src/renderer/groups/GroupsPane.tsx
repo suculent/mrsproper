@@ -60,9 +60,12 @@ export function GroupsPane(): React.JSX.Element {
   // D-12: mode derivation
   const mode = targetState.target.step === 'confirmed' ? 'checklist' : 'browse'
 
-  // D-13: when mode changes to browse (target reset/change), abort any in-progress scan
+  // D-13: when mode changes to browse (target reset/change), abort any in-progress scan.
+  // CR-01-RENDERER: also fires when scan.step === 'complete' so that a completed scan
+  // from target A is aborted when the user resets/changes targets. Belt-and-suspenders
+  // alongside CR-01-MAIN (scanner.abortScan() in TARGET_RESET IPC handler).
   useEffect(() => {
-    if (mode === 'browse' && scan.step === 'scanning') {
+    if (mode === 'browse' && (scan.step === 'scanning' || scan.step === 'complete')) {
       void groupsActions.abortScan()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
