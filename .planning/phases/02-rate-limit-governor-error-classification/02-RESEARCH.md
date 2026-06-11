@@ -564,22 +564,25 @@ async function executeWithGovernorPolicy<T>(
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `floodSleepThreshold` be set to 0 or kept at 5?**
    - What we know: `threshold=5` was intentional for login (Phase 1 CONTEXT.md notes). `threshold=0` gives the governor full visibility over all FLOOD_WAIT events.
    - What's unclear: Whether sub-5-second FLOOD_WAITs during operational calls (Phase 3+) should be silently absorbed or emitted as countdown events.
    - Recommendation: Set `threshold=0` for maximum governor control. D-09 says "always emit countdown" — this requires the governor to see all waits. A sub-1s wait will emit a countdown; consumers (D-09: "Consumers decide whether to render sub-second/tiny waits") can filter.
+   - **RESOLVED: set to 0** — 02-03 Task 2 sets `floodSleepThreshold: 0` in `src/main/index.ts`. Governor has full visibility over all FLOOD_WAIT events; no silent GramJS absorption.
 
 2. **Serial queue: p-queue with bundling config, or hand-rolled?**
    - What we know: p-queue requires one config change (exclude from externalization). Hand-rolled is 4 lines, zero deps, covers Phase 2's concurrency=1 requirement exactly.
    - What's unclear: Whether Phase 5 will want p-queue's pause/resume for job-level FLOOD_WAIT suspension.
    - Recommendation: Hand-rolled for Phase 2. If Phase 5 needs pause/resume, add p-queue then. The hand-rolled version is easier to test and has no ESM configuration risk.
+   - **RESOLVED: hand-rolled serial queue** — 02-02 Task 2 implements `private _tail: Promise<void>` tail-chain pattern in `governor.ts`. p-queue not installed; no ESM bundling config change required.
 
 3. **Does `TimingSource` need `setTimeout`/`clearTimeout` added?**
    - What we know: Existing `TimingSource` has `setInterval`/`clearInterval`. Governor sleep uses `setTimeout`. `vi.useFakeTimers()` replaces globalThis.setTimeout globally.
    - What's unclear: Whether the planner wants explicit interface injection for sleep (cleaner test boundaries) or accepts global fake timer replacement.
    - Recommendation: Accept global fake timer replacement (approach b in Pitfall 4). No interface change needed. Document that governor tests must call `vi.useFakeTimers()`.
+   - **RESOLVED: no TimingSource extension** — 02-02 Task 2 uses `globalThis.setTimeout` directly for sleep. `vi.useFakeTimers()` global replacement covers governor sleeps in tests; `TimingSource` interface in `floodWait.ts` remains unchanged.
 
 ---
 
