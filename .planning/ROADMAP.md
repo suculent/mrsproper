@@ -102,7 +102,25 @@ Plans:
   3. When no avatar is available, user sees a clear no-photo fallback with the available identity details and can still choose to proceed (deliberate confirmation, not a dead end)
   4. When resolution fails, user gets a distinct, accurate message per cause: username not found, phone not in contacts, or no public profile
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1** *(Plans 01 and 02 run in parallel — no file overlap)*
+
+- [ ] 03-01-PLAN.md — Shared contracts: targetTypes.ts, extend channels.ts/opTypes.ts, extend operationErrors + test + mock client
+- [ ] 03-02-PLAN.md — Badge component (shadcn add) + RED test stubs: targetResolver.test.ts + targetChannels.test.ts
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — TargetResolver.ts (username + phone via ResolvePhone, bio, avatar) + targetChannels.ts (IPC handlers) — GREEN all tests
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-04-PLAN.md — Renderer wiring: targetClient.ts + targetStore.ts + extend preload/index.ts + wire TargetResolver in main/index.ts
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-05-PLAN.md — UI: resolveCopy.ts + TargetInput.tsx + TargetCard.tsx + replace stub region (has checkpoint)
+
 **UI hint**: yes
 
 ### Phase 4: Group Enumeration, Membership & Rights
@@ -172,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
-| 3. Target Resolution & Verification | 0/TBD | Not started | - |
+| 3. Target Resolution & Verification | 0/5 | Not started | - |
 | 4. Group Enumeration, Membership & Rights | 0/TBD | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
