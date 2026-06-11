@@ -4,10 +4,13 @@ import { TelegramClient } from 'telegram'
 import { StringSession } from 'telegram/sessions'
 import { SessionManager } from './telegram/SessionManager'
 import { TargetResolver } from './telegram/TargetResolver'
+import { GroupEnumerator } from './telegram/GroupEnumerator'
+import { MembershipScanner } from './telegram/MembershipScanner'
 import { RateLimitGovernor } from './telegram/governor'
 import { createSecretsStore } from './storage/secrets'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
 import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
+import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
@@ -22,10 +25,10 @@ function createWindow(): BrowserWindow {
   const isDark = nativeTheme.shouldUseDarkColors
 
   const mainWindow = new BrowserWindow({
-    width: 480,
-    height: 720,
-    minWidth: 400,
-    minHeight: 600,
+    width: 1280,
+    height: 800,
+    minWidth: 1080,
+    minHeight: 680,
     show: false,
     title: 'Mrs. Proper',
     backgroundColor: isDark ? '#0B1220' : '#FFFFFF',
@@ -163,6 +166,12 @@ app.whenReady().then(async () => {
     },
     onStateChange: (state: AuthState) => {
       emitAuthState(currentWin, state)
+      // D-08: eager group enumeration immediately after login (authorized state).
+      // enumerator is constructed after sm but before sm.initialize(), so by the
+      // time any authorized transition fires, enumerator is already in scope.
+      if (state.step === 'authorized') {
+        void enumerator.enumerateAtLogin()
+      }
     },
     onSessionWipe: () => {
       secretsStore.wipeSession()
@@ -194,6 +203,33 @@ app.whenReady().then(async () => {
     },
   })
   registerTargetChannels(currentWin, resolver)
+
+  // ── Wire GroupEnumerator ──────────────────────────────────────────────────
+  // Shares the same TelegramClient AND the same account-wide governor (WR-01).
+  // emitGroupsState closes over currentWin via lambda so re-activated windows
+  // keep receiving events without re-registering (WR-03).
+  const enumerator = new GroupEnumerator({
+    client: client as unknown as ConstructorParameters<typeof GroupEnumerator>[0]['client'],
+    governor,
+    onStateChange: (state) => {
+      emitGroupsState(currentWin, state)
+    },
+  })
+
+  // ── Wire MembershipScanner ────────────────────────────────────────────────
+  // Shares the same client, governor, and enumerator as above.
+  // Target is read from resolver.getResolvedUser() in main process only (T-04-07).
+  const scanner = new MembershipScanner({
+    client: client as unknown as ConstructorParameters<typeof MembershipScanner>[0]['client'],
+    governor,
+    enumerator,
+    resolver,
+    onStateChange: (state) => {
+      emitScanState(currentWin, state)
+    },
+  })
+
+  registerGroupChannels(currentWin, enumerator, scanner)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.

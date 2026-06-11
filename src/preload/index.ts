@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AuthState, FloodTick } from '../shared/authTypes'
 import type { TargetState } from '../shared/targetTypes'
+import type { GroupsState, ScanState } from '../shared/groupTypes'
 import type { GovernorEvent } from '../shared/opTypes'
 import {
   TARGET_RESOLVE,
@@ -9,6 +10,14 @@ import {
   TARGET_GET_STATE,
   TARGET_STATE,
   OP_GOVERNOR_EVENT,
+  GROUPS_GET_STATE,
+  GROUPS_STATE,
+  GROUPS_REFRESH,
+  SCAN_START,
+  SCAN_ABORT,
+  SCAN_RETRY_GROUP,
+  SCAN_STATE,
+  SCAN_GET_STATE,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -58,5 +67,35 @@ contextBridge.exposeInMainWorld('mrsproper', {
     const h = (_: unknown, e: GovernorEvent): void => cb(e)
     ipcRenderer.on(OP_GOVERNOR_EVENT, h)
     return () => ipcRenderer.removeListener(OP_GOVERNOR_EVENT, h)
+  },
+
+  // ── Group enumeration bridge (Phase 4, GRP-02) ────────────────────────────
+  // Zod-validated in groupChannels.ts before reaching GroupEnumerator —
+  // preload performs no additional transformation.
+  getGroupsState: (): Promise<GroupsState> =>
+    ipcRenderer.invoke(GROUPS_GET_STATE) as Promise<GroupsState>,
+  refreshGroups: (): Promise<GroupsState> =>
+    ipcRenderer.invoke(GROUPS_REFRESH) as Promise<GroupsState>,
+  onGroupsState: (cb: (s: GroupsState) => void): (() => void) => {
+    const h = (_: unknown, s: GroupsState): void => cb(s)
+    ipcRenderer.on(GROUPS_STATE, h)
+    return () => ipcRenderer.removeListener(GROUPS_STATE, h)
+  },
+
+  // ── Membership scan bridge (Phase 4, GRP-03) ─────────────────────────────
+  // scan:start accepts no payload — target is resolved from main-process TargetResolver (T-04-07).
+  // scan:retryGroup payload is Zod-validated and security-checked in groupChannels.ts (T-04-06).
+  startScan: (): Promise<ScanState> =>
+    ipcRenderer.invoke(SCAN_START) as Promise<ScanState>,
+  abortScan: (): Promise<ScanState> =>
+    ipcRenderer.invoke(SCAN_ABORT) as Promise<ScanState>,
+  retryScanGroup: (dialogId: string): Promise<void> =>
+    ipcRenderer.invoke(SCAN_RETRY_GROUP, { dialogId }) as Promise<void>,
+  getScanState: (): Promise<ScanState> =>
+    ipcRenderer.invoke(SCAN_GET_STATE) as Promise<ScanState>,
+  onScanState: (cb: (s: ScanState) => void): (() => void) => {
+    const h = (_: unknown, s: ScanState): void => cb(s)
+    ipcRenderer.on(SCAN_STATE, h)
+    return () => ipcRenderer.removeListener(SCAN_STATE, h)
   },
 })
