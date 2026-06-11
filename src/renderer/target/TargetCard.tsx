@@ -70,16 +70,22 @@ function getInitials(name: string): string {
 export function TargetCard(): React.JSX.Element | null {
   const { target } = useTargetStore()
 
+  // Rules of Hooks: ALL hooks must run unconditionally on every render — this
+  // component is mounted in idle/resolving states too (StubbedWorkflowRegions),
+  // so an early return before the memos would change the hook count between
+  // renders and crash React. Derive a nullable binding instead.
+  const t =
+    target.step === 'resolved' || target.step === 'confirmed' ? target.target : null
+  const avatarBytes = t?.avatar ?? null
+  const name = t?.name ?? ''
+
+  const avatarUrl = useMemo(() => bytesToDataUrl(avatarBytes), [avatarBytes])
+  const initials = useMemo(() => (name ? getInitials(name) : ''), [name])
+
   // Only render in resolved or confirmed states
-  if (target.step !== 'resolved' && target.step !== 'confirmed') return null
+  if (!t) return null
 
-  const t = target.target
   const isConfirmed = target.step === 'confirmed'
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const avatarUrl = useMemo(() => bytesToDataUrl(t.avatar), [t.avatar])
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const initials = useMemo(() => getInitials(t.name), [t.name])
   const avatarBg = getAvatarColor(t.id)
   const hasAvatar = Boolean(avatarUrl)
 
