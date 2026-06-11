@@ -19,7 +19,10 @@ directories:
 files:
   - out/**/*
   - "!**/.DS_Store"
-  - "!**/node_modules/**"
+  # Do NOT exclude node_modules: electron-vite externalizes runtime deps (e.g.
+  # `telegram`) from the main bundle, so electron-builder must bundle the production
+  # dependency tree into the asar. electron-builder includes prod deps automatically
+  # and omits devDependencies — excluding all node_modules broke `require('telegram')`.
 
 # macOS — APP-01
 mac:

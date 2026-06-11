@@ -33,13 +33,18 @@ function createWindow(): BrowserWindow {
     },
   })
 
-  // Apply dark mode class on first paint
-  nativeTheme.on('updated', () => {
+  // Drive the renderer's light/dark class from nativeTheme — the SAME source as
+  // the window backgroundColor above. The renderer's own prefers-color-scheme can
+  // disagree with nativeTheme in Electron, which left dark text on a dark window.
+  // Apply on first load and on every OS theme change.
+  const syncRendererTheme = (): void => {
     const dark = nativeTheme.shouldUseDarkColors
-    mainWindow.webContents.executeJavaScript(
-      `document.documentElement.classList.toggle('dark', ${dark})`
-    )
-  })
+    mainWindow.webContents
+      .executeJavaScript(`document.documentElement.classList.toggle('dark', ${dark})`)
+      .catch(() => {})
+  }
+  mainWindow.webContents.on('did-finish-load', syncRendererTheme)
+  nativeTheme.on('updated', syncRendererTheme)
 
   // Content-Security-Policy.
   // Production (packaged): strict — local bundle only, no remote connections. The renderer
@@ -122,6 +127,10 @@ app.whenReady().then(async () => {
     },
     onSessionWipe: () => {
       secretsStore.wipeSession()
+    },
+    onSessionPersist: (sessionString: string) => {
+      // Write the session to the encrypted on-disk store so it survives a restart.
+      secretsStore.persistSession(sessionString)
     },
     apiCreds: { apiId: API_ID, apiHash: API_HASH },
   })

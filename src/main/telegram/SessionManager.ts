@@ -91,6 +91,8 @@ export interface SessionManagerOptions {
   onStateChange: (state: AuthState) => void
   /** Called when the local session is wiped (after dead session detection or logout). */
   onSessionWipe?: () => void
+  /** Called to durably persist the session string (wired to the on-disk SecretsStore in production). */
+  onSessionPersist?: (sessionString: string) => void
   /** API credentials — used by AuthFlow for sendCode / signInWithPassword. */
   apiCreds?: { apiId: number; apiHash: string }
 }
@@ -102,6 +104,7 @@ export class SessionManager {
   private readonly _storage: SessionManagerStorage
   private readonly _emit: (state: AuthState) => void
   private readonly _onSessionWipe: (() => void) | undefined
+  private readonly _onSessionPersist: ((sessionString: string) => void) | undefined
   private readonly _apiCreds: { apiId: number; apiHash: string }
   private readonly _floodController: FloodWaitController
 
@@ -120,6 +123,7 @@ export class SessionManager {
       options.onStateChange(state)
     }
     this._onSessionWipe = options.onSessionWipe
+    this._onSessionPersist = options.onSessionPersist
     this._apiCreds = options.apiCreds ?? { apiId: 0, apiHash: '' }
     this._floodController = new FloodWaitController()
   }
@@ -324,6 +328,9 @@ export class SessionManager {
         return
       }
       this._encryptedSession = this._storage.encryptString(sessionString)
+      // Durably persist to the on-disk SecretsStore (in production) so the session
+      // survives an app restart. Without this the session lived only in memory.
+      this._onSessionPersist?.(sessionString)
     } catch {
       // ENCRYPTION_UNAVAILABLE or other error — in-memory only
     }
