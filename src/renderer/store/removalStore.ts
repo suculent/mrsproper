@@ -81,12 +81,23 @@ function subscribe(listener: Listener): () => void {
   }
 }
 
+// Snapshot identity must be stable between store changes — useSyncExternalStore
+// compares snapshots with Object.is, and a fresh object every call makes React
+// see an ever-changing store ("Maximum update depth exceeded" → tree unmount).
+let cachedSnapshot: { state: RemovalState; pendingJob: RemovalJobFile | null } = {
+  state: currentState,
+  pendingJob,
+}
+
 function getSnapshot(): { state: RemovalState; pendingJob: RemovalJobFile | null } {
-  return { state: currentState, pendingJob }
+  if (cachedSnapshot.state !== currentState || cachedSnapshot.pendingJob !== pendingJob) {
+    cachedSnapshot = { state: currentState, pendingJob }
+  }
+  return cachedSnapshot
 }
 
 function getServerSnapshot(): { state: RemovalState; pendingJob: RemovalJobFile | null } {
-  return { state: currentState, pendingJob }
+  return getSnapshot()
 }
 
 // Hook for components to access removal state and any pending incomplete job
