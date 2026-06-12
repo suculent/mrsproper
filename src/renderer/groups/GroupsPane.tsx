@@ -515,7 +515,7 @@ export function GroupsPane(): React.JSX.Element {
       <RemovalConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        severity="ban"
+        severity={removal.severity}
         targetId={targetId}
         targetName={targetName}
         targetUsername={targetUsername}

@@ -54,16 +54,17 @@ function makeAuditStore(dialogIds: string[] = []): AuditStore & {
 } {
   const checkpointCalls: Array<{ dialogId: string; outcome: RemovalGroupOutcome }> = []
   const setStatusCalls: Array<{ status: string; completedAt?: string }> = []
-  let initJobCalled = false
+  // IN-01: use an object so the getter reflects mutations made after the factory returns
+  const state = { initJobCalled: false }
   let _dialogIds = [...dialogIds]
   const outcomes: RemovalGroupOutcome[] = []
 
   return {
     checkpointCalls,
     setStatusCalls,
-    initJobCalled,
+    get initJobCalled() { return state.initJobCalled },
     initJob(job) {
-      initJobCalled = true
+      state.initJobCalled = true
       _dialogIds = [...job.dialogIds]
     },
     checkpoint(dialogId, outcome) {
