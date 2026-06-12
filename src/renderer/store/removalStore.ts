@@ -145,4 +145,23 @@ export const removalActions = {
       console.error('[removalStore] discardJob:', err)
     }
   },
+
+  /**
+   * WR-03: Resume a PEER_FLOOD-stopped job by re-reading the disk job file for
+   * authoritative remaining groups (not the stale in-memory pendingJob snapshot).
+   * Clears pendingJob via startRemoval() on successful dispatch.
+   */
+  async resumeJobFromDisk(): Promise<void> {
+    try {
+      const freshJob = await removalClient.getRemovalJob()
+      if (!freshJob || freshJob.status === 'complete') return
+      const remaining = freshJob.dialogIds.filter(
+        (id) => !freshJob.outcomes.find((o) => o.dialogId === id)
+      )
+      if (remaining.length === 0) return
+      await removalActions.startRemoval(freshJob.severity, remaining)
+    } catch (err) {
+      console.error('[removalStore] resumeJobFromDisk:', err)
+    }
+  },
 }

@@ -322,16 +322,10 @@ export function GroupsPane(): React.JSX.Element {
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    // Resume via ResumeJobDialog — set pendingJob flag will render it
-                    // The dialog handles resume semantics from the stored job
-                    if (pendingJob) {
-                      void removalActions.startRemoval(
-                        pendingJob.severity,
-                        pendingJob.dialogIds.filter(
-                          (id) => !pendingJob.outcomes.find((o) => o.dialogId === id)
-                        )
-                      )
-                    }
+                    // WR-03: re-read job from disk to get authoritative remaining groups
+                    // (in-memory pendingJob may be a stale on-launch snapshot).
+                    // startRemoval() will also clear pendingJob on successful dispatch (CR-05).
+                    void removalActions.resumeJobFromDisk()
                   }}
                 >
                   {removalCopy.peerFloodResumeLabel}
