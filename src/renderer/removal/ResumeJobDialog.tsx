@@ -47,7 +47,9 @@ export function ResumeJobDialog({
   }, [job.severity, remainingDialogIds, onOpenChange])
 
   return (
-    <Dialog open={open} onOpenChange={handleDiscard}>
+    // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the job.
+    // The job is only discarded via the explicit "Discard job" button (handleDiscard).
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
         className="sm:max-w-[400px]"
         aria-labelledby="resume-dialog-title"

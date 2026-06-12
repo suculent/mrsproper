@@ -111,6 +111,9 @@ export const removalActions = {
     try {
       const s = await removalClient.startRemoval(severity, dialogIds)
       setState(s)
+      // CR-05: clear pendingJob on successful dispatch so ResumeJobDialog unmounts
+      pendingJob = null
+      notify()
     } catch (err) {
       console.error('[removalStore] startRemoval:', err)
     }
