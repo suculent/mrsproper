@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { ScrollArea } from '@renderer/components/ui/scroll-area'
@@ -13,8 +14,6 @@ import type { AdminDialogDTO } from '@shared/groupTypes'
 import { removalActions } from '@renderer/store/removalStore'
 import { useGroupsStore } from '@renderer/store/groupsStore'
 import { useTargetStore } from '@renderer/store/targetStore'
-import { removalCopy } from '../removal/removalCopy'
-import { wizardCopy } from './wizardCopy'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from RemovalConfirmDialog.tsx per PATTERNS.md
@@ -66,10 +65,15 @@ export type PlannedGroupAction = {
 // Exported for unit testing — no jsdom dependency.
 // ---------------------------------------------------------------------------
 
+// Minimal translate-function type compatible with react-i18next's typed TFunction
+// and the identity fallback used in tests (no react context needed).
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string
+
 export function computePlannedActions(
   dialogs: AdminDialogDTO[],
   checkedIds: Set<string>,
-  severity: 'kick' | 'ban'
+  severity: 'kick' | 'ban',
+  t: TranslateFn = (key) => key
 ): PlannedGroupAction[] {
   return [...checkedIds]
     .map(id => dialogs.find(d => d.id === id))
@@ -82,10 +86,12 @@ export function computePlannedActions(
       const warning: PlannedGroupAction['warning'] = isBasic && severity === 'ban'
         ? 'rejoin-cant-be-blocked'
         : null
+      const groupBranch = isBasic ? 'basicGroup' : 'supergroup'
+      const severityBranch = severity === 'ban' ? 'Ban' : 'Kick'
       return {
         dialog: d,
         mechanic,
-        mechanicNote: wizardCopy.mechanicNote(d.type, severity),
+        mechanicNote: t(`mechanicNote.${groupBranch}${severityBranch}`),
         warning,
       }
     })
@@ -112,6 +118,8 @@ export function ReviewScreen({
   onConfirm,
   onBack,
 }: ReviewScreenProps): React.JSX.Element {
+  const { t } = useTranslation('wizard')
+  const { t: tR } = useTranslation('removal')
   const { groups, checkedDialogIds } = useGroupsStore()
   const { target: targetState } = useTargetStore()
 
@@ -138,8 +146,8 @@ export function ReviewScreen({
   const dialogs: AdminDialogDTO[] =
     groups.step === 'loaded' ? groups.dialogs : []
 
-  // Derive planned actions
-  const plannedActions = computePlannedActions(dialogs, checkedDialogIds, severity)
+  // Derive planned actions — cast t to the looser TranslateFn type accepted by the pure function
+  const plannedActions = computePlannedActions(dialogs, checkedDialogIds, severity, t as TranslateFn)
   const actionableCount = plannedActions.length
 
   // Count checked groups where canAct is false (no rights)
@@ -178,7 +186,7 @@ export function ReviewScreen({
         tabIndex={-1}
         className="text-heading font-semibold"
       >
-        {wizardCopy.reviewTitle}
+        {t('reviewTitle')}
       </h2>
 
       {/* Identity block: avatar + name + @username/ID */}
@@ -205,10 +213,10 @@ export function ReviewScreen({
 
       {/* Severity segmented control */}
       <div className="flex flex-col gap-2">
-        <span className="text-label font-semibold">{wizardCopy.severityLabel}</span>
+        <span className="text-label font-semibold">{t('severityLabel')}</span>
         <div
           role="radiogroup"
-          aria-label={wizardCopy.severityGroupAria}
+          aria-label={t('severityGroupAria')}
           className="flex rounded-md border border-border overflow-hidden"
         >
           <Button
@@ -219,7 +227,7 @@ export function ReviewScreen({
             className="rounded-none flex-1"
             onClick={() => onSeverityChange('kick')}
           >
-            {wizardCopy.severityKick}
+            {t('severityKick')}
           </Button>
           <Button
             role="radio"
@@ -229,34 +237,34 @@ export function ReviewScreen({
             className="rounded-none flex-1 border-l border-border"
             onClick={() => onSeverityChange('ban')}
           >
-            {wizardCopy.severityBan}
+            {t('severityBan')}
           </Button>
         </div>
 
         {/* Consequence line — min-h reserves two lines of space so toggling
             Kick/Ban never causes a layout shift even if the text wraps */}
         <p className="text-body text-muted-foreground min-h-[2.5rem]">
-          {removalCopy.severityLine(severity, actionableCount)}
+          {tR(`severityLine${severity === 'ban' ? 'Ban' : 'Kick'}`, { count: actionableCount })}
         </p>
       </div>
 
       {/* Totals line */}
       <div className="text-body">
         {actionableCount === 0 ? (
-          <span className="text-muted-foreground">{wizardCopy.totalsEmpty}</span>
+          <span className="text-muted-foreground">{t('totalsEmpty')}</span>
         ) : (
           <span>
-            <span className="font-semibold text-foreground">{wizardCopy.totalsRemoving(actionableCount)}</span>
+            <span className="font-semibold text-foreground">{t('totalsRemoving', { count: actionableCount })}</span>
             {noRightsCount > 0 && (
               <>
                 <span className="text-muted-foreground"> · </span>
-                <span className="text-muted-foreground">{wizardCopy.totalsExcluded(noRightsCount)}</span>
+                <span className="text-muted-foreground">{t('totalsExcluded', { count: noRightsCount })}</span>
               </>
             )}
             {cantBlockCount > 0 && (
               <>
                 <span className="text-muted-foreground"> · </span>
-                <span className="text-muted-foreground">{wizardCopy.totalsCantBlock(cantBlockCount)}</span>
+                <span className="text-muted-foreground">{t('totalsCantBlock', { count: cantBlockCount })}</span>
               </>
             )}
           </span>
@@ -265,7 +273,7 @@ export function ReviewScreen({
 
       {/* Group list — only checked + actionable groups */}
       <ScrollArea className="max-h-[40vh] border border-border rounded-md">
-        <ul aria-label={wizardCopy.groupListAria}>
+        <ul aria-label={t('groupListAria')}>
           {plannedActions.map(({ dialog, mechanicNote, warning }) => (
             <li
               key={dialog.id}
@@ -274,7 +282,7 @@ export function ReviewScreen({
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-label font-semibold text-foreground truncate">{dialog.title}</span>
                 <span className="text-label text-muted-foreground shrink-0">
-                  {dialog.memberCount != null ? wizardCopy.memberCount(dialog.memberCount) : ''}
+                  {dialog.memberCount != null ? t('memberCount', { count: dialog.memberCount }) : ''}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -291,22 +299,22 @@ export function ReviewScreen({
       {/* Footer: back + confirm */}
       <div className="flex justify-between items-center">
         <Button variant="outline" onClick={onBack} disabled={isDispatching}>
-          {wizardCopy.editSelection}
+          {t('editSelection')}
         </Button>
 
         <Button
           variant="destructive"
           onClick={handleConfirm}
           disabled={isDispatching || actionableCount === 0}
-          aria-label={wizardCopy.confirmAriaLabel(severity, targetName, actionableCount)}
+          aria-label={t(`confirmAriaLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })}
         >
           {isDispatching ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              {removalCopy.confirmDispatching}
+              {tR('confirmDispatching')}
             </>
           ) : (
-            wizardCopy.confirmLabel(severity, targetName, actionableCount)
+            t(`confirmLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
           )}
         </Button>
       </div>
