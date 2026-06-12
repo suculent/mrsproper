@@ -273,7 +273,26 @@ Plans:
   3. Execution does not start until the user gives one explicit confirmation on the review screen
   4. During and after execution the user sees live per-group progress and a final success/failure report in the wizard
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+
+**Wave 1** *(Plans 01 and 02 run in parallel — no file overlap)*
+
+- [ ] 06-01-PLAN.md — Shared contracts: removalTypes.ts floodWaitRemaining + SEVERITY_GET/SET channels + preload bridge + severityClient + Wave 0 test stubs
+- [ ] 06-02-PLAN.md — electron-store install + severityChannels.ts (main IPC) + RemovalExecutor _handleGovernorEvent flood plumbing + main/index.ts wiring
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-03-PLAN.md — wizardCopy.ts + StepIndicator.tsx + ReviewScreen.tsx (computePlannedActions, SAF-01/02/03) + reviewScreen.test.ts GREEN
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-04-PLAN.md — AppShell wizard stage machine + TargetCard onTargetConfirmed + GroupsPane: retire RemovalConfirmDialog, run-trigger re-wired, FLOOD_WAIT subline, structured summary band, Remove someone else
+
+**Wave 4 (human checkpoint)** *(blocked on Wave 3 completion)*
+
+- [ ] 06-05-PLAN.md — Human visual verification: full wizard flow, Review screen content, single gate, FLOOD_WAIT subline, Remove someone else
+
 **UI hint**: yes
 
 ### Phase 7: Packaging, Signing & Release
@@ -302,7 +321,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
-| 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
+| 6. UI Integration — Wizard, Safety Gates & Progress | 0/5 | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
