@@ -277,7 +277,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation — Auth, Session & Portable Shell | 5/5 | Complete   | 2026-06-11 |
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
-| 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-11 |
+| 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 3/5 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
