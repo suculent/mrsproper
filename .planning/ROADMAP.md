@@ -255,7 +255,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 05-06-PLAN.md — Renderer foundation: removalClient, removalStore, removalCopy, RemovalConfirmDialog, ResumeJobDialog
+- [x] 05-06-PLAN.md — Renderer foundation: removalClient, removalStore, removalCopy, RemovalConfirmDialog, ResumeJobDialog
 
 **Wave 5 (human checkpoint)** *(blocked on Wave 4)*
 
@@ -301,7 +301,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
-| 5. Removal Execution Engine | 5/7 | In Progress|  |
+| 5. Removal Execution Engine | 6/7 | In Progress|  |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
