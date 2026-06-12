@@ -60,7 +60,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **APP-01**: App runs as a portable desktop app on macOS
 - [x] **APP-02**: App runs as a portable desktop app on Windows
-- [ ] **APP-03**: macOS build is code-signed and notarized and Windows build is code-signed (launches without Gatekeeper/SmartScreen blocking)
+- [x] **APP-03**: macOS build is code-signed and notarized and Windows build is code-signed (launches without Gatekeeper/SmartScreen blocking)
 
 ## v1.5 Requirements
 
@@ -140,7 +140,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SAF-01 | Phase 6 | Complete |
 | SAF-02 | Phase 6 | Complete |
 | SAF-03 | Phase 6 | Complete |
-| APP-03 | Phase 7 | Pending |
+| APP-03 | Phase 7 | Complete |
 | LOC-01 | Phase 8 (v1.5) | Pending |
 | LOC-02 | Phase 8 (v1.5) | Pending |
 | LOC-03 | Phase 8 (v1.5) | Pending |

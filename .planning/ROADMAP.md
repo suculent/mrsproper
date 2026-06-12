@@ -311,7 +311,7 @@ Plans:
 
 **Wave 1** *(Electron downgrade — must complete before all other work)*
 
-- [ ] 07-01-PLAN.md — Downgrade Electron ^42.0.0 → exact pin 37.10.3 (D-16 Big Sur compat); verify plist LSMinimumSystemVersion=11.0, tsc green, vitest green, dev smoke
+- [x] 07-01-PLAN.md — Downgrade Electron ^42.0.0 → exact pin 37.10.3 (D-16 Big Sur compat); verify plist LSMinimumSystemVersion=11.0, tsc green, vitest green, dev smoke
 
 **Wave 2** *(blocked on Wave 1 — depends on Electron 37 installed)*
 
@@ -343,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 0/5 | Not started | - |
+| 7. Packaging, Signing & Release | 1/5 | In Progress|  |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
