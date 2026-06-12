@@ -13,9 +13,9 @@ import {
   DialogFooter,
 } from '@renderer/components/ui/dialog'
 import { Button } from '@renderer/components/ui/button'
+import { useTranslation } from 'react-i18next'
 import type { RemovalJobFile } from '@shared/removalTypes'
 import { removalActions } from '@renderer/store/removalStore'
-import { removalCopy } from './removalCopy'
 
 interface ResumeJobDialogProps {
   open: boolean
@@ -30,6 +30,7 @@ export function ResumeJobDialog({
   job,
   onResume,
 }: ResumeJobDialogProps): React.JSX.Element {
+  const { t } = useTranslation('removal')
   const processedCount = job.outcomes.length
   const totalCount = job.dialogIds.length
 
@@ -60,10 +61,10 @@ export function ResumeJobDialog({
       >
         <DialogHeader>
           <DialogTitle id="resume-dialog-title" className="text-heading">
-            {removalCopy.resumeTitle(job.targetName)}
+            {t('resumeTitle', { name: job.targetName })}
           </DialogTitle>
           <DialogDescription id="resume-dialog-desc" className="text-body">
-            {removalCopy.resumeBody(processedCount, totalCount)}
+            {t('resumeBody', { x: processedCount, n: totalCount })}
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +75,7 @@ export function ResumeJobDialog({
             onClick={handleDiscard}
             autoFocus
           >
-            {removalCopy.resumeNeutral}
+            {t('resumeNeutral')}
           </Button>
 
           {/* Resume removal — destructive */}
@@ -83,7 +84,7 @@ export function ResumeJobDialog({
             onClick={handleResume}
             aria-label="Resume removal job"
           >
-            {removalCopy.resumeDestructive}
+            {t('resumeDestructive')}
           </Button>
         </DialogFooter>
       </DialogContent>

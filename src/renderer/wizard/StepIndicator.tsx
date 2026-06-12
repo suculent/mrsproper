@@ -5,8 +5,8 @@
 
 import React from 'react'
 import { ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
-import { wizardCopy } from './wizardCopy'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,11 +25,12 @@ interface StepIndicatorProps {
 // ---------------------------------------------------------------------------
 
 export function StepIndicator({ currentStage }: StepIndicatorProps): React.JSX.Element {
+  const { t } = useTranslation('wizard')
   const currentIndex = STAGES.indexOf(currentStage)
 
   return (
     <nav
-      aria-label={wizardCopy.stepIndicatorAria}
+      aria-label={t('stepIndicatorAria')}
       className="px-4 py-2 border-b border-border bg-background shrink-0"
     >
       <ol className="flex items-center gap-1">
@@ -48,7 +49,7 @@ export function StepIndicator({ currentStage }: StepIndicatorProps): React.JSX.E
                   )}
                   {...(isCurrent ? { 'aria-current': 'step' as const } : {})}
                 >
-                  {wizardCopy.stageLabel[stage]}
+                  {t(`stageLabel.${stage}`)}
                 </span>
               </li>
               {i < STAGES.length - 1 && (
