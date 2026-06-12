@@ -1,12 +1,8 @@
-# electron-builder packaging configuration (APP-01, APP-02)
-# Produces UNSIGNED-but-runnable portable artifacts for macOS and Windows.
-# Code signing and notarization are Phase 7 (APP-03).
-#
-# macOS dev launch note (Pitfall 6):
-#   Unsigned builds trigger Gatekeeper on other machines.
-#   Launch method: right-click -> Open, or:
-#     xattr -dr com.apple.quarantine /path/to/MrsProper.app
-#   This is expected for dev/test builds. Real signing arrives in Phase 7.
+# electron-builder packaging configuration — signing + notarization active (APP-03)
+# Electron 37.10.3 — LSMinimumSystemVersion: 11.0 (Big Sur+) per D-16
+# macOS notarization triggered automatically when env vars are set:
+#   APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER
+# Dev builds without these env vars warn and skip notarization gracefully.
 
 appId: cz.corpus.mrsproper
 # productName is the binary stem: MrsProper.app on macOS, MrsProper.exe on Windows.
@@ -26,24 +22,27 @@ files:
   # dependency tree into the asar. electron-builder includes prod deps automatically
   # and omits devDependencies — excluding all node_modules broke `require('telegram')`.
 
-# macOS — APP-01
+# macOS — APP-01, APP-03 (signed + notarized)
+# Electron 37.10.3 — LSMinimumSystemVersion: 11.0 (Big Sur+) per D-16
 mac:
   target:
     - target: dmg
       arch:
         - x64
         - arm64
-    - target: zip
-      arch:
-        - x64
-        - arm64
-  # No identity/notarize — unsigned-runnable for dev/testing (Phase 7 adds signing)
-  identity: null
+  # identity key removed — auto-detect Developer ID Application cert from Keychain
+  # To pin explicitly: identity: "Developer ID Application: Matej Sychra (8VN6AYV2LV)"
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   # build/icon.png (round source, 1024x1024) — electron-builder derives icns from this
   icon: build/icon.png
   # CFBundleDisplayName provides the human-readable "Mrs. Proper" display name in Finder/Dock
   extendInfo:
     CFBundleDisplayName: "Mrs. Proper"
+  # notarize: not set = auto from APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER env vars
+  # Dev builds without env vars: notarizeIfProvided warns and skips gracefully
+  # To explicitly disable: notarize: false
 
 dmg:
   title: Mrs. Proper
@@ -55,7 +54,7 @@ dmg:
       type: link
       path: /Applications
 
-# Windows — APP-02
+# Windows — APP-02 (unsigned per D-05)
 win:
   target:
     - target: nsis
