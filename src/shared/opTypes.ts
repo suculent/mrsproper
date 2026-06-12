@@ -34,6 +34,13 @@ export type OperationErrorCode =
   // Phase 4.1 additions — non-retryable search errors (T-03-02 pattern).
   | 'GROUPS_NOT_LOADED'
   | 'SEARCH_QUERY_TOO_SHORT'
+  // Phase 5 additions — per-group removal failure codes (all disposition 'fail', T-03-02).
+  // USER_NOT_PARTICIPANT maps to 'already-gone' outcome in executor — NOT an error code.
+  // PEER_FLOOD is already classified as 'hard-stop' above — no new code needed here.
+  | 'RMV_TARGET_IS_ADMIN'   // USER_ADMIN_INVALID — target is admin; demote in Telegram first
+  | 'RMV_NO_RIGHTS'         // CHAT_ADMIN_REQUIRED — admin lost rights since scan
+  | 'RMV_USER_INVALID'      // USER_ID_INVALID — user no longer resolvable
+  | 'RMV_CHANNEL_PRIVATE'   // CHANNEL_PRIVATE — channel inaccessible
 // Phase 6 extends this with: USER_PRIVACY_RESTRICTED, CHAT_ADMIN_REQUIRED, etc.
 
 /**

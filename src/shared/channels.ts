@@ -46,6 +46,16 @@ export const SEARCH_GET_STATE = 'search:getState' as const
 export const SEARCH_STATE = 'search:state' as const       // push: main → renderer
 export const TARGET_RESOLVE_CANDIDATE = 'target:resolveCandidate' as const  // { userId: string }
 
+// Removal execution IPC channels (Phase 5, RMV-01/RMV-02/EXE-04/EXE-05).
+// Pattern mirrors the SCAN_* / SEARCH_* blocks above.
+export const REMOVAL_START        = 'removal:start' as const        // { severity, dialogIds }
+export const REMOVAL_ABORT        = 'removal:abort' as const
+export const REMOVAL_RETRY_GROUP  = 'removal:retryGroup' as const   // { dialogId }
+export const REMOVAL_GET_STATE    = 'removal:getState' as const
+export const REMOVAL_STATE        = 'removal:state' as const        // push: main → renderer
+export const REMOVAL_GET_JOB      = 'removal:getJob' as const
+export const REMOVAL_DISCARD_JOB  = 'removal:discardJob' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -75,4 +85,11 @@ export const CHANNELS = {
   SEARCH_GET_STATE,
   SEARCH_STATE,
   TARGET_RESOLVE_CANDIDATE,
+  REMOVAL_START,
+  REMOVAL_ABORT,
+  REMOVAL_RETRY_GROUP,
+  REMOVAL_GET_STATE,
+  REMOVAL_STATE,
+  REMOVAL_GET_JOB,
+  REMOVAL_DISCARD_JOB,
 } as const
