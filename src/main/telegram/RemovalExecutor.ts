@@ -140,7 +140,6 @@ export class RemovalExecutor {
 
     // Filter and order dialogs to match the requested dialogIds (preserve checklist order)
     const allDialogs = groupsState.dialogs
-    const dialogSet = new Set(params.dialogIds)
     const selectedDialogs = params.dialogIds
       .map(id => allDialogs.find(d => d.id === id))
       .filter((d): d is AdminDialogDTO => d !== undefined)
