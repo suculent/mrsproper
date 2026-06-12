@@ -24,7 +24,18 @@ const AVATAR_COLORS = [
 ]
 
 function getAvatarColor(seed: string): string {
-  return AVATAR_COLORS[Number(BigInt(seed) % 7n)]
+  try {
+    // WR-03: derive modulus from array length so adding/removing a colour stays in sync.
+    const len = BigInt(AVATAR_COLORS.length)
+    const idx = Number(BigInt(seed) % len)
+    // CR-02: Math.abs handles negative Telegram IDs (channel IDs encoded as negatives);
+    // ?? fallback guards against undefined for any edge case after abs.
+    return AVATAR_COLORS[Math.abs(idx)] ?? AVATAR_COLORS[0]
+  } catch {
+    // CR-02: BigInt() throws SyntaxError for non-decimal strings (empty, unexpected format).
+    // Fall back to a deterministic colour derived from string length.
+    return AVATAR_COLORS[seed.length % AVATAR_COLORS.length]
+  }
 }
 
 // ---------------------------------------------------------------------------
