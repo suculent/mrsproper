@@ -68,7 +68,11 @@ function getInitials(name: string): string {
 // TargetCard component
 // ---------------------------------------------------------------------------
 
-export function TargetCard(): React.JSX.Element | null {
+interface TargetCardProps {
+  onTargetConfirmed?: () => void
+}
+
+export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | null {
   const { target } = useTargetStore()
   const { state: removal } = useRemovalStore()
 
@@ -246,7 +250,7 @@ export function TargetCard(): React.JSX.Element | null {
           {!isConfirmed && (
             <Button
               type="button"
-              onClick={() => void targetActions.confirmTarget()}
+              onClick={async () => { await targetActions.confirmTarget(); props.onTargetConfirmed?.() }}
             >
               Yes, this is the person
             </Button>

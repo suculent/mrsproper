@@ -17,24 +17,31 @@ import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
 import { Alert, AlertDescription } from '../components/ui/alert'
 import { useGroupsStore, groupsActions } from '../store/groupsStore'
-import { useTargetStore } from '../store/targetStore'
+import { useTargetStore, targetActions } from '../store/targetStore'
 import { useRemovalStore, removalActions } from '../store/removalStore'
 import { GroupRow } from './GroupRow'
-import { RemovalConfirmDialog } from '../removal/RemovalConfirmDialog'
-import { ResumeJobDialog } from '../removal/ResumeJobDialog'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
+import type { WizardStage } from '../wizard/StepIndicator'
 import {
   SCAN_COPY,
   EMPTY_STATE_COPY,
   GROUP_ERROR_COPY,
 } from './groupsCopy'
 import { removalCopy } from '../removal/removalCopy'
+import { wizardCopy } from '../wizard/wizardCopy'
+import FloodCountdown from '../auth/FloodCountdown'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type SortMode = 'az' | 'size'
+
+interface GroupsPaneProps {
+  onNavigateToReview: () => void
+  onNavigateToTarget: () => void
+  stage: WizardStage
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,14 +63,13 @@ function sortDialogs(dialogs: AdminDialogDTO[], sort: SortMode): AdminDialogDTO[
 // GroupsPane component
 // ---------------------------------------------------------------------------
 
-export function GroupsPane(): React.JSX.Element {
+export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const { groups, scan, checkedDialogIds } = useGroupsStore()
   const targetState = useTargetStore()
-  const { state: removal, pendingJob } = useRemovalStore()
+  const { state: removal } = useRemovalStore()
 
   const [sort, setSort] = useState<SortMode>('az')
   const [filter, setFilter] = useState('')
-  const [confirmOpen, setConfirmOpen] = useState(false)
 
   // D-12: mode derivation
   const mode = targetState.target.step === 'confirmed' ? 'checklist' : 'browse'
@@ -94,9 +100,6 @@ export function GroupsPane(): React.JSX.Element {
   const confirmedTarget =
     targetState.target.step === 'confirmed' ? targetState.target.target : null
   const targetName = confirmedTarget?.name ?? ''
-  const targetId = confirmedTarget?.id ?? ''
-  const targetUsername = confirmedTarget?.username ?? null
-  const targetAvatar = confirmedTarget?.avatar ?? null
 
   // ---------------------------------------------------------------------------
   // Membership status helper
@@ -300,6 +303,12 @@ export function GroupsPane(): React.JSX.Element {
               style={{ width: `${pct}%` }}
             />
           </div>
+          {removal.floodWaitRemaining != null && removal.floodWaitRemaining > 0 && (
+            <span className="text-label text-muted-foreground flex items-baseline gap-1">
+              {removalCopy.floodWaitSubline}
+              <FloodCountdown remaining={removal.floodWaitRemaining} />
+            </span>
+          )}
         </div>
       )
     }
@@ -340,33 +349,52 @@ export function GroupsPane(): React.JSX.Element {
     // c. Summary band (complete or stopped)
     if (removal.step === 'complete' || removal.step === 'stopped') {
       const summary = removal.summary
+      const summaryParts = summary
+        ? removalCopy.summaryLineParts({
+            removed: summary.removed,
+            alreadyGone: summary.alreadyGone,
+            failed: summary.failed,
+            skipped: summary.skipped,
+          })
+        : []
       return (
-        <div className="px-4 py-2 shrink-0 border-t border-border flex flex-col gap-0.5" role="status">
-          {removal.step === 'stopped' && (
-            <span className="text-label text-muted-foreground">
-              {removalCopy.summaryStopped(removal.progress.processed, removal.progress.total)}
-            </span>
-          )}
-          {summary && (
-            <span className="text-label text-foreground font-semibold">
-              {removalCopy.summaryLine({
-                removed: summary.removed,
-                alreadyGone: summary.alreadyGone,
-                failed: summary.failed,
-                skipped: summary.skipped,
-              })}
-            </span>
-          )}
-          {summary && summary.failed > 0 && (
-            <span className="text-label text-muted-foreground">
-              {removalCopy.summaryFailed(summary.failed)}
-            </span>
-          )}
-          {summary && summary.completedAt && (
-            <span className="text-label text-muted-foreground">
-              {removalCopy.summaryTimestamp(summary.completedAt)}
-            </span>
-          )}
+        <div className="px-4 py-2 shrink-0 border-t border-border flex items-center justify-between gap-2 flex-wrap" role="status">
+          <div className="flex flex-col gap-1">
+            {removal.step === 'stopped' && (
+              <span className="text-label text-muted-foreground">
+                {removalCopy.summaryStopped(removal.progress.processed, removal.progress.total)}
+              </span>
+            )}
+            {summaryParts.length > 0 && (
+              <span className="text-label">
+                {summaryParts.map((part, i) => (
+                  <React.Fragment key={part.label}>
+                    {i > 0 && <span className="text-muted-foreground"> · </span>}
+                    <span className="font-semibold text-foreground">{part.count}</span>
+                    {' '}
+                    <span className="text-muted-foreground">{part.label}</span>
+                  </React.Fragment>
+                ))}
+              </span>
+            )}
+            {summary && summary.failed > 0 && (
+              <span className="text-label text-muted-foreground">
+                {removalCopy.summaryFailed(summary.failed)}
+              </span>
+            )}
+            {summary && summary.completedAt && (
+              <span className="text-label text-muted-foreground">
+                {removalCopy.summaryTimestamp(summary.completedAt)}
+              </span>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
+          >
+            {wizardCopy.removeSomeoneElse}
+          </Button>
         </div>
       )
     }
@@ -444,22 +472,22 @@ export function GroupsPane(): React.JSX.Element {
         {mode === 'checklist' && scan.step === 'complete' && checkedCount > 0 && (
           removal.step === 'idle' ? (
             <Button
-              variant="destructive"
+              variant="default"
               size="sm"
-              onClick={() => setConfirmOpen(true)}
-              aria-label={`Ban ${targetName} from ${checkedCount} group${checkedCount === 1 ? '' : 's'}`}
+              onClick={() => props.onNavigateToReview()}
+              aria-label={wizardCopy.runTriggerAria(checkedCount)}
             >
-              {removalCopy.runTriggerLabel('ban', checkedCount)}
+              {wizardCopy.runTriggerLabel(checkedCount)}
             </Button>
           ) : removal.step === 'stopping' ? (
             // Disabled (not hidden) while stopping — UI-SPEC
             <Button
-              variant="destructive"
+              variant="default"
               size="sm"
               aria-disabled="true"
               disabled={true}
             >
-              {removalCopy.runTriggerLabel('ban', checkedCount)}
+              {wizardCopy.runTriggerLabel(checkedCount)}
             </Button>
           ) : null
         )}
@@ -502,26 +530,6 @@ export function GroupsPane(): React.JSX.Element {
         )}
       </ScrollArea>
 
-      {/* ResumeJobDialog — on mount when incomplete job present */}
-      {pendingJob && pendingJob.status !== 'complete' && (
-        <ResumeJobDialog
-          open={true}
-          onOpenChange={() => {}}
-          job={pendingJob}
-        />
-      )}
-
-      {/* RemovalConfirmDialog — opened by run-trigger button */}
-      <RemovalConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        severity={removal.severity}
-        targetId={targetId}
-        targetName={targetName}
-        targetUsername={targetUsername}
-        targetAvatar={targetAvatar}
-        dialogIds={[...checkedDialogIds]}
-      />
     </div>
   )
 }
