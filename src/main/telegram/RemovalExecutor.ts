@@ -38,6 +38,7 @@ import type { RateLimitGovernor } from './governor'
 import type { GroupEnumerator } from './GroupEnumerator'
 import type { AuditStore } from '../storage/auditStore'
 import { classifyRpcError } from './operationErrors'
+import type { GovernorEvent } from '@shared/opTypes'
 
 // ── Injectable client interface ────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ export class RemovalExecutor {
   /** Generation token (D-15): incremented on execute() and abortExecution() to invalidate prior in-flight work. */
   private _generation = 0
   private _abortController: AbortController | null = null
+  /** True while a removal run is active — gates flood-tick forwarding (T-06-02-04). */
+  private _runActive = false
 
   constructor(options: RemovalExecutorOptions) {
     this._client = options.client
@@ -100,6 +103,21 @@ export class RemovalExecutor {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /**
+   * Called from main/index.ts governor.onEvent when _runActive is true.
+   * Captures flood-tick events during a removal run and emits them as floodWaitRemaining
+   * on RemovalState — scoped to removal-only flood events (RESEARCH Pitfall 6 / T-06-02-04).
+   *
+   * No-op when _runActive is false so that target-resolution and name-search governor
+   * events never leak into the removal state machine.
+   */
+  _handleGovernorEvent(event: GovernorEvent): void {
+    if (!this._runActive) return
+    if (event.type === 'flood-tick') {
+      this._emit({ ...this._currentState, floodWaitRemaining: event.remaining })
+    }
+  }
+
+  /**
    * Execute the removal run across the specified dialog IDs.
    *
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — NO renderer
@@ -111,6 +129,8 @@ export class RemovalExecutor {
   async execute(params: { severity: 'kick' | 'ban'; dialogIds: string[] }): Promise<void> {
     // D-15: increment generation to invalidate any prior in-flight run
     const gen = ++this._generation
+    // Phase 6 flood plumbing: mark run active so _handleGovernorEvent forwards flood-ticks
+    this._runActive = true
 
     // Create a new AbortController for this run
     this._abortController = new AbortController()
@@ -119,10 +139,12 @@ export class RemovalExecutor {
     // Read target from resolver (T-05-04-B: never from renderer payload)
     const resolved = this._resolver.getResolvedUser()
     if (resolved === null) {
+      this._runActive = false
       this._emit({
         ...this._currentState,
         step: 'idle',
         severity: params.severity,
+        floodWaitRemaining: null,
       })
       return
     }
@@ -130,10 +152,12 @@ export class RemovalExecutor {
     // Get dialogs from enumerator
     const groupsState = this._enumerator.getState()
     if (groupsState.step !== 'loaded') {
+      this._runActive = false
       this._emit({
         ...this._currentState,
         step: 'idle',
         severity: params.severity,
+        floodWaitRemaining: null,
       })
       return
     }
@@ -194,6 +218,7 @@ export class RemovalExecutor {
           outcomes.push(skipped)
         }
         this._auditStore.setStatus('stopped')
+        this._runActive = false
         this._emit({
           step: 'stopped',
           severity: params.severity,
@@ -202,11 +227,14 @@ export class RemovalExecutor {
           progress: { processed: outcomes.filter(o => o.status !== 'skipped').length, total },
           outcomes: [...outcomes],
           summary: this._buildSummary(outcomes, new Date().toISOString()),
+          floodWaitRemaining: null,
         })
         return
       }
 
-      // Emit running state with current group before the API call (EXE-04)
+      // Emit running state with current group before the API call (EXE-04).
+      // floodWaitRemaining is reset to null here so the renderer clears any
+      // prior flood countdown after each group's governor.run() resolves (SAF-02).
       this._emit({
         step: 'running',
         severity: params.severity,
@@ -215,6 +243,7 @@ export class RemovalExecutor {
         progress: { processed: outcomes.length, total },
         outcomes: [...outcomes],
         currentGroupId: dialog.id,
+        floodWaitRemaining: null,
       })
 
       let outcome: RemovalGroupOutcome
@@ -227,6 +256,7 @@ export class RemovalExecutor {
           // Hard-stop: do NOT mark remaining groups as skipped (resumable)
           // Do NOT checkpoint the failed group either
           this._auditStore.setStatus('hard-stopped')
+          this._runActive = false
           this._emit({
             step: 'hard-stopped',
             severity: params.severity,
@@ -235,6 +265,7 @@ export class RemovalExecutor {
             progress: { processed: outcomes.length, total },
             outcomes: [...outcomes],
             summary: this._buildSummary(outcomes, new Date().toISOString()),
+            floodWaitRemaining: null,
           })
           return
         }
@@ -257,6 +288,7 @@ export class RemovalExecutor {
           outcomes.push(skipped)
         }
         this._auditStore.setStatus('stopped')
+        this._runActive = false
         this._emit({
           step: 'stopped',
           severity: params.severity,
@@ -265,6 +297,7 @@ export class RemovalExecutor {
           progress: { processed: outcomes.filter(o => o.status !== 'skipped').length, total },
           outcomes: [...outcomes],
           summary: this._buildSummary(outcomes, new Date().toISOString()),
+          floodWaitRemaining: null,
         })
         return
       }
@@ -291,6 +324,7 @@ export class RemovalExecutor {
           outcomes.push(skipped)
         }
         this._auditStore.setStatus('stopped')
+        this._runActive = false
         this._emit({
           step: 'stopped',
           severity: params.severity,
@@ -299,6 +333,7 @@ export class RemovalExecutor {
           progress: { processed: outcomes.filter(o => o.status !== 'skipped').length, total },
           outcomes: [...outcomes],
           summary: this._buildSummary(outcomes, new Date().toISOString()),
+          floodWaitRemaining: null,
         })
         return
       }
@@ -311,6 +346,7 @@ export class RemovalExecutor {
 
     const completedAt = new Date().toISOString()
     this._auditStore.setStatus('complete', completedAt)
+    this._runActive = false
     this._emit({
       step: 'complete',
       severity: params.severity,
@@ -319,6 +355,7 @@ export class RemovalExecutor {
       progress: { processed: outcomes.length, total },
       outcomes: [...outcomes],
       summary: this._buildSummary(outcomes, completedAt),
+      floodWaitRemaining: null,
     })
   }
 
