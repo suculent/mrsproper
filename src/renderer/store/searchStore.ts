@@ -37,13 +37,18 @@ function startSubscriptions(): void {
     setState(s)
   })
 
-  // Bootstrap current state from main on first subscription
+  // Bootstrap current state from main on first subscription.
+  // WR-04: only apply if no push-state has arrived since we registered the listener
+  // (push arrives first → bootstrap overwriting it would flicker state backwards).
   searchClient.getSearchState().then((s: SearchState) => {
-    setState(s)
+    if (currentState.step === 'idle') {
+      setState(s)
+    }
   }).catch(console.error)
 }
 
 function stopSubscriptions(): void {
+  if (refCount <= 0) return  // guard against underflow — prevents refCount going negative
   refCount--
   if (refCount > 0) return
   searchStateSub?.()
@@ -87,7 +92,10 @@ export const searchActions = {
       const s = await searchClient.startSearch(query)
       setState(s)
     } catch (err) {
+      // Surface IPC/Zod errors as a terminal search error state instead of
+      // eating them — renderer must see an error step, not silence.
       console.error('[searchStore] startSearch:', err)
+      setState({ step: 'error', code: 'UNKNOWN' })
     }
   },
 
