@@ -169,7 +169,7 @@ export function ReviewScreen({
   return (
     <section
       aria-labelledby="review-heading"
-      className="max-w-2xl mx-auto px-4 pt-8 flex flex-col gap-6"
+      className="w-full max-w-2xl mx-auto px-4 pt-8 flex flex-col gap-6"
     >
       {/* Title */}
       <h2
