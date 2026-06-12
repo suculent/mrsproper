@@ -36,7 +36,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   // Severity state — rehydrated from electron-store on mount
   // ---------------------------------------------------------------------------
 
-  const [severity, setSeverity] = useState<'kick' | 'ban'>('kick')
+  const [severity, setSeverity] = useState<'kick' | 'ban'>('ban')
 
   useEffect(() => {
     severityClient.getSeverity().then(setSeverity).catch(() => {})

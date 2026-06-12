@@ -39,7 +39,7 @@ let _store: SeverityStore | null = null
 async function getStore(): Promise<SeverityStore> {
   if (!_store) {
     const { default: Store } = await import('electron-store')
-    _store = new Store<{ severity: 'kick' | 'ban' }>({ defaults: { severity: 'kick' } })
+    _store = new Store<{ severity: 'kick' | 'ban' }>({ defaults: { severity: 'ban' } })
   }
   return _store
 }
@@ -51,7 +51,7 @@ async function getStore(): Promise<SeverityStore> {
  *
  * Handlers (invoke — request/response):
  *   SEVERITY_GET — returns the persisted severity value ('kick' | 'ban');
- *                  defaults to 'kick' on first launch (electron-store default).
+ *                  defaults to 'ban' on first launch (electron-store default).
  *   SEVERITY_SET — Zod-validates the payload, writes the value to the store,
  *                  and returns the now-current severity value.
  *
@@ -62,7 +62,7 @@ export function registerSeverityChannels(): void {
   // ── Handle: severity:get ───────────────────────────────────────────────
   ipcMain.handle(SEVERITY_GET, async () => {
     const store = await getStore()
-    return store.get('severity', 'kick')
+    return store.get('severity', 'ban')
   })
 
   // ── Handle: severity:set ───────────────────────────────────────────────
