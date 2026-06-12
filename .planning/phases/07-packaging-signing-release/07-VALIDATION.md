@@ -1,8 +1,8 @@
 ---
 phase: 7
 slug: packaging-signing-release
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-12
 ---
@@ -39,7 +39,15 @@ created: 2026-06-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | | | APP-03 | | | | | | ⬜ pending |
+| 07-01-01 | 01 | 1 | APP-03 | — | Exact electron pin 37.10.3 (no caret — no silent upgrade past Big Sur boundary) | CLI | `node -p "require('./package.json').devDependencies.electron"` outputs `37.10.3`; plist grep outputs `LSMinimumSystemVersion … 11.0` | ✅ | ⬜ pending |
+| 07-01-02 | 01 | 1 | APP-03 | — | N/A | build+test | `npx tsc --build --force` exits 0; `npm test` exits 0 | ✅ | ⬜ pending |
+| 07-02-01 | 02 | 2 | APP-03 | T: unsigned/tampered artifact | `identity: null` removed → signing enabled; hardenedRuntime true | CLI | `grep -c "identity: null" electron-builder.yml` = 0; `grep -c "target: zip"` = 0; hardenedRuntime + entitlements greps | ✅ | ⬜ pending |
+| 07-02-02 | 02 | 2 | APP-03 | T: credential leak (.p8/APPLE_API_*) | Credentials only in gitignored .env; .env.example documents var names without values | CLI | entitlements plist greps (allow-jit, allow-unsigned-executable-memory, disable-library-validation); version = 0.9.0; APPLE_API_* in .env.example; `npm test` | ✅ | ⬜ pending |
+| 07-03-01 | 03 | 3 | APP-03 | T: credential leak; unsigned artifact | release.sh sources .env (never echoes secrets), gates on tsc --build --force, validates with stapler | CLI | `bash -n scripts/release.sh`; greps for `source .env`, `tsc --build --force`, `APPLE_API_KEY`, `stapler validate`, `no-git-tag-version` | ✅ | ⬜ pending |
+| 07-03-02 | 03 | 3 | APP-03 | T: SmartScreen confusion (D-05 accepted risk) | README documents unsigned-Windows "More info → Run anyway" honestly | CLI | README greps: Big Sur/11.0 minimum, "more info", "run anyway"; `npm test` | ✅ | ⬜ pending |
+| 07-04-01 | 04 | 4 | APP-03 | T: notarization failure / wrong Electron | Pre-flight: .env present, APPLE_API_KEY non-empty, Developer ID cert in keychain, Electron plist = 11.0 | CLI | `test -f .env`; APPLE_API_KEY non-empty check; `security find-identity` Developer ID grep; plist grep 11.0 | ✅ | ⬜ pending |
+| 07-04-02 | 04 | 4 | APP-03 | — | checkpoint:human-verify — notarytool Accepted, spctl/stapler pass on built artifacts | manual | — | — | ⬜ pending |
+| 07-05-01 | 05 | 5 | APP-03 | — | checkpoint:human-action — 4-machine UAT (ARM Mac, Intel Mac, Big Sur 11.7.10, Windows VM) | manual | — | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -74,11 +82,11 @@ Existing infrastructure covers all phase requirements — vitest + tsc are insta
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies (7 auto tasks verified; 2 checkpoint tasks are human-gated by design)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none — existing infra suffices)
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-12 (plan-checker pass: 0 blockers)

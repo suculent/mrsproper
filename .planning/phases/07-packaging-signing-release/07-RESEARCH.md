@@ -737,22 +737,22 @@ Source:       security find-identity -v -p codesigning (verified on dev machine)
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where will the .p8 key file be stored?**
    - What we know: `APPLE_API_KEY` must be an absolute path to the file. The file must NOT be committed.
    - What's unclear: Whether to store it inside the project repo (gitignored) or in a fixed location like `~/.apple-keys/`.
-   - Recommendation: Store outside the repo at a fixed absolute path (e.g., `~/.credentials/mrsproper/AuthKey_XXXXXXXXXX.p8`). The .env file already uses absolute paths for API credentials. Avoids accidental git-add.
+   - RESOLVED: Store outside the repo at a fixed absolute path (e.g., `~/.credentials/mrsproper/AuthKey_XXXXXXXXXX.p8`). The .env file already uses absolute paths for API credentials. Avoids accidental git-add.
 
 2. **Does the Intel Mac need to be a physical machine or is a VM sufficient?**
    - What we know: D-13 requires ARM Mac + Intel Mac + Big Sur Mac + Windows VM. The user confirmed "all three are available."
    - What's unclear: Whether the Intel Mac and the Big Sur Mac are the same machine, and whether it is physical or a VM.
-   - Recommendation: Physical machine is preferred for notarization testing (Gatekeeper behavior can differ in VMs depending on SIP settings). However, a VM with SIP enabled will work for the D-14 smoke test.
+   - RESOLVED: Physical machine is preferred for notarization testing (Gatekeeper behavior can differ in VMs depending on SIP settings). However, a VM with SIP enabled will work for the D-14 smoke test.
 
 3. **Is the Big Sur machine Intel or Apple Silicon?**
    - What we know: macOS 11.7.10 runs on both x64 and arm64 Macs; both Electron 37 DMG arches support Big Sur.
    - What's unclear: Which DMG to hand the admin — x64 or arm64.
-   - Recommendation: Ask or check before distribution. If unknown, distribute both and let her try the arm64 one first (Apple Silicon Macs are more common at this point, and arm64 is needed by newer Apple Silicon even on Big Sur). Both will work on her machine as long as the arch matches.
+   - RESOLVED: Ask or check before distribution. If unknown, distribute both and let her try the arm64 one first (Apple Silicon Macs are more common at this point, and arm64 is needed by newer Apple Silicon even on Big Sur). Both will work on her machine as long as the arch matches.
 
 ---
 
