@@ -1,10 +1,11 @@
 ---
 phase: 6
 slug: ui-integration-wizard
-status: draft
+status: approved
 shadcn_initialized: true
 preset: "new-york/slate/css-variables/lucide"
 created: 2026-06-12
+reviewed_at: 2026-06-12
 ---
 
 # Phase 6 — UI Design Contract
