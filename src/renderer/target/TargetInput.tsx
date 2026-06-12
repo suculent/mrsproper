@@ -18,14 +18,7 @@ import FloodCountdown from '@renderer/auth/FloodCountdown'
 import { cn } from '@renderer/lib/utils'
 import { useTargetStore, targetActions } from '@renderer/store/targetStore'
 import { useSearchStore, searchActions } from '@renderer/store/searchStore'
-import {
-  getResolveCopy,
-  INVALID_USERNAME_FORMAT_COPY,
-  INVALID_PHONE_FORMAT_COPY,
-  PHONE_MODE_DISCLOSURE_HINT,
-  FLOOD_WAIT_SUBTEXT,
-} from './resolveCopy'
-import { SEARCH_COPY } from './searchCopy'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // Mode detection types
@@ -121,6 +114,7 @@ function buildDispatchValue(
 // ---------------------------------------------------------------------------
 
 export function TargetInput(): React.JSX.Element {
+  const { t } = useTranslation('target')
   const { target, governorFloodRemaining } = useTargetStore()
   const search = useSearchStore()
   const [rawInput, setRawInput] = useState('')
@@ -141,7 +135,7 @@ export function TargetInput(): React.JSX.Element {
 
   // Server error from target state
   const serverError =
-    target.step === 'error' ? getResolveCopy(target.code) : null
+    target.step === 'error' ? t(`resolveError.${target.code}`) : null
   const displayError = localError ?? serverError
 
   // ---------------------------------------------------------------------------
@@ -185,7 +179,7 @@ export function TargetInput(): React.JSX.Element {
       if (mode === 'name') {
         const trimmed = normalized.trim()
         if (trimmed.length < 2) {
-          setLocalError(SEARCH_COPY.minLengthError)
+          setLocalError(t('search.minLengthError'))
           return
         }
         setLocalError(null)
@@ -197,14 +191,14 @@ export function TargetInput(): React.JSX.Element {
       if (mode === 'username') {
         const valid = /^[a-zA-Z0-9_]{5,32}$/.test(normalized)
         if (!valid) {
-          setLocalError(INVALID_USERNAME_FORMAT_COPY)
+          setLocalError(t('invalidUsernameFormat'))
           return
         }
       } else if (mode === 'phone-bare' || mode === 'phone-international') {
         const dispatchVal = buildDispatchValue(normalized, mode, country)
         const valid = isValidPhoneNumber(dispatchVal, country.code as CountryCode)
         if (!valid) {
-          setLocalError(INVALID_PHONE_FORMAT_COPY)
+          setLocalError(t('invalidPhoneFormat'))
           return
         }
       }
@@ -334,25 +328,25 @@ export function TargetInput(): React.JSX.Element {
         {/* Aria-live announcement for mode changes (for screen readers) */}
         <span className="sr-only" aria-live="polite">
           {mode === 'name'
-            ? 'Name search mode detected'
+            ? t('nameModeAria')
             : mode === 'username'
-              ? 'Username mode detected'
+              ? t('usernameModeAria')
               : mode === 'phone-bare' || mode === 'phone-international'
-                ? 'Phone mode detected'
+                ? t('phoneModeAria')
                 : ''}
         </span>
 
         {/* Phone disclosure hint (D-10) — shown when phone mode is active */}
         {isPhoneMode && (
           <p id="phone-hint" className="text-label text-muted-foreground">
-            {PHONE_MODE_DISCLOSURE_HINT}
+            {t('phoneModeDisclosureHint')}
           </p>
         )}
 
         {/* Name-mode hint — shown when name mode is active */}
         {isNameMode && (
           <p className="text-label text-muted-foreground">
-            {SEARCH_COPY.nameHint}
+            {t('search.nameHint')}
           </p>
         )}
 
@@ -371,7 +365,7 @@ export function TargetInput(): React.JSX.Element {
         {/* FLOOD_WAIT subtext (D-17) */}
         {isFlood && (
           <p id="flood-subtext" className="text-label text-muted-foreground">
-            {FLOOD_WAIT_SUBTEXT}
+            {t('floodWaitSubtext')}
           </p>
         )}
       </div>
@@ -384,14 +378,14 @@ export function TargetInput(): React.JSX.Element {
           isFlood
             ? `Wait ${governorFloodRemaining} seconds before trying again`
             : isResolving
-              ? 'Finding person…'
-              : 'Find person'
+              ? t('findingPerson')
+              : t('findPerson')
         }
       >
         {isResolving ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            Find person
+            {t('findPerson')}
           </>
         ) : isFlood ? (
           <>
@@ -399,7 +393,7 @@ export function TargetInput(): React.JSX.Element {
             <FloodCountdown remaining={governorFloodRemaining} />
           </>
         ) : (
-          'Find person'
+          t('findPerson')
         )}
       </Button>
     </form>

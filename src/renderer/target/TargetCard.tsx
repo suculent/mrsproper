@@ -19,6 +19,7 @@ import {
 import { useTargetStore, targetActions } from '@renderer/store/targetStore'
 import { useRemovalStore } from '@renderer/store/removalStore'
 import { cn } from '@renderer/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette (RESEARCH Pattern, UI-SPEC — 7 hues for deterministic color)
@@ -74,6 +75,7 @@ interface TargetCardProps {
 }
 
 export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | null {
+  const { t: tTr } = useTranslation('target')
   const { target } = useTargetStore()
   const { state: removal } = useRemovalStore()
 
@@ -243,8 +245,8 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
             </TooltipTrigger>
             <TooltipContent>
               {isRemovalRunning
-                ? 'Stop the removal first'
-                : 'Clears this person and any group selections'}
+                ? tTr('stopRemovalFirst')
+                : tTr('clearTargetTooltip')}
             </TooltipContent>
           </Tooltip>
 

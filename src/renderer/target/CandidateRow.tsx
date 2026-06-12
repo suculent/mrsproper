@@ -7,7 +7,8 @@ import { Loader2, Ghost } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { cn } from '@renderer/lib/utils'
 import type { CandidateDTO } from '@shared/searchTypes'
-import { formatFoundIn } from './searchCopy'
+import { formatFoundInTitles } from '@renderer/lib/format'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from GroupRow/TargetCard — avoids premature abstraction per PATTERNS.md
@@ -85,6 +86,7 @@ export function CandidateRow({
   isSelecting,
   disabled,
 }: CandidateRowProps): React.JSX.Element {
+  const { t } = useTranslation('target')
   const avatarUrl = bytesToDataUrl(candidate.avatar)
   const initials = candidate.name ? getInitials(candidate.name) : ''
   const avatarBg = getAvatarColor(candidate.id)
@@ -93,8 +95,12 @@ export function CandidateRow({
     ? `@${candidate.username} · ID ${candidate.id}`
     : `ID ${candidate.id}`
 
-  const foundInText = formatFoundIn(candidate.foundIn, 2)
-  const foundInFull = candidate.foundIn.join(', ')
+  const titles = candidate.foundIn
+  const overflow = Math.max(0, titles.length - 2)
+  const titleStr = formatFoundInTitles(titles)
+  const overflowStr = overflow > 0 ? ' ' + t('foundInMore', { count: overflow }) : ''
+  const foundInText = titleStr ? titleStr + overflowStr : ''
+  const foundInFull = titles.join(', ')
 
   return (
     <button
@@ -105,7 +111,7 @@ export function CandidateRow({
         'disabled:pointer-events-none disabled:opacity-50'
       )}
       disabled={disabled || isSelecting}
-      aria-label={`${candidate.name} — found in ${candidate.foundIn.length} of your groups`}
+      aria-label={t('candidateRowAria', { name: candidate.name, count: candidate.foundIn.length })}
       onClick={() => onSelect(candidate.id)}
     >
       {/* Avatar (36px per UI-SPEC) */}

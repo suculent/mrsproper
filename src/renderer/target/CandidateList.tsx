@@ -10,13 +10,14 @@ import { useSearchStore, searchActions, getLastQuery } from '@renderer/store/sea
 import { useTargetStore } from '@renderer/store/targetStore'
 import { useGroupsStore } from '@renderer/store/groupsStore'
 import { CandidateRow } from './CandidateRow'
-import { SEARCH_COPY, SEARCH_ERROR_COPY } from './searchCopy'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // CandidateList component
 // ---------------------------------------------------------------------------
 
 export function CandidateList(): React.JSX.Element | null {
+  const { t } = useTranslation('target')
   const search = useSearchStore()
   const { governorFloodRemaining } = useTargetStore()
   const { groups } = useGroupsStore()
@@ -51,7 +52,7 @@ export function CandidateList(): React.JSX.Element | null {
         <div role="status" aria-live="polite" className="space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-label text-muted-foreground">
-              {SEARCH_COPY.searching(search.progress.searched, search.progress.total)}
+              {t('search.searching', { x: search.progress.searched, total: search.progress.total })}
             </span>
             <Button
               variant="ghost"
@@ -77,14 +78,14 @@ export function CandidateList(): React.JSX.Element | null {
       {/* A2. FLOOD_WAIT subline — shown during search when governor is throttling */}
       {search.step === 'searching' && governorFloodRemaining > 0 && (
         <p className="text-label font-mono text-muted-foreground">
-          {SEARCH_COPY.floodSubline}
+          {t('search.floodSubline')}
         </p>
       )}
 
       {/* B. Stopped line — shown when search was aborted */}
       {search.step === 'stopped' && (
         <p className="text-label text-muted-foreground">
-          {SEARCH_COPY.stopped(candidates.length)}
+          {t('search.stopped', { n: candidates.length })}
         </p>
       )}
 
@@ -110,14 +111,14 @@ export function CandidateList(): React.JSX.Element | null {
       {/* D. Cap notice — shown when results hit 100 */}
       {candidates.length >= 100 && (
         <p className="text-label text-muted-foreground px-4 py-2">
-          {SEARCH_COPY.capNotice}
+          {t('search.capNotice')}
         </p>
       )}
 
       {/* E. Soft failure note — shown when some groups errored after scan end */}
       {errorCount > 0 && (search.step === 'complete' || search.step === 'stopped') && (
         <p className="text-label text-muted-foreground">
-          {SEARCH_COPY.failedN(errorCount)}
+          {t('search.failedN', { count: errorCount })}
         </p>
       )}
 
@@ -125,10 +126,10 @@ export function CandidateList(): React.JSX.Element | null {
       {search.step === 'complete' && candidates.length === 0 && (
         <div className="px-4 py-8 flex flex-col gap-1">
           <span className="text-label font-semibold">
-            {SEARCH_COPY.emptyHeading(lastQuery, totalGroups)}
+            {t('search.emptyHeading', { query: lastQuery, n: totalGroups })}
           </span>
           <span className="text-body text-muted-foreground">
-            {SEARCH_COPY.emptyBody}
+            {t('search.emptyBody')}
           </span>
         </div>
       )}
@@ -136,7 +137,7 @@ export function CandidateList(): React.JSX.Element | null {
       {/* G. Error state — shown when search failed terminally */}
       {search.step === 'error' && (
         <p className="text-label text-destructive">
-          {SEARCH_ERROR_COPY[search.code]}
+          {t(`searchError.${search.code}`)}
         </p>
       )}
     </div>
