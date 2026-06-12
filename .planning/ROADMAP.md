@@ -283,7 +283,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 06-03-PLAN.md — wizardCopy.ts + StepIndicator.tsx + ReviewScreen.tsx (computePlannedActions, SAF-01/02/03) + reviewScreen.test.ts GREEN
+- [x] 06-03-PLAN.md — wizardCopy.ts + StepIndicator.tsx + ReviewScreen.tsx (computePlannedActions, SAF-01/02/03) + reviewScreen.test.ts GREEN
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -321,7 +321,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
-| 6. UI Integration — Wizard, Safety Gates & Progress | 2/5 | In Progress|  |
+| 6. UI Integration — Wizard, Safety Gates & Progress | 3/5 | In Progress|  |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
