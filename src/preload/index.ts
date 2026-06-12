@@ -32,6 +32,8 @@ import {
   REMOVAL_STATE,
   REMOVAL_GET_JOB,
   REMOVAL_DISCARD_JOB,
+  SEVERITY_GET,
+  SEVERITY_SET,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -154,4 +156,11 @@ contextBridge.exposeInMainWorld('mrsproper', {
   // removal:discardJob — clears the job file; called when user clicks Discard in ResumeJobDialog.
   discardRemovalJob: (): Promise<null> =>
     ipcRenderer.invoke(REMOVAL_DISCARD_JOB) as Promise<null>,
+
+  // ── Severity preference bridge (Phase 6, SAF-01/02/03) ───────────────────
+  // Non-secret pref channels; Zod-validated (z.enum(['kick','ban'])) in severityChannels.ts.
+  getSeverity: (): Promise<'kick' | 'ban'> =>
+    ipcRenderer.invoke(SEVERITY_GET) as Promise<'kick' | 'ban'>,
+  setSeverity: (severity: 'kick' | 'ban'): Promise<'kick' | 'ban'> =>
+    ipcRenderer.invoke(SEVERITY_SET, { severity }) as Promise<'kick' | 'ban'>,
 })
