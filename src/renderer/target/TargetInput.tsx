@@ -25,6 +25,7 @@ import {
   PHONE_MODE_DISCLOSURE_HINT,
   FLOOD_WAIT_SUBTEXT,
 } from './resolveCopy'
+import { SEARCH_COPY } from './searchCopy'
 
 // ---------------------------------------------------------------------------
 // Mode detection types
@@ -184,8 +185,7 @@ export function TargetInput(): React.JSX.Element {
       if (mode === 'name') {
         const trimmed = normalized.trim()
         if (trimmed.length < 2) {
-          // TODO: move to searchCopy.ts in Plan 05 when searchCopy module is created
-          setLocalError('Type at least 2 letters of their name.')
+          setLocalError(SEARCH_COPY.minLengthError)
           return
         }
         setLocalError(null)
@@ -352,7 +352,7 @@ export function TargetInput(): React.JSX.Element {
         {/* Name-mode hint — shown when name mode is active */}
         {isNameMode && (
           <p className="text-label text-muted-foreground">
-            {'Searches members of the groups you administer. First or last name works.'}
+            {SEARCH_COPY.nameHint}
           </p>
         )}
 
