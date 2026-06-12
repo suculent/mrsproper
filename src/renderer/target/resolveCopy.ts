@@ -7,7 +7,7 @@ import type { TargetErrorCode } from '@shared/targetTypes'
 
 export const RESOLVE_ERROR_COPY: Record<TargetErrorCode, string> = {
   TARGET_USERNAME_NOT_FOUND:
-    'No one has that username. Check the spelling — usernames can change or be deleted.',
+    'No one has that username. Check the spelling — usernames can change or be deleted. If you only know their name, type it with a space to search your groups by name.',
   TARGET_PHONE_NOT_FOUND:
     "That number isn't on Telegram, or their privacy settings block phone lookup. If you know their @username, try that instead.",
   TARGET_NO_PUBLIC_PROFILE:

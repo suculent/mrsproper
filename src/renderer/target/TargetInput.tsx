@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { isValidPhoneNumber } from 'libphonenumber-js/min'
 import type { CountryCode } from 'libphonenumber-js/min'
-import { Loader2, AtSign, Phone, AlertCircle } from 'lucide-react'
+import { Loader2, AtSign, Phone, AlertCircle, User } from 'lucide-react'
 import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
 import { Label } from '@renderer/components/ui/label'
@@ -17,6 +17,7 @@ import type { CountryOption } from '@renderer/auth/CountryPicker'
 import FloodCountdown from '@renderer/auth/FloodCountdown'
 import { cn } from '@renderer/lib/utils'
 import { useTargetStore, targetActions } from '@renderer/store/targetStore'
+import { useSearchStore, searchActions } from '@renderer/store/searchStore'
 import {
   getResolveCopy,
   INVALID_USERNAME_FORMAT_COPY,
@@ -29,7 +30,7 @@ import {
 // Mode detection types
 // ---------------------------------------------------------------------------
 
-type InputMode = 'none' | 'username' | 'phone-bare' | 'phone-international'
+type InputMode = 'none' | 'username' | 'phone-bare' | 'phone-international' | 'name'
 
 // ---------------------------------------------------------------------------
 // Locale-based country guess (Pattern "Locale-Based Country Guess")
@@ -79,9 +80,11 @@ function normalizeInput(raw: string): string {
 function detectMode(normalized: string): InputMode {
   if (!normalized) return 'none'
   if (normalized.startsWith('+')) return 'phone-international'
-  if (/[a-zA-Z_]/.test(normalized)) return 'username'
   if (/^\d+$/.test(normalized)) return 'phone-bare'
-  return 'none'
+  // Name mode: whitespace, trailing space after token, or chars outside username charset
+  // (diacritics, hyphens, apostrophes, non-Latin) — must run BEFORE username branch
+  if (/\s/.test(normalized) || !/^[a-zA-Z0-9_]+$/.test(normalized)) return 'name'
+  return 'username'
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +121,7 @@ function buildDispatchValue(
 
 export function TargetInput(): React.JSX.Element {
   const { target, governorFloodRemaining } = useTargetStore()
+  const search = useSearchStore()
   const [rawInput, setRawInput] = useState('')
   const [country, setCountry] = useState<CountryOption>(guessCountryFromLocale)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -128,9 +132,11 @@ export function TargetInput(): React.JSX.Element {
   const mode = detectMode(normalized)
 
   const isPhoneMode = mode === 'phone-bare' || mode === 'phone-international'
+  const isNameMode = mode === 'name'
   const isResolving = target.step === 'resolving'
   const isResolved = target.step === 'resolved' || target.step === 'confirmed'
   const isFlood = governorFloodRemaining > 0
+  const isNameSearchRunning = search.step === 'searching'
 
   // Server error from target state
   const serverError =
@@ -172,7 +178,20 @@ export function TargetInput(): React.JSX.Element {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
-      if (mode === 'none' || isResolving || isFlood) return
+      if (mode === 'none' || isResolving || isFlood || isNameSearchRunning) return
+
+      // Name mode: dispatch to searchActions.startSearch — never calls resolveTarget
+      if (mode === 'name') {
+        const trimmed = normalized.trim()
+        if (trimmed.length < 2) {
+          // TODO: move to searchCopy.ts in Plan 05 when searchCopy module is created
+          setLocalError('Type at least 2 letters of their name.')
+          return
+        }
+        setLocalError(null)
+        await searchActions.startSearch(trimmed)
+        return
+      }
 
       // Client-side validation
       if (mode === 'username') {
@@ -194,10 +213,10 @@ export function TargetInput(): React.JSX.Element {
       const dispatchVal = buildDispatchValue(normalized, mode, country)
       await targetActions.resolveTarget(dispatchVal)
     },
-    [mode, normalized, isResolving, isFlood, country]
+    [mode, normalized, isResolving, isFlood, isNameSearchRunning, country]
   )
 
-  const isFindDisabled = mode === 'none' || isResolving || isFlood
+  const isFindDisabled = mode === 'none' || isResolving || isFlood || isNameSearchRunning
   const hasError = Boolean(displayError)
 
   // ---------------------------------------------------------------------------
@@ -291,7 +310,12 @@ export function TargetInput(): React.JSX.Element {
                 className="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1 text-label text-muted-foreground"
                 aria-hidden="true"
               >
-                {isPhoneMode ? (
+                {isNameMode ? (
+                  <>
+                    <User className="h-3.5 w-3.5" />
+                    <span>Name</span>
+                  </>
+                ) : isPhoneMode ? (
                   <>
                     <Phone className="h-3.5 w-3.5" />
                     <span>Phone</span>
@@ -309,17 +333,26 @@ export function TargetInput(): React.JSX.Element {
 
         {/* Aria-live announcement for mode changes (for screen readers) */}
         <span className="sr-only" aria-live="polite">
-          {mode === 'username'
-            ? 'Username mode detected'
-            : mode === 'phone-bare' || mode === 'phone-international'
-              ? 'Phone mode detected'
-              : ''}
+          {mode === 'name'
+            ? 'Name search mode detected'
+            : mode === 'username'
+              ? 'Username mode detected'
+              : mode === 'phone-bare' || mode === 'phone-international'
+                ? 'Phone mode detected'
+                : ''}
         </span>
 
         {/* Phone disclosure hint (D-10) — shown when phone mode is active */}
         {isPhoneMode && (
           <p id="phone-hint" className="text-label text-muted-foreground">
             {PHONE_MODE_DISCLOSURE_HINT}
+          </p>
+        )}
+
+        {/* Name-mode hint — shown when name mode is active */}
+        {isNameMode && (
+          <p className="text-label text-muted-foreground">
+            {'Searches members of the groups you administer. First or last name works.'}
           </p>
         )}
 
