@@ -319,7 +319,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 — release script references finalized config)*
 
-- [ ] 07-03-PLAN.md — scripts/release.sh (pre-flight validated orchestrator: tsc, build, package:mac, package:win, spctl+stapler verify, artifact collect); README.md (SmartScreen instructions + macOS 11 min requirement)
+- [x] 07-03-PLAN.md — scripts/release.sh (pre-flight validated orchestrator: tsc, build, package:mac, package:win, spctl+stapler verify, artifact collect); README.md (SmartScreen instructions + macOS 11 min requirement)
 
 **Wave 4 (checkpoint)** *(blocked on Wave 3)*
 
@@ -343,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 2/5 | In Progress|  |
+| 7. Packaging, Signing & Release | 3/5 | In Progress|  |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
