@@ -72,6 +72,35 @@ echo "Packaging Windows..."
 npm run package:win
 
 # ──────────────────────────────────────────────
+# Notarize + staple DMGs
+# electron-builder notarizes and staples the .app bundle, but does NOT submit the
+# DMG files to Apple notarization. A DMG can only be stapled if the DMG itself was
+# submitted to notarytool. Do that here for both arch DMGs before distributing.
+# Typical processing time: 1–3 minutes per DMG (contents are already notarized).
+# ──────────────────────────────────────────────
+notarize_dmg() {
+  local dmg="$1"
+  echo "Notarizing ${dmg}..."
+  local output
+  output=$(xcrun notarytool submit "${dmg}" \
+    --key "$APPLE_API_KEY" \
+    --key-id "$APPLE_API_KEY_ID" \
+    --issuer "$APPLE_API_ISSUER" \
+    --wait 2>&1)
+  echo "${output}"
+  if ! echo "${output}" | grep -q "status: Accepted"; then
+    echo "ERROR: notarytool did not return 'status: Accepted' for ${dmg}"
+    echo "Full notarytool output above. Check submission log with: xcrun notarytool log <submission-id>"
+    exit 1
+  fi
+  echo "Stapling ${dmg}..."
+  xcrun stapler staple "${dmg}"
+}
+
+notarize_dmg "release/MrsProper-${VERSION}-arm64.dmg"
+notarize_dmg "release/MrsProper-${VERSION}.dmg"
+
+# ──────────────────────────────────────────────
 # Gatekeeper pre-verification
 # Run on dev machine before distributing to confirm signing + stapling are intact.
 # ──────────────────────────────────────────────
