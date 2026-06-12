@@ -21,12 +21,14 @@ interface ResumeJobDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   job: RemovalJobFile
+  onResume?: () => void
 }
 
 export function ResumeJobDialog({
   open,
   onOpenChange,
   job,
+  onResume,
 }: ResumeJobDialogProps): React.JSX.Element {
   const processedCount = job.outcomes.length
   const totalCount = job.dialogIds.length
@@ -44,7 +46,8 @@ export function ResumeJobDialog({
   const handleResume = useCallback(() => {
     void removalActions.startRemoval(job.severity, remainingDialogIds)
     onOpenChange(false)
-  }, [job.severity, remainingDialogIds, onOpenChange])
+    onResume?.()
+  }, [job.severity, remainingDialogIds, onOpenChange, onResume])
 
   return (
     // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the job.
