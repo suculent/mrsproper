@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-10-PLAN.md
-last_updated: "2026-06-11T23:44:07.463Z"
-last_activity: 2026-06-11
+stopped_at: Completed 04.1-01-PLAN.md
+last_updated: "2026-06-12T00:41:51.685Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 26
-  completed_plans: 26
+  total_plans: 31
+  completed_plans: 27
   percent: 44
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 ## Current Position
 
 Phase: 04 (group-enumeration-membership-rights) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
-Last activity: 2026-06-11
+Last activity: 2026-06-12
 
-Progress: [██████████] 100%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 04 P05 | 4 | 2 tasks | 4 files |
 | Phase 04-group-enumeration-membership-rights P08 | 8 | 1 tasks | 1 files |
 | Phase 04 P10 | 45 | 2 tasks | 8 files |
+| Phase 04.1 P01 | 10 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Supergroup creator canAct uses OR logic: creator===true is sufficient independent of adminRights (Api.Channel branch, GroupEnumerator)
 - [Phase ?]: GramJS entity access: pass id+accessHash from dialog entity map, never reconstruct accessHash as BigInt(0) — causes CastError
 - [Phase ?]: MembershipScanner public surface: getState() is the canonical method (getScanState() typo never existed in final implementation)
+- [Phase ?]: CandidateDTO has no accessHash field by construction (T-04.1-01), consistent with T-03-01 ResolvedTargetDTO precedent
+- [Phase ?]: SearchState has 5 steps (idle/searching/complete/stopped/error) — stopped step is unique to name search abort semantics
+- [Phase ?]: GROUPS_NOT_LOADED and SEARCH_QUERY_TOO_SHORT added to OperationErrorCode with disposition 'fail' (non-retryable) following T-03-02 pattern
 
 ### Pending Todos
 
@@ -147,6 +151,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-11T23:44:07.456Z
-Stopped at: Completed 04-10-PLAN.md
+Last session: 2026-06-12T00:41:51.679Z
+Stopped at: Completed 04.1-01-PLAN.md
 Resume file: None

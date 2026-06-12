@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **TGT-02**: User can specify the target by phone number
 - [x] **TGT-03**: App resolves the target to a stable numeric user ID early and acts by that ID throughout
 - [x] **TGT-04**: App handles non-resolution gracefully with a distinct message per cause (username not found, phone not a contact, no public profile)
-- [ ] **TGT-05**: User can search for the target by First + Last Name, disambiguate among matching candidates, and resolve the chosen one through the standard confirmation gate
+- [x] **TGT-05**: User can search for the target by First + Last Name, disambiguate among matching candidates, and resolve the chosen one through the standard confirmation gate
 
 ### Visual Verification
 
@@ -124,7 +124,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | TGT-02 | Phase 3 | Complete |
 | TGT-03 | Phase 3 | Complete |
 | TGT-04 | Phase 3 | Complete |
-| TGT-05 | Phase 4.1 | Pending |
+| TGT-05 | Phase 4.1 | Complete |
 | VRF-01 | Phase 3 | Complete |
 | VRF-02 | Phase 3 | Complete |
 | VRF-03 | Phase 3 | Complete |

@@ -206,7 +206,7 @@ Plans:
 
 **Wave 1** *(shared types + test stubs + mock client extension)*
 
-- [ ] 04.1-01-PLAN.md — Shared types (searchTypes.ts), channel constants, opTypes additions, mock client extension (GetParticipants/GetUsers), Wave 0 test stubs (Nyquist)
+- [x] 04.1-01-PLAN.md — Shared types (searchTypes.ts), channel constants, opTypes additions, mock client extension (GetParticipants/GetUsers), Wave 0 test stubs (Nyquist)
 
 **Wave 2** *(implementation — blocked on Wave 1)*
 
@@ -278,7 +278,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-11 |
-| 4.1 Target Search by Name (INSERTED) | 0/5 | Not started | - |
+| 4.1 Target Search by Name (INSERTED) | 1/5 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
