@@ -54,8 +54,8 @@ export interface RemovalExecutorOptions {
   governor: RateLimitGovernor
   /** GroupEnumerator — provides dialog list and entity map. */
   enumerator: GroupEnumerator
-  /** TargetResolver — provides resolved user id and accessHash (main only, never renderer). */
-  resolver: { getResolvedUser(): { id: bigint; accessHash: bigint } | null }
+  /** TargetResolver — provides resolved user id, accessHash, and display name (main only, never renderer). */
+  resolver: { getResolvedUser(): { id: bigint; accessHash: bigint; name?: string } | null }
   /** AuditStore — durable job-file persistence (checkpointed after every group). */
   auditStore: AuditStore
   /** Called whenever RemovalState changes. Wired to win.webContents.send in production. */
@@ -68,7 +68,7 @@ export class RemovalExecutor {
   private readonly _client: RemovalExecutorClient
   private readonly _governor: RateLimitGovernor
   private readonly _enumerator: GroupEnumerator
-  private readonly _resolver: { getResolvedUser(): { id: bigint; accessHash: bigint } | null }
+  private readonly _resolver: { getResolvedUser(): { id: bigint; accessHash: bigint; name?: string } | null }
   private readonly _auditStore: AuditStore
   private readonly _emit: (state: RemovalState) => void
 
@@ -147,7 +147,8 @@ export class RemovalExecutor {
 
     const total = selectedDialogs.length
     const targetId = resolved.id.toString()
-    const targetName = '' // Resolved from resolver; display name TBD at IPC layer
+    // CR-02: read display name from resolver (T-05-04-B: identity always from main, never renderer)
+    const targetName = resolved.name ?? ''
 
     // Initialize job in AuditStore
     const jobId = new Date().toISOString()

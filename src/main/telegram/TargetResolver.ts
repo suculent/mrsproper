@@ -75,6 +75,7 @@ export class TargetResolver {
   private _currentState: TargetState = { step: 'idle' }
   private _resolvedUserId: bigint | null = null
   private _resolvedAccessHash: bigint | null = null
+  private _resolvedName: string | null = null
 
   /**
    * Generation token (WR-03): incremented by every resolve() and reset().
@@ -176,6 +177,7 @@ export class TargetResolver {
     // slips past the inner gen guard (defence-in-depth).
     const prevResolvedUserId = this._resolvedUserId
     const prevResolvedAccessHash = this._resolvedAccessHash
+    const prevResolvedName = this._resolvedName
 
     this._emit({ step: 'resolving' })
 
@@ -223,6 +225,10 @@ export class TargetResolver {
       this._resolvedUserId = BigInt(targetUser.id.toString())
       this._resolvedAccessHash =
         targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
+      // CR-02: store display name so executor can include it in the job file and state
+      this._resolvedName =
+        [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
+        (targetUser.firstName ?? '')
 
       const bio = await this._fetchBio(targetUser)
       const avatar = await this._fetchAvatar(targetUser)
@@ -240,6 +246,7 @@ export class TargetResolver {
         // outer restore the final safety net.
         this._resolvedUserId = prevResolvedUserId
         this._resolvedAccessHash = prevResolvedAccessHash
+        this._resolvedName = prevResolvedName
         return
       }
       const classified = classifyRpcError(err)
@@ -272,6 +279,7 @@ export class TargetResolver {
     this._generation++
     this._resolvedUserId = null
     this._resolvedAccessHash = null
+    this._resolvedName = null
     this._emit({ step: 'idle' })
   }
 
@@ -288,11 +296,11 @@ export class TargetResolver {
    * It MUST NOT be called from renderer-facing code or IPC handlers.
    * The accessHash must never cross to the renderer.
    */
-  getResolvedUser(): { id: bigint; accessHash: bigint } | null {
+  getResolvedUser(): { id: bigint; accessHash: bigint; name: string } | null {
     if (this._resolvedUserId === null || this._resolvedAccessHash === null) {
       return null
     }
-    return { id: this._resolvedUserId, accessHash: this._resolvedAccessHash }
+    return { id: this._resolvedUserId, accessHash: this._resolvedAccessHash, name: this._resolvedName ?? '' }
   }
 
   // ── Private resolution paths ───────────────────────────────────────────────
@@ -347,6 +355,10 @@ export class TargetResolver {
     this._resolvedUserId = BigInt(targetUser.id.toString())
     this._resolvedAccessHash =
       targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
+    // CR-02: store display name so executor can include it in the job file and state
+    this._resolvedName =
+      [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
+      (targetUser.firstName ?? '')
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
@@ -393,6 +405,10 @@ export class TargetResolver {
     this._resolvedUserId = BigInt(targetUser.id.toString())
     this._resolvedAccessHash =
       targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
+    // CR-02: store display name so executor can include it in the job file and state
+    this._resolvedName =
+      [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
+      (targetUser.firstName ?? '')
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
