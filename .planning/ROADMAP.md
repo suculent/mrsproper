@@ -315,7 +315,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 — depends on Electron 37 installed)*
 
-- [ ] 07-02-PLAN.md — electron-builder.yml signing config (remove identity:null, remove zip targets, add hardenedRuntime+entitlements); build/entitlements.mac.plist; .env.example notarization vars; version bump to 0.9.0
+- [x] 07-02-PLAN.md — electron-builder.yml signing config (remove identity:null, remove zip targets, add hardenedRuntime+entitlements); build/entitlements.mac.plist; .env.example notarization vars; version bump to 0.9.0
 
 **Wave 3** *(blocked on Wave 2 — release script references finalized config)*
 
@@ -343,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 1/5 | In Progress|  |
+| 7. Packaging, Signing & Release | 2/5 | In Progress|  |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
