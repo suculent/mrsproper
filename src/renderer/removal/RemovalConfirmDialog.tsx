@@ -34,6 +34,8 @@ const AVATAR_COLORS = [
 ]
 
 function getAvatarColor(seed: string): string {
+  // CR-03: guard against empty seed — BigInt('') throws SyntaxError in V8
+  if (!seed) return AVATAR_COLORS[0]
   return AVATAR_COLORS[Number(BigInt(seed) % 7n)]
 }
 
