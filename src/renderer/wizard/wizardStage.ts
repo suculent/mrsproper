@@ -12,6 +12,7 @@ import type { WizardStage } from './StepIndicator'
 export type WizardEvent =
   | 'TARGET_CONFIRMED'
   | 'NAVIGATE_TO_REVIEW'
+  | 'CHANGE_TARGET'
   | 'CONFIRM'
   | 'BACK'
   | 'REMOVAL_COMPLETE'
@@ -30,6 +31,7 @@ export function getNextStage(stage: WizardStage, event: WizardEvent): WizardStag
 
     case 'groups':
       if (event === 'NAVIGATE_TO_REVIEW') return 'review'
+      if (event === 'CHANGE_TARGET') return 'target'
       return stage
 
     case 'review':

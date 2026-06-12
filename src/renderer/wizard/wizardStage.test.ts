@@ -33,6 +33,10 @@ describe('getNextStage — back navigation and reset', () => {
     expect(getNextStage('review', 'BACK')).toBe('groups')
   })
 
+  it('groups stage: CHANGE_TARGET returns to target (StepIndicator reset on "Change target" click)', () => {
+    expect(getNextStage('groups', 'CHANGE_TARGET')).toBe('target')
+  })
+
   it('report stage: RESET returns to target', () => {
     expect(getNextStage('report', 'RESET')).toBe('target')
   })

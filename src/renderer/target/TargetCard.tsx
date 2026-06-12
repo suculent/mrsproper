@@ -70,6 +70,7 @@ function getInitials(name: string): string {
 
 interface TargetCardProps {
   onTargetConfirmed?: () => void
+  onNavigateToTarget?: () => void
 }
 
 export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | null {
@@ -230,6 +231,7 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
                 onClick={() => {
                   if (!isRemovalRunning) {
                     void targetActions.resetTarget()
+                    props.onNavigateToTarget?.()
                   }
                 }}
                 type="button"

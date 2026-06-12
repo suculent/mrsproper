@@ -95,7 +95,10 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
                 {/* CandidateList renders when a name search is active or has results */}
                 {search.step !== 'idle' && <CandidateList />}
                 {/* TargetCard renders when a target has been resolved/confirmed */}
-                <TargetCard onTargetConfirmed={() => setStage('groups')} />
+                <TargetCard
+                  onTargetConfirmed={() => setStage('groups')}
+                  onNavigateToTarget={() => setStage('target')}
+                />
               </div>
             </div>
 
