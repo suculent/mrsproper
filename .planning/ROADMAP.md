@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
+| 8. Localization — i18n & Czech Translation (v1.5) | 0/9 | In progress | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -360,7 +360,33 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 **Notes**: Translation work must wait for feature-freeze + UAT, but i18n hygiene is prepared on-the-fly from now: phases 4-7 should keep all new user-facing strings in dedicated copy modules (the established `*Copy.ts` pattern) so extraction into the i18n framework is mechanical.
 
-**Plans**: 0 plans
+**Plans**: 9 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 8 to break down)
+Plans:
+**Wave 0** *(Nyquist test stubs — runs first)*
+
+- [ ] 08-01-PLAN.md — Wave 0: RED test stubs for IPC channels (languageChannels, themeChannels), i18n init/namespace/plural, errorCopy rewrite
+
+**Wave 1** *(parallel — IPC infrastructure + i18n setup)*
+
+- [ ] 08-02-PLAN.md — Install i18next/react-i18next + LANGUAGE/THEME IPC channels + preload bridge + main wiring
+- [ ] 08-03-PLAN.md — i18n/index.ts + i18next.d.ts + all 12 locale JSON files (6 namespaces × en/cs) + lib/format.ts utility rescue
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-04-PLAN.md — main.tsx pre-mount async init + SettingsMenu Language/Theme rows (checkpoint)
+
+**Wave 3** *(parallel — blocked on Wave 2 completion)*
+
+- [ ] 08-05-PLAN.md — Auth namespace migration: PhoneStep/CodeStep/PasswordStep/CountryPicker/FloodCountdown + delete errorCopy.ts; shell: LogoutDialog/IdentityDisplay
+- [ ] 08-06-PLAN.md — Target namespace migration: TargetInput/TargetCard/CandidateRow/CandidateList + delete resolveCopy.ts/searchCopy.ts
+
+**Wave 4** *(parallel — blocked on Wave 3 completion)*
+
+- [ ] 08-07-PLAN.md — Groups namespace migration: GroupRow/GroupsPane (all 3 namespaces) + delete groupsCopy.ts
+- [ ] 08-08-PLAN.md — Wizard/Removal namespace migration: ReviewScreen/StepIndicator/ResumeJobDialog + delete wizardCopy.ts/removalCopy.ts
+
+**Wave 5 (human UAT checkpoint)** *(blocked on Wave 4 completion)*
+
+- [ ] 08-09-PLAN.md — Full end-to-end UAT: Czech usability sweep, language/theme persistence, no-flash relaunch, OS theme interplay
