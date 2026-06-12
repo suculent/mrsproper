@@ -38,6 +38,14 @@ export const SCAN_RETRY_GROUP = 'scan:retryGroup' as const
 export const SCAN_STATE = 'scan:state' as const          // push: main → renderer
 export const SCAN_GET_STATE = 'scan:getState' as const
 
+// Name search IPC channels (Phase 4.1, TGT-05).
+// Pattern mirrors the SCAN_* block directly above.
+export const SEARCH_START = 'search:start' as const       // { query: string }
+export const SEARCH_ABORT = 'search:abort' as const
+export const SEARCH_GET_STATE = 'search:getState' as const
+export const SEARCH_STATE = 'search:state' as const       // push: main → renderer
+export const TARGET_RESOLVE_CANDIDATE = 'target:resolveCandidate' as const  // { userId: string }
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -62,4 +70,9 @@ export const CHANNELS = {
   SCAN_RETRY_GROUP,
   SCAN_STATE,
   SCAN_GET_STATE,
+  SEARCH_START,
+  SEARCH_ABORT,
+  SEARCH_GET_STATE,
+  SEARCH_STATE,
+  TARGET_RESOLVE_CANDIDATE,
 } as const

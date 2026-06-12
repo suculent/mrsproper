@@ -31,6 +31,9 @@ export type OperationErrorCode =
   | 'TARGET_USERNAME_NOT_FOUND'
   | 'TARGET_PHONE_NOT_FOUND'
   | 'TARGET_NO_PUBLIC_PROFILE'
+  // Phase 4.1 additions — non-retryable search errors (T-03-02 pattern).
+  | 'GROUPS_NOT_LOADED'
+  | 'SEARCH_QUERY_TOO_SHORT'
 // Phase 6 extends this with: USER_PRIVACY_RESTRICTED, CHAT_ADMIN_REQUIRED, etc.
 
 /**
