@@ -56,6 +56,11 @@ export const REMOVAL_STATE        = 'removal:state' as const        // push: mai
 export const REMOVAL_GET_JOB      = 'removal:getJob' as const
 export const REMOVAL_DISCARD_JOB  = 'removal:discardJob' as const
 
+// Severity preference IPC channels (Phase 6, electron-store pref). Non-secret;
+// Zod-validated (z.enum(['kick','ban'])) in severityChannels.ts.
+export const SEVERITY_GET = 'severity:get' as const
+export const SEVERITY_SET = 'severity:set' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -92,4 +97,6 @@ export const CHANNELS = {
   REMOVAL_STATE,
   REMOVAL_GET_JOB,
   REMOVAL_DISCARD_JOB,
+  SEVERITY_GET,
+  SEVERITY_SET,
 } as const

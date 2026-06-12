@@ -82,6 +82,12 @@ export interface RemovalState {
   summary?: RemovalSummary
   /** The group currently being processed (undefined between groups). */
   currentGroupId?: string
+  /**
+   * Seconds remaining in an active FLOOD_WAIT during a removal run. Null when no flood wait is
+   * active. Only meaningful when step === 'running'. Scoped to removal-only flood events — NOT
+   * from the shared OP_GOVERNOR_EVENT channel.
+   */
+  floodWaitRemaining?: number | null
 }
 
 /**
