@@ -337,13 +337,25 @@ export class RemovalExecutor {
       this._abortController = null
     }
     // The generation guard in execute() will handle marking remaining groups as skipped
-    // and emitting the stopped state. If no execute() is in flight, emit stopped now.
-    if (this._currentState.step !== 'stopped' && this._currentState.step !== 'complete') {
+    // and emitting the stopped state for an in-flight run. Only an ACTIVE run may
+    // transition to 'stopped' — aborting an idle/finished executor (e.g. TARGET_RESET
+    // on target change) must reset to a clean idle state instead, otherwise a phantom
+    // "Removal stopped — 0 of 0 processed" summary band renders after every target change.
+    if (this._currentState.step === 'running' || this._currentState.step === 'stopping') {
       const current = this._currentState
       this._emit({
         ...current,
         step: 'stopped',
         summary: this._buildSummary(current.outcomes ?? [], new Date().toISOString()),
+      })
+    } else {
+      this._emit({
+        step: 'idle',
+        severity: this._currentState.severity,
+        targetId: '',
+        targetName: '',
+        progress: { processed: 0, total: 0 },
+        outcomes: [],
       })
     }
   }

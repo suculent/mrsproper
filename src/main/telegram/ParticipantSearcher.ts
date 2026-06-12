@@ -280,6 +280,7 @@ export class ParticipantSearcher {
         )
       ) as { className?: string; participants?: Array<{ className?: string; userId?: { toString(): string } }>; users?: unknown[] }
 
+
       // RESEARCH Pitfall 9: guard ChannelParticipantsNotModified
       if (result.className === 'channels.ChannelParticipantsNotModified') {
         return []

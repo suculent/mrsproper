@@ -97,12 +97,6 @@ export class GroupEnumerator {
         this._client.getDialogs({})
       ) as unknown[]
 
-      // TEMP-DIAG (remove after Phase 5 verify): raw dialog inventory
-      console.log('[DIAG enumerate raw] count=%s items=%s', dialogs.length, JSON.stringify(dialogs.map((d) => {
-        const e = (d as { entity?: { className?: string; id?: { toString(): string }; megagroup?: boolean; deactivated?: boolean; migratedTo?: unknown; creator?: boolean } }).entity
-        const t = (d as { title?: string }).title
-        return `${e?.className}:${e?.id?.toString()}:${t}:mega=${e?.megagroup}:deact=${e?.deactivated}:migrated=${e?.migratedTo != null}:creator=${e?.creator}`
-      })))
 
       const classified: AdminDialogDTO[] = []
       for (const dialog of dialogs) {
