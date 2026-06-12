@@ -17,6 +17,7 @@ import {
   TooltipProvider,
 } from '@renderer/components/ui/tooltip'
 import { useTargetStore, targetActions } from '@renderer/store/targetStore'
+import { useRemovalStore } from '@renderer/store/removalStore'
 import { cn } from '@renderer/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,10 @@ function getInitials(name: string): string {
 
 export function TargetCard(): React.JSX.Element | null {
   const { target } = useTargetStore()
+  const { state: removal } = useRemovalStore()
+
+  // T-05-07-B: disable Change target while removal is running or stopping
+  const isRemovalRunning = removal.step === 'running' || removal.step === 'stopping'
 
   // Rules of Hooks: ALL hooks must run unconditionally on every render — this
   // component is mounted in idle/resolving states too (StubbedWorkflowRegions),
@@ -211,20 +216,29 @@ export function TargetCard(): React.JSX.Element | null {
         {/* Footer row (D-11, D-14) */}
         <div className="mt-2 flex flex-row justify-between items-center">
           {/* Change target button (D-14) — present in both resolved and confirmed states */}
+          {/* T-05-07-B: disabled while removal.step === 'running'|'stopping' */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-label text-muted-foreground hover:text-foreground"
-                onClick={() => void targetActions.resetTarget()}
+                onClick={() => {
+                  if (!isRemovalRunning) {
+                    void targetActions.resetTarget()
+                  }
+                }}
                 type="button"
+                disabled={isRemovalRunning}
+                aria-disabled={isRemovalRunning}
               >
                 Change target
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              Clears this person and any group selections
+              {isRemovalRunning
+                ? 'Stop the removal first'
+                : 'Clears this person and any group selections'}
             </TooltipContent>
           </Tooltip>
 
