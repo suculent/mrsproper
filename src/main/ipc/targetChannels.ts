@@ -58,11 +58,14 @@ const ResolveTargetSchema = z.object({
  * @param resolver  The TargetResolver instance (constructed in main/index.ts)
  * @param scanner   Structural type — only abortScan() is needed; avoids importing
  *                  MembershipScanner and creating a circular dependency (CR-01-MAIN).
+ * @param searcher  Structural type — only abortSearch() is needed; avoids importing
+ *                  ParticipantSearcher and creating a circular dependency (CR-01 for name search).
  */
 export function registerTargetChannels(
   win: BrowserWindow,
   resolver: TargetResolver,
-  scanner: { abortScan(): void }
+  scanner: { abortScan(): void },
+  searcher: { abortSearch(): void }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
@@ -81,12 +84,14 @@ export function registerTargetChannels(
   })
 
   // ── Handle: target:reset ─────────────────────────────────────────────────
-  // CR-01-MAIN: abortScan() must fire before resolver.reset() so that scan
-  // state transitions to 'idle'. The GroupsPane auto-start effect watches for
-  // scan.step === 'idle'; without this, a completed scan would never reset and
-  // confirming a new target would not re-trigger the scan.
+  // CR-01-MAIN: order is critical — searcher.abortSearch() FIRST, then scanner.abortScan(),
+  // then resolver.reset(). This ensures:
+  //   1. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
+  //   2. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
+  //   3. resolver.reset() last so target state returns to idle after all downstream cleanup.
   ipcMain.handle(TARGET_RESET, () => {
-    scanner.abortScan()
+    searcher.abortSearch()   // CR-01 for name search: clears stale candidates (Phase 4.1)
+    scanner.abortScan()      // CR-01: scan → idle before resolver reset
     resolver.reset()
     return resolver.getState()
   })

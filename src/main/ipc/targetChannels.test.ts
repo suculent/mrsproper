@@ -90,6 +90,20 @@ function makeMockResolver() {
   }
 }
 
+/** Create a mock scanner stub — only abortScan() is needed by TARGET_RESET. */
+function makeMockScanner() {
+  return {
+    abortScan: vi.fn(),
+  }
+}
+
+/** Create a mock searcher stub — only abortSearch() is needed by TARGET_RESET. */
+function makeMockSearcher() {
+  return {
+    abortSearch: vi.fn(),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // VRF-03 — confirm gate
 // ---------------------------------------------------------------------------
@@ -104,7 +118,7 @@ describe('registerTargetChannels — confirm gate (VRF-03)', () => {
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     // Verify handler was registered
     expect(capturedHandlers['target:confirm']).toBeDefined()
@@ -125,7 +139,7 @@ describe('registerTargetChannels — confirm gate (VRF-03)', () => {
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     const result = (await capturedHandlers['target:confirm'](
       {},
@@ -151,7 +165,7 @@ describe('registerTargetChannels — target:resolve Zod validation (T-03-04)', (
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     expect(capturedHandlers['target:resolve']).toBeDefined()
 
@@ -178,7 +192,7 @@ describe('registerTargetChannels — target:resolve Zod validation (T-03-04)', (
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     // '   ' trims to '' — must fail .min(1) and never reach the resolver
     // (a whitespace-only input would otherwise spend a governed API call).
@@ -192,7 +206,7 @@ describe('registerTargetChannels — target:resolve Zod validation (T-03-04)', (
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     // Usernames max out at 32 chars, E.164 phones at 15 digits — anything past
     // the 64-char bound is garbage that must not reach the Telegram API.
@@ -206,11 +220,84 @@ describe('registerTargetChannels — target:resolve Zod validation (T-03-04)', (
     const win = makeMockWin()
     const resolver = makeMockResolver()
 
-    registerTargetChannels(win as never, resolver as never)
+    registerTargetChannels(win as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never)
 
     await capturedHandlers['target:resolve']({}, { input: '@validuser' })
 
     expect(resolver.resolve).toHaveBeenCalledWith('@validuser')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TGT-05g — TARGET_RESET CR-01 abort ordering
+// ---------------------------------------------------------------------------
+
+describe('registerTargetChannels — TARGET_RESET abort ordering (TGT-05g)', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('TARGET_RESET calls searcher.abortSearch() BEFORE scanner.abortScan() and resolver.reset()', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+    const scanner = makeMockScanner()
+    const searcher = makeMockSearcher()
+
+    // Track call order using a shared sequence array
+    const callOrder: string[] = []
+    searcher.abortSearch.mockImplementation(() => { callOrder.push('abortSearch') })
+    scanner.abortScan.mockImplementation(() => { callOrder.push('abortScan') })
+    resolver.reset.mockImplementation(() => { callOrder.push('reset') })
+
+    registerTargetChannels(win as never, resolver as never, scanner as never, searcher as never)
+
+    await capturedHandlers['target:reset']({}, undefined)
+
+    // Verify all three were called
+    expect(searcher.abortSearch).toHaveBeenCalled()
+    expect(scanner.abortScan).toHaveBeenCalled()
+    expect(resolver.reset).toHaveBeenCalled()
+
+    // Verify call order: searcher → scanner → resolver (CR-01)
+    expect(callOrder).toEqual(['abortSearch', 'abortScan', 'reset'])
+  })
+
+  it('TARGET_RESET returns resolver state after all aborts', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+    const scanner = makeMockScanner()
+    const searcher = makeMockSearcher()
+
+    registerTargetChannels(win as never, resolver as never, scanner as never, searcher as never)
+
+    const result = (await capturedHandlers['target:reset']({}, undefined)) as TargetState
+
+    // After reset, resolver returns idle state
+    expect(result.step).toBe('idle')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TGT-05i — TARGET_RESOLVE_CANDIDATE access-hash gate
+// (also tested in searchChannels.test.ts — this confirms the gate is in searchChannels.ts,
+//  not in targetChannels.ts, and that targetChannels.ts does NOT register the handler)
+// ---------------------------------------------------------------------------
+
+describe('registerTargetChannels — TARGET_RESOLVE_CANDIDATE not registered here', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('target:resolveCandidate is NOT registered by registerTargetChannels (belongs to searchChannels)', () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+    const scanner = makeMockScanner()
+    const searcher = makeMockSearcher()
+
+    registerTargetChannels(win as never, resolver as never, scanner as never, searcher as never)
+
+    // TARGET_RESOLVE_CANDIDATE should NOT be registered by targetChannels
+    expect(capturedHandlers['target:resolveCandidate']).toBeUndefined()
   })
 })
 
