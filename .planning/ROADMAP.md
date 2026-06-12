@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 5/9 | In Progress|  |
+| 8. Localization — i18n & Czech Translation (v1.5) | 6/9 | In Progress|  |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -380,7 +380,7 @@ Plans:
 **Wave 3** *(parallel — blocked on Wave 2 completion)*
 
 - [x] 08-05-PLAN.md — Auth namespace migration: PhoneStep/CodeStep/PasswordStep/CountryPicker/FloodCountdown + delete errorCopy.ts; shell: LogoutDialog/IdentityDisplay
-- [ ] 08-06-PLAN.md — Target namespace migration: TargetInput/TargetCard/CandidateRow/CandidateList + delete resolveCopy.ts/searchCopy.ts
+- [x] 08-06-PLAN.md — Target namespace migration: TargetInput/TargetCard/CandidateRow/CandidateList + delete resolveCopy.ts/searchCopy.ts
 
 **Wave 4** *(parallel — blocked on Wave 3 completion)*
 
