@@ -297,16 +297,37 @@ Plans:
 
 ### Phase 7: Packaging, Signing & Release
 
-**Goal**: MrProper ships as code-signed, notarized portable installers that launch cleanly for non-technical admins on stock macOS and Windows without Gatekeeper or SmartScreen blocking.
+**Goal**: MrProper ships as code-signed, notarized portable installers that launch cleanly for non-technical admins on stock macOS and Windows without Gatekeeper or SmartScreen blocking. Electron 37.10.3 (macOS 11 Big Sur minimum) required for the primary admin's machine (D-16).
 **Depends on**: Phase 6
 **Requirements**: APP-03
 **Success Criteria** (what SHOULD be TRUE):
 
-  1. The macOS build is code-signed with a Developer ID and SHOULD be notarized to launche on a clean macOS machine without a Gatekeeper block (but if this will be a problem, it can be deferred)
-  2. The Windows build is code-signed and launches on a clean Windows machine without a SmartScreen block (if it is a problem to get signing certificate, e.g. it costs money, this can be deferred)
-  3. Launch is verified on Windows VM and Arm + Intel Mac covering both OSes (and Intel + ARM macOS) from the distributed installers
+  1. The macOS build is code-signed with a Developer ID and notarized — launches on a clean macOS 11 Big Sur (or later) machine without a Gatekeeper block (signed in-scope per D-01)
+  2. The Windows build ships unsigned (D-05 — deferred); SmartScreen "More info → Run anyway" is the accepted v1 experience; instructions in README
+  3. Launch is verified on ARM Mac (Apple Silicon), Intel Mac, macOS 11.7.10 Big Sur Mac (primary admin), and Windows VM — each reaching Telegram code-entry step (D-13, D-14)
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+
+**Wave 1** *(Electron downgrade — must complete before all other work)*
+
+- [ ] 07-01-PLAN.md — Downgrade Electron ^42.0.0 → exact pin 37.10.3 (D-16 Big Sur compat); verify plist LSMinimumSystemVersion=11.0, tsc green, vitest green, dev smoke
+
+**Wave 2** *(blocked on Wave 1 — depends on Electron 37 installed)*
+
+- [ ] 07-02-PLAN.md — electron-builder.yml signing config (remove identity:null, remove zip targets, add hardenedRuntime+entitlements); build/entitlements.mac.plist; .env.example notarization vars; version bump to 0.9.0
+
+**Wave 3** *(blocked on Wave 2 — release script references finalized config)*
+
+- [ ] 07-03-PLAN.md — scripts/release.sh (pre-flight validated orchestrator: tsc, build, package:mac, package:win, spctl+stapler verify, artifact collect); README.md (SmartScreen instructions + macOS 11 min requirement)
+
+**Wave 4 (checkpoint)** *(blocked on Wave 3)*
+
+- [ ] 07-04-PLAN.md — Run release script, confirm notarytool "status: Accepted", verify spctl+stapler pass on dev machine, confirm 4 artifacts in release/dist/
+
+**Wave 5 (UAT checkpoint)** *(blocked on Wave 4 artifacts)*
+
+- [ ] 07-05-PLAN.md — Clean-machine UAT: ARM Mac + Intel Mac + Big Sur 11.7.10 Mac + Windows VM smoke tests (D-13/D-14/D-15/D-16)
 
 ## Progress
 
@@ -322,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 0/TBD | Not started | - |
+| 7. Packaging, Signing & Release | 0/5 | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
