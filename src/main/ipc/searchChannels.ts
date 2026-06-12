@@ -5,7 +5,10 @@
  * Security gates:
  *   - T-04.1-07 (search:start): query Zod-validated with z.string().trim().min(2).max(100)
  *     before reaching ParticipantSearcher — rejects empty/short queries (Pitfall 8) and
- *     overlong strings.
+ *     overlong strings. No explicit auth-state check is performed here (WR-05): an
+ *     unauthenticated renderer calling this handler results in GROUPS_NOT_LOADED emitted
+ *     by ParticipantSearcher.search() — a graceful, no-API-call failure. This mirrors
+ *     the scan:start handler in groupChannels.ts which also carries no auth gate.
  *   - T-04.1-08 (target:resolveCandidate): Zod ResolveCandidateSchema validates userId,
  *     then in-memory gate validates userId is in _candidateAccessHashes before any API call.
  *     Renderer cannot forge a userId that isn't in the current scan's candidate map.
