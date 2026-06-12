@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 3/9 | In Progress|  |
+| 8. Localization — i18n & Czech Translation (v1.5) | 4/9 | In Progress|  |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -375,7 +375,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-04-PLAN.md — main.tsx pre-mount async init + SettingsMenu Language/Theme rows (checkpoint)
+- [x] 08-04-PLAN.md — main.tsx pre-mount async init + SettingsMenu Language/Theme rows (checkpoint)
 
 **Wave 3** *(parallel — blocked on Wave 2 completion)*
 
