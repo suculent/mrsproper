@@ -210,7 +210,7 @@ Plans:
 
 **Wave 2** *(implementation — blocked on Wave 1)*
 
-- [ ] 04.1-02-PLAN.md — ParticipantSearcher.ts (GREEN tests) + TargetResolver.resolveByCandidate()
+- [x] 04.1-02-PLAN.md — ParticipantSearcher.ts (GREEN tests) + TargetResolver.resolveByCandidate()
 
 **Wave 3** *(IPC wiring — blocked on Wave 2)*
 
@@ -278,7 +278,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-11 |
-| 4.1 Target Search by Name (INSERTED) | 1/5 | In Progress|  |
+| 4.1 Target Search by Name (INSERTED) | 2/5 | In Progress|  |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
