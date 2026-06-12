@@ -9,7 +9,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['ui-monospace', '"SF Mono"', '"Cascadia Mono"', 'Menlo', 'monospace'],
+        mono: ['ui-monospace', '"SF Mono"', '"Cascadia Mono"', 'Menlo', 'monospace'], // Phase 6 advisory: matches .text-mono stack in globals.css (font-mono and .text-mono now converge)
       },
       colors: {
         border: 'hsl(var(--border))',

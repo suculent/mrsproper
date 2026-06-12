@@ -127,6 +127,15 @@ export const removalCopy = {
     return parts.join(' · ')
   },
 
+  summaryLineParts(counts: { removed: number; alreadyGone: number; failed: number; skipped: number }): Array<{ label: string; count: number }> {
+    const parts: Array<{ label: string; count: number }> = []
+    if (counts.removed > 0) parts.push({ count: counts.removed, label: 'Removed' })
+    if (counts.alreadyGone > 0) parts.push({ count: counts.alreadyGone, label: 'Already gone' })
+    if (counts.failed > 0) parts.push({ count: counts.failed, label: 'Failed' })
+    if (counts.skipped > 0) parts.push({ count: counts.skipped, label: 'Skipped' })
+    return parts
+  },
+
   summaryFailed(n: number): string {
     return `${n} removal${s(n)} failed. You can retry ${themIt(n)} in the list.`
   },
