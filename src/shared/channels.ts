@@ -61,6 +61,18 @@ export const REMOVAL_DISCARD_JOB  = 'removal:discardJob' as const
 export const SEVERITY_GET = 'severity:get' as const
 export const SEVERITY_SET = 'severity:set' as const
 
+// Language preference IPC channels (Phase 8, LOC-01). Non-secret;
+// Zod-validated (z.enum(['en','cs'])) in languageChannels.ts.
+// LANGUAGE_GET returns null on first launch so renderer can detect OS locale default.
+export const LANGUAGE_GET = 'language:get' as const
+export const LANGUAGE_SET = 'language:set' as const
+
+// Theme preference IPC channels (Phase 8, LOC-01). Non-secret;
+// Zod-validated (z.enum(['light','dark'])) in themeChannels.ts.
+// THEME_GET returns null on first launch; THEME_SET also sets nativeTheme.themeSource.
+export const THEME_GET = 'theme:get' as const
+export const THEME_SET = 'theme:set' as const
+
 // Namespace object for convenience
 export const CHANNELS = {
   AUTH_SUBMIT_PHONE,
@@ -99,4 +111,8 @@ export const CHANNELS = {
   REMOVAL_DISCARD_JOB,
   SEVERITY_GET,
   SEVERITY_SET,
+  LANGUAGE_GET,
+  LANGUAGE_SET,
+  THEME_GET,
+  THEME_SET,
 } as const
