@@ -4,6 +4,7 @@
 
 import React, { useMemo } from 'react'
 import { CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import type { Identity } from '@shared/authTypes'
 import { cn } from '@renderer/lib/utils'
@@ -33,6 +34,7 @@ function getInitials(name: string): string {
 }
 
 export default function IdentityDisplay({ identity }: IdentityDisplayProps): React.JSX.Element {
+  const { t } = useTranslation('shell')
   const avatarUrl = useMemo(() => bytesToDataUrl(identity.avatar), [identity.avatar])
   const initials = useMemo(() => getInitials(identity.name), [identity.name])
 
@@ -66,10 +68,10 @@ export default function IdentityDisplay({ identity }: IdentityDisplayProps): Rea
           </span>
           <CheckCircle2
             className="h-4 w-4 text-[#16A34A] shrink-0"
-            aria-label="Signed in"
+            aria-label={t('signedInAria')}
           />
           <span className="text-label text-[#16A34A] shrink-0 hidden sm:inline">
-            Signed in
+            {t('signedInAria')}
           </span>
         </div>
         {/* Line 2: @username in monospace, muted */}

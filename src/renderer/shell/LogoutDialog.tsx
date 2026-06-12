@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ interface LogoutDialogProps {
 }
 
 export default function LogoutDialog({ open, onOpenChange }: LogoutDialogProps): React.JSX.Element {
+  const { t } = useTranslation('shell')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [serverRevoked, setServerRevoked] = useState<boolean | null>(null)
 
@@ -67,10 +69,10 @@ export default function LogoutDialog({ open, onOpenChange }: LogoutDialogProps):
       >
         <DialogHeader>
           <DialogTitle id="logout-dialog-title" className="text-heading">
-            Log out?
+            {t('logOutTitle')}
           </DialogTitle>
           <DialogDescription id="logout-dialog-description" className="text-body">
-            You'll need to sign in again with a code.
+            {t('logOutDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -84,8 +86,7 @@ export default function LogoutDialog({ open, onOpenChange }: LogoutDialogProps):
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription className="text-body">
-              You're signed out on this device, but we couldn't confirm Telegram revoked the
-              session. Open Telegram → Settings → Devices to remove it manually.
+              {t('logOutPartialAlert')}
             </AlertDescription>
           </Alert>
         )}
@@ -98,7 +99,7 @@ export default function LogoutDialog({ open, onOpenChange }: LogoutDialogProps):
             disabled={isLoggingOut}
             autoFocus
           >
-            Cancel
+            {t('cancel')}
           </Button>
 
           {/* Log out — destructive (D-15) */}
@@ -106,15 +107,15 @@ export default function LogoutDialog({ open, onOpenChange }: LogoutDialogProps):
             variant="destructive"
             onClick={handleLogout}
             disabled={isLoggingOut || serverRevoked !== null}
-            aria-label="Confirm log out"
+            aria-label={t('confirmLogOut')}
           >
             {isLoggingOut ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                Logging out…
+                {t('loggingOut')}
               </>
             ) : (
-              'Log out'
+              t('logOutButton')
             )}
           </Button>
         </DialogFooter>
