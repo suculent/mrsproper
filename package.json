@@ -1,6 +1,6 @@
 {
   "name": "mrsproper",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "Portable desktop app for bulk-removing a person from all Telegram groups",
   "private": true,
   "main": "./out/main/index.js",
@@ -12,7 +12,8 @@
     "package:win": "electron-builder --win",
     "test": "vitest run",
     "test:changed": "vitest run --changed",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json",
+    "release": "bash scripts/release.sh"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
