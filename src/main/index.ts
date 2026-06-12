@@ -16,6 +16,8 @@ import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/gro
 import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
 import { registerSeverityChannels } from './ipc/severityChannels'
+import { registerLanguageChannels } from './ipc/languageChannels'
+import { registerThemeChannels } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
@@ -288,6 +290,10 @@ app.whenReady().then(async () => {
 
   // Phase 6: register severity preference IPC handlers (kick/ban toggle, electron-store)
   registerSeverityChannels()
+
+  // Phase 8: register language and theme preference IPC handlers (LOC-01)
+  registerLanguageChannels()
+  registerThemeChannels()
 
   // ── On-launch job-file detection (Resume/Discard) ─────────────────────────
   // Read the job file BEFORE sm.initialize() so the pending state is available

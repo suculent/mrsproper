@@ -34,6 +34,10 @@ import {
   REMOVAL_DISCARD_JOB,
   SEVERITY_GET,
   SEVERITY_SET,
+  LANGUAGE_GET,
+  LANGUAGE_SET,
+  THEME_GET,
+  THEME_SET,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -163,4 +167,20 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.invoke(SEVERITY_GET) as Promise<'kick' | 'ban'>,
   setSeverity: (severity: 'kick' | 'ban'): Promise<'kick' | 'ban'> =>
     ipcRenderer.invoke(SEVERITY_SET, { severity }) as Promise<'kick' | 'ban'>,
+
+  // ── Language preference bridge (Phase 8, LOC-01) ──────────────────────────
+  // Non-secret pref channels; Zod-validated (z.enum(['en','cs'])) in languageChannels.ts.
+  // getLanguage returns null on first launch — caller applies OS locale detection.
+  getLanguage: (): Promise<'en' | 'cs' | null> =>
+    ipcRenderer.invoke(LANGUAGE_GET) as Promise<'en' | 'cs' | null>,
+  setLanguage: (language: 'en' | 'cs'): Promise<'en' | 'cs'> =>
+    ipcRenderer.invoke(LANGUAGE_SET, { language }) as Promise<'en' | 'cs'>,
+
+  // ── Theme preference bridge (Phase 8, LOC-01) ─────────────────────────────
+  // Non-secret pref channels; Zod-validated (z.enum(['light','dark'])) in themeChannels.ts.
+  // getTheme returns null on first launch — caller falls through to OS nativeTheme.
+  getTheme: (): Promise<'light' | 'dark' | null> =>
+    ipcRenderer.invoke(THEME_GET) as Promise<'light' | 'dark' | null>,
+  setTheme: (theme: 'light' | 'dark'): Promise<'light' | 'dark'> =>
+    ipcRenderer.invoke(THEME_SET, { theme }) as Promise<'light' | 'dark'>,
 })
