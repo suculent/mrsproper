@@ -10,6 +10,8 @@ import { searchClient } from '../ipc/searchClient'
 type Listener = () => void
 
 let currentState: SearchState = { step: 'idle' }
+// Tracks the last query dispatched by startSearch — used by CandidateList empty state.
+let lastQuery = ''
 
 const listeners = new Set<Listener>()
 
@@ -72,9 +74,15 @@ export function useSearchStore(): SearchState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
+// Returns the last query dispatched via startSearch — for empty state rendering in CandidateList.
+export function getLastQuery(): string {
+  return lastQuery
+}
+
 // Intent dispatchers — delegate to searchClient; update store from returned state
 export const searchActions = {
   async startSearch(query: string): Promise<void> {
+    lastQuery = query
     try {
       const s = await searchClient.startSearch(query)
       setState(s)
