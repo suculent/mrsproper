@@ -12,6 +12,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Search, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { Input } from '../components/ui/input'
 import { Button } from '../components/ui/button'
@@ -22,13 +23,7 @@ import { useRemovalStore, removalActions } from '../store/removalStore'
 import { GroupRow } from './GroupRow'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
-import {
-  SCAN_COPY,
-  EMPTY_STATE_COPY,
-  GROUP_ERROR_COPY,
-} from './groupsCopy'
-import { removalCopy } from '../removal/removalCopy'
-import { wizardCopy } from '../wizard/wizardCopy'
+import { formatTime } from '@renderer/lib/format'
 import FloodCountdown from '../auth/FloodCountdown'
 
 // ---------------------------------------------------------------------------
@@ -64,6 +59,10 @@ function sortDialogs(dialogs: AdminDialogDTO[], sort: SortMode): AdminDialogDTO[
 // ---------------------------------------------------------------------------
 
 export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
+  const { t: tG } = useTranslation('groups')
+  const { t: tR } = useTranslation('removal')
+  const { t: tW } = useTranslation('wizard')
+
   const { groups, scan, checkedDialogIds } = useGroupsStore()
   const targetState = useTargetStore()
   const { state: removal } = useRemovalStore()
@@ -216,23 +215,23 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       if (groups.step === 'error') {
         return (
           <p className="px-4 py-4 text-label text-muted-foreground">
-            {GROUP_ERROR_COPY[groups.code]}
+            {tG(`groupError.${groups.code}`)}
           </p>
         )
       }
       if (groups.step === 'loaded' && filter !== '' && displayedDialogs.length === 0) {
         return (
           <div className="px-4 py-8 flex flex-col gap-1">
-            <span className="text-label font-semibold">{EMPTY_STATE_COPY.noMatches.heading}</span>
-            <span className="text-body text-muted-foreground">{EMPTY_STATE_COPY.noMatches.body}</span>
+            <span className="text-label font-semibold">{tG('emptyState.noMatches.heading')}</span>
+            <span className="text-body text-muted-foreground">{tG('emptyState.noMatches.body')}</span>
           </div>
         )
       }
       if (groups.step === 'loaded' && allDialogs.length === 0) {
         return (
           <div className="px-4 py-8 flex flex-col gap-1">
-            <span className="text-label font-semibold">{EMPTY_STATE_COPY.noGroups.heading}</span>
-            <span className="text-body text-muted-foreground">{EMPTY_STATE_COPY.noGroups.body}</span>
+            <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
+            <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
           </div>
         )
       }
@@ -243,11 +242,10 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     if (mode === 'checklist' && scan.step === 'complete') {
       const memberRows = scan.results.filter((r) => r.status === 'member')
       if (memberRows.length === 0) {
-        const copy = EMPTY_STATE_COPY.notInAny(targetName)
         return (
           <div className="px-4 py-8 flex flex-col gap-1">
-            <span className="text-label font-semibold">{copy.heading}</span>
-            <span className="text-body text-muted-foreground">{copy.body}</span>
+            <span className="text-label font-semibold">{tG('emptyState.notInAnyHeading', { name: targetName })}</span>
+            <span className="text-body text-muted-foreground">{tG('emptyState.notInAnyBody', { name: targetName })}</span>
           </div>
         )
       }
@@ -277,7 +275,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
           <div className="flex items-center justify-between mb-1">
             <span className="text-label text-muted-foreground">
-              {removalCopy.progressLabel(targetName, processed + 1, total)}
+              {tR('progressLabel', { name: targetName, x: processed + 1, n: total })}
             </span>
             <Button
               variant="ghost"
@@ -285,15 +283,15 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               className="text-label text-muted-foreground hover:text-foreground"
               onClick={() => void removalActions.abortRemoval()}
               disabled={isStopping}
-              aria-label="Stop the removal run"
+              aria-label={tG('stopRemovalAria')}
             >
               {isStopping ? (
                 <>
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
-                  {removalCopy.stoppingLabel}
+                  {tR('stoppingLabel')}
                 </>
               ) : (
-                removalCopy.stopLabel
+                tR('stopLabel')
               )}
             </Button>
           </div>
@@ -305,7 +303,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           </div>
           {removal.floodWaitRemaining != null && removal.floodWaitRemaining > 0 && (
             <span className="text-label text-muted-foreground flex items-baseline gap-1">
-              {removalCopy.floodWaitSubline}
+              {tR('floodWaitSubline')}
               <FloodCountdown remaining={removal.floodWaitRemaining} />
             </span>
           )}
@@ -325,7 +323,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             <AlertDescription className="text-body">
-              {removalCopy.peerFloodBanner}
+              {tR('peerFloodBanner')}
               <div className="mt-2">
                 <Button
                   variant="destructive"
@@ -337,7 +335,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                     void removalActions.resumeJobFromDisk()
                   }}
                 >
-                  {removalCopy.peerFloodResumeLabel}
+                  {tR('peerFloodResumeLabel')}
                 </Button>
               </div>
             </AlertDescription>
@@ -349,20 +347,19 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     // c. Summary band (complete or stopped)
     if (removal.step === 'complete' || removal.step === 'stopped') {
       const summary = removal.summary
-      const summaryParts = summary
-        ? removalCopy.summaryLineParts({
-            removed: summary.removed,
-            alreadyGone: summary.alreadyGone,
-            failed: summary.failed,
-            skipped: summary.skipped,
-          })
-        : []
+      const summaryParts: Array<{ label: string; count: number }> = []
+      if (summary) {
+        if (summary.removed > 0) summaryParts.push({ count: summary.removed, label: tR('summaryPart.removed') })
+        if (summary.alreadyGone > 0) summaryParts.push({ count: summary.alreadyGone, label: tR('summaryPart.alreadyGone') })
+        if (summary.failed > 0) summaryParts.push({ count: summary.failed, label: tR('summaryPart.failed') })
+        if (summary.skipped > 0) summaryParts.push({ count: summary.skipped, label: tR('summaryPart.skipped') })
+      }
       return (
         <div className="px-4 py-2 shrink-0 border-t border-border flex items-center justify-between gap-2 flex-wrap" role="status">
           <div className="flex flex-col gap-1">
             {removal.step === 'stopped' && (
               <span className="text-label text-muted-foreground">
-                {removalCopy.summaryStopped(removal.progress.processed, removal.progress.total)}
+                {tR('summaryStopped', { x: removal.progress.processed, n: removal.progress.total })}
               </span>
             )}
             {summaryParts.length > 0 && (
@@ -379,12 +376,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             )}
             {summary && summary.failed > 0 && (
               <span className="text-label text-muted-foreground">
-                {removalCopy.summaryFailed(summary.failed)}
+                {tR('summaryFailed', { count: summary.failed })}
               </span>
             )}
             {summary && summary.completedAt && (
               <span className="text-label text-muted-foreground">
-                {removalCopy.summaryTimestamp(summary.completedAt)}
+                {tR('finishedAt', { time: formatTime(summary.completedAt) })}
               </span>
             )}
           </div>
@@ -393,7 +390,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             size="sm"
             onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
           >
-            {wizardCopy.removeSomeoneElse}
+            {tW('removeSomeoneElse')}
           </Button>
         </div>
       )
@@ -404,7 +401,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       return (
         <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-label text-muted-foreground">{SCAN_COPY.scanning}</span>
+            <span className="text-label text-muted-foreground">{tG('scan.scanning')}</span>
             <span className="text-label font-semibold text-foreground">
               checked {scan.progress.checked} / {scan.progress.total}
             </span>
@@ -437,7 +434,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filter groups"
+              placeholder={tG('filterPlaceholder')}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="pl-8"
@@ -454,9 +451,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             className="text-label text-muted-foreground hover:text-foreground"
             onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
             disabled={isRunActive}
-            aria-label={wizardCopy.changeTargetAria}
+            aria-label={tW('changeTargetAria')}
           >
-            {wizardCopy.changeTarget}
+            {tW('changeTarget')}
           </Button>
         )}
 
@@ -475,7 +472,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           variant="ghost"
           size="icon"
           onClick={() => void groupsActions.refreshGroups()}
-          aria-label="Refresh group list"
+          aria-label={tG('refreshAria')}
           title={isRunActive ? 'Removal in progress' : 'Re-fetch your group list from Telegram'}
           aria-disabled={isRunActive}
           disabled={isRunActive}
@@ -490,9 +487,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               variant="default"
               size="sm"
               onClick={() => props.onNavigateToReview()}
-              aria-label={wizardCopy.runTriggerAria(checkedCount)}
+              aria-label={tW('runTriggerAria', { count: checkedCount })}
             >
-              {wizardCopy.runTriggerLabel(checkedCount)}
+              {tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : removal.step === 'stopping' ? (
             // Disabled (not hidden) while stopping — UI-SPEC
@@ -502,7 +499,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               aria-disabled="true"
               disabled={true}
             >
-              {wizardCopy.runTriggerLabel(checkedCount)}
+              {tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : null
         )}
@@ -514,7 +511,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       {/* Failed rows summary (checklist mode, scan complete, no removal active) */}
       {mode === 'checklist' && failedCount > 0 && !isRunActive && removal.step === 'idle' && (
         <p className="px-4 py-1 shrink-0 text-label text-muted-foreground">
-          {SCAN_COPY.failedN(failedCount)}
+          {tG('scan.failedN', { count: failedCount })}
         </p>
       )}
 
