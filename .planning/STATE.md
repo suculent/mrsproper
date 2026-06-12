@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-06-12T23:06:08.071Z"
+last_updated: "2026-06-12T23:12:38.453Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 57
-  completed_plans: 49
-  percent: 86
+  completed_plans: 50
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 ## Current Position
 
 Phase: 08 (localization-i18n-czech) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-06-12
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [█████████░] 86%
 | Phase 07-packaging-signing-release P04 | 180 | 2 tasks | 2 files |
 | Phase 07-packaging-signing-release P05 | 0 | 1 tasks | 2 files |
 | Phase 08 P01 | 10 | 2 tasks | 4 files |
+| Phase 08 P02 | 10 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [Phase 07-04]: set -a before sourcing .env in release.sh so env vars are auto-exported to notarytool subprocess
 - [Phase ?]: Big Sur 11.7.10 smoke test deferred to after Phase 8 localization — machine unavailable; explicit user decision, not a test failure; tracked in 07-HUMAN-UAT.md
 - [Phase ?]: Windows 10 unsigned build (0.9.1 NSIS) showed no SmartScreen dialog at all — better than expected D-05; README bypass instructions remain valid
+- [Phase 08-02]: LANGUAGE_GET/THEME_GET return null on first launch (no defaults) — renderer applies OS locale detection (LOC-01)
+- [Phase 08-02]: themeChannels.ts sets nativeTheme.themeSource after store.set(); existing syncRendererTheme listener propagates change to renderer without extra coordination
+- [Phase 08-02]: i18next@26.3.1 + react-i18next@17.0.8 installed; pre-audited Approved packages per RESEARCH.md Package Legitimacy Audit
 
 ### Pending Todos
 
@@ -186,6 +190,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-12T23:06:08.066Z
+Last session: 2026-06-12T23:12:38.447Z
 Stopped at: Completed 07-05-PLAN.md
 Resume file: None

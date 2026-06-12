@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 1/9 | In Progress|  |
+| 8. Localization — i18n & Czech Translation (v1.5) | 2/9 | In Progress|  |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -370,7 +370,7 @@ Plans:
 
 **Wave 1** *(parallel — IPC infrastructure + i18n setup)*
 
-- [ ] 08-02-PLAN.md — Install i18next/react-i18next + LANGUAGE/THEME IPC channels + preload bridge + main wiring
+- [x] 08-02-PLAN.md — Install i18next/react-i18next + LANGUAGE/THEME IPC channels + preload bridge + main wiring
 - [ ] 08-03-PLAN.md — i18n/index.ts + i18next.d.ts + all 12 locale JSON files (6 namespaces × en/cs) + lib/format.ts utility rescue
 
 **Wave 2** *(blocked on Wave 1 completion)*
