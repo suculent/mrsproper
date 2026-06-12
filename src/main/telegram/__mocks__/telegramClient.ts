@@ -135,6 +135,20 @@ export interface MockClientConfig {
   basicGroupParticipants?: Record<string, string[]>  // chatId → userId[]
   /** If set, getDialogs throws this error. */
   getDialogsError?: MockRPCErrorCode
+
+  // ── Phase 4.1: name search mock controls ─────────────────────────────────
+  /** If set, channels.GetParticipants returns these users for the given channelId. */
+  getParticipantsResult?: Record<string, Array<{
+    userId: string
+    firstName?: string
+    lastName?: string
+    username?: string
+    accessHash?: string
+  }>>
+  /** If set, channels.GetParticipants throws this error for these channelIds. */
+  getParticipantsError?: Record<string, MockRPCErrorCode>
+  /** If set, users.GetUsers returns this user for the given userId. */
+  getUsersResult?: Record<string, { firstName?: string; lastName?: string; username?: string; accessHash?: string }>
 }
 
 const DEFAULT_IDENTITY = {
@@ -299,6 +313,48 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         }
         // Return a ChannelParticipant (member)
         return { participant: { className: 'ChannelParticipant', userId: bigInt('12345') } }
+      }
+
+      // channels.GetParticipants — name search (Phase 4.1)
+      if (ctorName === 'GetParticipants' || (request as { className?: string })?.className === 'channels.GetParticipants') {
+        const channelId = (request as { channel?: { channelId?: { toString(): string } } }).channel?.channelId?.toString() ?? ''
+        if (config.getParticipantsError?.[channelId]) {
+          throw makeRPCError(config.getParticipantsError[channelId]!)
+        }
+        const users = (config.getParticipantsResult?.[channelId] ?? []).map(u => ({
+          id: bigInt(u.userId),
+          accessHash: bigInt(u.accessHash ?? '0'),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username ?? null,
+          deleted: false,
+          min: false,
+        }))
+        return {
+          className: 'channels.ChannelParticipants',
+          count: users.length,
+          participants: users.map(u => ({ className: 'ChannelParticipant', userId: u.id })),
+          users,
+          chats: [],
+        }
+      }
+
+      // users.GetUsers — candidate resolution (Phase 4.1)
+      if (ctorName === 'GetUsers' || (request as { className?: string })?.className === 'users.GetUsers') {
+        const ids = (request as { id?: Array<{ userId?: { toString(): string } }> }).id ?? []
+        const userId = ids[0]?.userId?.toString() ?? ''
+        const u = config.getUsersResult?.[userId] ?? { firstName: 'Unknown' }
+        return [{
+          id: bigInt(userId),
+          accessHash: bigInt(u.accessHash ?? '0'),
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username ?? null,
+          deleted: false,
+          bot: false,
+          premium: false,
+          status: undefined,
+        }]
       }
 
       // messages.GetFullChat — basic group membership (GRP-01)
