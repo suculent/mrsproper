@@ -4,6 +4,15 @@
 #   APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER
 # Dev builds without these env vars warn and skip notarization gracefully.
 
+# npmRebuild: false — skip @electron/rebuild's node-gyp cross-compile step.
+# The only native deps are bufferutil@4.1.0 and utf-8-validate@5.0.10 (transitive
+# from `telegram`/GramJS). Both ship N-API prebuilds in their npm packages
+# (node_modules/bufferutil/prebuilds/ contains darwin-x64, darwin-arm64, win32-x64, etc.)
+# so no source compilation is needed. When building win32 from macOS, node-gyp cannot
+# cross-compile and aborts with "does not support cross-compiling native modules from source".
+# The prebuilds work across Electron ABIs because they use N-API (stable ABI layer).
+npmRebuild: false
+
 appId: cz.corpus.mrsproper
 # productName is the binary stem: MrsProper.app on macOS, MrsProper.exe on Windows.
 # The human-readable display name "Mrs. Proper" is set via platform extendInfo below.

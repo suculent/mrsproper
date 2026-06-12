@@ -15,7 +15,13 @@ fi
 # Pre-flight: validate .env and required vars
 # ──────────────────────────────────────────────
 [ -f .env ] || { echo "ERROR: .env not found. Copy .env.example and fill values."; exit 1; }
+# set -a / set +a: export every variable sourced from .env so that electron-builder
+# (a child process of npm) inherits APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER.
+# Without -a, `source .env` populates the current shell only; the notarizer never sees
+# the vars and silently skips notarization ("notarize options were unable to be generated").
+set -a
 source .env
+set +a
 [ -n "${MRSPROPER_API_ID:-}" ]  || { echo "ERROR: MRSPROPER_API_ID not set in .env"; exit 1; }
 [ -n "${MRSPROPER_API_HASH:-}" ] || { echo "ERROR: MRSPROPER_API_HASH not set in .env"; exit 1; }
 [ -n "${APPLE_API_KEY:-}" ]     || { echo "ERROR: APPLE_API_KEY not set in .env"; exit 1; }
@@ -28,7 +34,9 @@ echo "Pre-flight checks passed."
 # ──────────────────────────────────────────────
 # Version bump (no git tag — tag after UAT confirms clean-machine pass)
 # ──────────────────────────────────────────────
-npm version "$VERSION" --no-git-tag-version
+# --allow-same-version: no-ops gracefully when package.json already has this version
+# (prevents "Version not changed" error when re-running the script at the same version).
+npm version "$VERSION" --no-git-tag-version --allow-same-version
 
 # ──────────────────────────────────────────────
 # Type check gate
