@@ -17,6 +17,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import bigInt from 'big-integer'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { RateLimitGovernor } from './governor'
 import { RemovalExecutor } from './RemovalExecutor'
@@ -667,6 +668,159 @@ describe('RemovalExecutor — generation guard', () => {
     // (not corrupted by a stale retryGroup result merging into a discarded run)
     expect(executor.getState()).toBeDefined()
   }, 10000)
+})
+
+// ---------------------------------------------------------------------------
+// 64-bit precision regression: entity id/accessHash > 2^53 must not lose precision
+//
+// GramJS CastErrors logged during removal runs showed accessHash values ending
+// in 000 (e.g., 6143171097270719000 instead of 6143171097270719123), which is
+// the fingerprint of a value > Number.MAX_SAFE_INTEGER being coerced to a plain
+// JS number. These tests assert that bigInt(entity.id.toString()) and
+// bigInt(entity.accessHash.toString()) preserve full 64-bit precision.
+// ---------------------------------------------------------------------------
+
+describe('RemovalExecutor — 64-bit precision regression (values > 2^53)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  it('supergroup: channelId > 2^53 is passed to EditBanned as exact bigInt (no precision loss)', async () => {
+    const OVERSIZED_CHANNEL_ID = '6143171097270719123'  // > 2^53, last digits '123'
+    const OVERSIZED_ACCESS_HASH = '7890123456789012345' // > 2^53, last digits '345'
+    const dialogs = [makeDialog(OVERSIZED_CHANNEL_ID, 'supergroup')]
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({})
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'EditBanned' || className === 'channels.EditBanned') {
+        mockClient.editBannedCalls!.push({
+          channelId: (request as { channel?: { channelId?: { toString(): string } } }).channel?.channelId?.toString() ?? '',
+          viewMessages: (request as { bannedRights?: { viewMessages?: boolean } }).bannedRights?.viewMessages ?? false,
+          untilDate: (request as { bannedRights?: { untilDate?: number } }).bannedRights?.untilDate ?? 0,
+        })
+        return {}
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor({ client: mockClient as never })
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs }),
+      getDialogEntity: (_id: string) => ({
+        id: bigInt(OVERSIZED_CHANNEL_ID),
+        accessHash: bigInt(OVERSIZED_ACCESS_HASH),
+        className: 'Channel',
+      }),
+    }
+    const stubResolver = {
+      getResolvedUser: () => ({
+        id: BigInt('99'),
+        accessHash: BigInt('12345'),
+      }),
+    }
+    const auditStore = makeAuditStore([OVERSIZED_CHANNEL_ID])
+    const states: RemovalState[] = []
+
+    const executor = new RemovalExecutor({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      auditStore,
+      onStateChange: (s) => states.push(s),
+    })
+
+    const execPromise = executor.execute({ severity: 'ban', dialogIds: [OVERSIZED_CHANNEL_ID] })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    // Find the EditBanned request to inspect the InputChannel.channelId
+    const editBannedReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'channels.EditBanned'
+    ) as { channel?: { channelId?: unknown; accessHash?: unknown } } | undefined
+
+    expect(editBannedReq).toBeDefined()
+    const channelIdVal = editBannedReq?.channel?.channelId
+    expect(bigInt.isInstance(channelIdVal)).toBe(true)
+    if (bigInt.isInstance(channelIdVal)) {
+      // Precision check: last digits must be '123', not '000'
+      expect(channelIdVal.toString()).toBe(OVERSIZED_CHANNEL_ID)
+    }
+
+    const accessHashVal = editBannedReq?.channel?.accessHash
+    expect(bigInt.isInstance(accessHashVal)).toBe(true)
+    if (bigInt.isInstance(accessHashVal)) {
+      expect(accessHashVal.toString()).toBe(OVERSIZED_ACCESS_HASH)
+    }
+  })
+
+  it('basic-group: chatId > 2^53 is passed to DeleteChatUser as exact bigInt (no precision loss)', async () => {
+    const OVERSIZED_CHAT_ID = '9007199254740993' // 2^53 + 2
+    const dialogs = [makeDialog(OVERSIZED_CHAT_ID, 'basic-group')]
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({})
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'DeleteChatUser' || className === 'messages.DeleteChatUser') {
+        mockClient.deleteChatUserCalls!.push({
+          chatId: (request as { chatId?: { toString(): string } }).chatId?.toString() ?? '',
+        })
+        return {}
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor({ client: mockClient as never })
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs }),
+      getDialogEntity: (_id: string) => ({
+        id: bigInt(OVERSIZED_CHAT_ID),
+        className: 'Chat',
+      }),
+    }
+    const stubResolver = {
+      getResolvedUser: () => ({
+        id: BigInt('99'),
+        accessHash: BigInt('12345'),
+      }),
+    }
+    const auditStore = makeAuditStore([OVERSIZED_CHAT_ID])
+    const states: RemovalState[] = []
+
+    const executor = new RemovalExecutor({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      auditStore,
+      onStateChange: (s) => states.push(s),
+    })
+
+    const execPromise = executor.execute({ severity: 'ban', dialogIds: [OVERSIZED_CHAT_ID] })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    const deleteChatUserReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'messages.DeleteChatUser'
+    ) as { chatId?: unknown } | undefined
+
+    expect(deleteChatUserReq).toBeDefined()
+    const chatIdVal = deleteChatUserReq?.chatId
+    expect(bigInt.isInstance(chatIdVal)).toBe(true)
+    if (bigInt.isInstance(chatIdVal)) {
+      // 2^53 + 2 must not be rounded to 2^53 (= 9007199254740992)
+      expect(chatIdVal.toString()).toBe(OVERSIZED_CHAT_ID)
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------

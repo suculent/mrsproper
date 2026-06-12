@@ -622,3 +622,148 @@ describe('GramJS id types — bigInt regression (Defect 3)', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// 64-bit precision regression: values > Number.MAX_SAFE_INTEGER must not lose
+// precision when passing through bigInt(entity.id.toString()) conversion.
+//
+// Telegram IDs and accessHashes exceed 2^53-1 (9007199254740991). If the value
+// is ever coerced through a JS number, the lower bits are zeroed. These tests
+// confirm that entity values > 2^53 are preserved exactly as bigInt instances.
+//
+// Error signature caught in production: accessHash values ending in 000
+// (e.g., 6143171097270719000 instead of 6143171097270719123) indicate
+// Number(bigIntValue) precision loss before being passed to a TL constructor.
+// ---------------------------------------------------------------------------
+
+describe('64-bit precision regression — values > Number.MAX_SAFE_INTEGER', () => {
+  // Chosen so the value exceeds 2^53 AND so the last 4 digits change if coerced
+  // through a plain JS number (precision is lost at the 16th digit).
+  const OVERSIZED_CHANNEL_ID = '6143171097270719123'   // > 2^53, last digits '123'
+  const OVERSIZED_ACCESS_HASH = '7890123456789012345'  // > 2^53, last digits '345'
+
+  it('supergroup: channelId > 2^53 is preserved as exact bigInt (no precision loss)', async () => {
+    const dialog = makeDialog(OVERSIZED_CHANNEL_ID, 'supergroup')
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({
+      notMemberDialogIds: [],
+    })
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      // GetParticipant: channelId may not match our oversized ID string in the mock
+      // (mock uses toString() which may differ from the bigInt string) — return member
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
+        return { participant: { className: 'ChannelParticipant', userId: bigInt('99') } }
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (_id: string) => ({
+        className: 'Channel',
+        id: bigInt(OVERSIZED_CHANNEL_ID),
+        accessHash: bigInt(OVERSIZED_ACCESS_HASH),
+        megagroup: true,
+      }),
+    }
+    const stubResolver = {
+      getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('12345') }),
+    }
+
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: () => {},
+    })
+
+    await scanner.scan()
+
+    const getParticipantReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'channels.GetParticipant'
+    ) as { channel?: { channelId?: unknown; accessHash?: unknown } } | undefined
+
+    expect(getParticipantReq).toBeDefined()
+
+    const channelIdVal = getParticipantReq?.channel?.channelId
+    expect(bigInt.isInstance(channelIdVal)).toBe(true)
+    if (bigInt.isInstance(channelIdVal)) {
+      // Exact precision: last digits must be '123', not '000' (number coercion fingerprint)
+      expect(channelIdVal.toString()).toBe(OVERSIZED_CHANNEL_ID)
+    }
+
+    const accessHashVal = getParticipantReq?.channel?.accessHash
+    expect(bigInt.isInstance(accessHashVal)).toBe(true)
+    if (bigInt.isInstance(accessHashVal)) {
+      expect(accessHashVal.toString()).toBe(OVERSIZED_ACCESS_HASH)
+    }
+  })
+
+  it('basic-group: chatId > 2^53 is preserved as exact bigInt (no precision loss)', async () => {
+    const OVERSIZED_CHAT_ID = '9007199254740993'  // 2^53 + 2, exact precision test
+    const dialog = makeDialog(OVERSIZED_CHAT_ID, 'basic-group')
+    const capturedRequests: unknown[] = []
+
+    const mockClient = createMockTelegramClient({
+      basicGroupParticipants: { [OVERSIZED_CHAT_ID]: [] },
+    })
+    const originalInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = async (request: unknown): Promise<unknown> => {
+      capturedRequests.push(request)
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetFullChat' || className === 'messages.GetFullChat') {
+        // Return empty participants (not-member) — we only care about the id type
+        return {
+          fullChat: {
+            className: 'ChatFull',
+            participants: { className: 'ChatParticipants', participants: [] },
+          },
+        }
+      }
+      return originalInvoke(request)
+    }
+
+    const governor = new RateLimitGovernor(mockClient as never)
+    const stubEnumerator = {
+      getState: () => ({ step: 'loaded' as const, dialogs: [dialog] }),
+      getDialogEntity: (_id: string) => ({
+        className: 'Chat',
+        id: bigInt(OVERSIZED_CHAT_ID),
+      }),
+    }
+    const stubResolver = {
+      getResolvedUser: () => ({ id: BigInt('99'), accessHash: BigInt('12345') }),
+    }
+
+    const scanner = new MembershipScanner({
+      client: mockClient as never,
+      governor,
+      enumerator: stubEnumerator as never,
+      resolver: stubResolver,
+      onStateChange: () => {},
+    })
+
+    await scanner.scan()
+
+    const getFullChatReq = capturedRequests.find(r =>
+      (r as { className?: string })?.className === 'messages.GetFullChat'
+    ) as { chatId?: unknown } | undefined
+
+    expect(getFullChatReq).toBeDefined()
+
+    const chatIdVal = getFullChatReq?.chatId
+    expect(bigInt.isInstance(chatIdVal)).toBe(true)
+    if (bigInt.isInstance(chatIdVal)) {
+      // 2^53 + 2 must not be rounded to 2^53 (= 9007199254740992)
+      expect(chatIdVal.toString()).toBe(OVERSIZED_CHAT_ID)
+    }
+  })
+})
