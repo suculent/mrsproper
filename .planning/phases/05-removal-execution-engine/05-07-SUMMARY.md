@@ -1,168 +1,216 @@
 ---
 phase: 05-removal-execution-engine
 plan: "07"
-subsystem: renderer-removal-ui
-tags: [renderer, GroupRow, GroupsPane, TargetCard, removal-status, run-trigger, progress-slot, summary-band, dialogs, phase5]
-dependency_graph:
-  requires: [05-06]
-  provides: [GroupRow-removal-status, GroupsPane-run-trigger, GroupsPane-progress-slot, GroupsPane-summary-band, GroupsPane-PEER_FLOOD-banner, GroupsPane-dialogs, TargetCard-locked-during-run]
-  affects: [AppShell, phase5-end-to-end]
-tech_stack:
+subsystem: ui
+tags: [react, electron, gramjs, removal, progress-ui, dialogs, zustand]
+
+# Dependency graph
+requires:
+  - phase: 05-removal-execution-engine
+    provides: removalStore, removalCopy, RemovalConfirmDialog, ResumeJobDialog, removalChannels, RemovalExecutor, AuditStore
+  - phase: 04-group-enumeration-membership-rights
+    provides: GroupRow.tsx, GroupsPane.tsx, groupsStore, AdminDialogDTO, checkedDialogIds
+
+provides:
+  - GroupRow with 6 removal status states (queued/removing/done/already-gone/failed/skipped) and inline retry link
+  - GroupsPane run-trigger button, progress indicator, summary band, PEER_FLOOD banner
+  - RemovalConfirmDialog wired to run-trigger; ResumeJobDialog wired on mount for crash-resume
+  - TargetCard/Change-target disabled during active removal run
+  - Live end-to-end removal verified: target banned from real Telegram test group, confirmed cannot rejoin
+
+affects: [06-ui-integration-wizard-safety-gates-progress]
+
+# Tech tracking
+tech-stack:
   added: []
-  patterns: [checkbox-slot-ternary-extension, additive-props-extension, progress-slot-multi-state, copy-module-usage, dialog-wiring]
-key_files:
+  patterns:
+    - "GroupRow checkbox slot ternary: removalStatus branch prepended before existing isPending/isActionable/disabled branches"
+    - "GroupsPane multi-state progress slot: one slot renders scan progress OR removal progress OR PEER_FLOOD banner OR summary band depending on step"
+    - "removalStore getSnapshot must return stable cached reference — React external store contract requires referential equality to avoid infinite update loops"
+    - "tsc --noEmit is a no-op for this project (files:[] + project references) — use tsc --build for real type-checking"
+    - "GramJS ignoreMigrated is inverted in 2.26.x — always fetch all dialogs and filter husks in application code"
+
+key-files:
   created: []
   modified:
     - src/renderer/groups/GroupRow.tsx
     - src/renderer/groups/GroupsPane.tsx
     - src/renderer/target/TargetCard.tsx
-decisions:
-  - "GroupRow checkbox slot: removalStatus branch fires FIRST (before isPending/isActionable/greyed fallback)"
-  - "Grey reason, failed-verify subline, and type badge suppressed when removalStatus is non-null (isRemovalActive guard)"
-  - "getRemovalStatus() derives queued for all groups in the run without a recorded outcome (covers running/stopping/complete/stopped/hard-stopped steps)"
+    - src/renderer/store/removalStore.ts
+    - src/main/telegram/GroupEnumerator.ts
+    - src/main/index.ts
+    - src/main/telegram/RemovalExecutor.ts
+    - src/main/telegram/__mocks__/telegramClient.ts
+    - src/main/telegram/groupEnumerator.test.ts
+
+key-decisions:
+  - "tsc --noEmit is a NO-OP for this project (files:[] + project references) — real type-check gate is tsc --build"
+  - "GramJS telegram@2.26.x: getDialogs({ignoreMigrated:true}) drops ALL supergroups/channels due to inverted filter — correct pattern is fetch all + filter migratedTo/deactivated husks in _classifyDialog()"
+  - "Hardcoded severity='ban' for Phase 5 test default; Phase 6 will expose the kick/ban toggle per UI-SPEC"
   - "TargetCard imports useRemovalStore directly — avoids prop drilling through AppShell for a local guard"
-  - "PEER_FLOOD resume button calls removalActions.startRemoval directly (remaining dialogIds from pendingJob) — ResumeJobDialog already handles this path on launch"
-  - "Refresh button disabled during active removal run (aria-disabled + disabled prop)"
-  - "Run-trigger button disabled (not hidden) while removal.step=stopping per UI-SPEC"
-  - "onToggle and onRetry passed as no-ops during active run — checklist lock per UI-SPEC interaction contract"
-  - "Failed rows summary (SCAN_COPY.failedN) hidden during active removal run to avoid visual conflict with progress slot"
-  - "Phase 5 hardcoded severity = 'ban' in RemovalConfirmDialog and runTriggerLabel call"
-metrics:
-  duration: 20
-  completed_date: "2026-06-12"
-  tasks: 2
-  files: 3
+
+patterns-established:
+  - "External store snapshot caching: cache getSnapshot() return value, only replace on state change — never return new object per call"
+  - "GroupRow status rendering: removalStatus prop drives both checkbox slot icon and subline copy; when non-null, toggle interactions are suppressed"
+  - "Multi-state progress slot: one DOM slot, conditional rendering switches between scan/removal/flood/summary contexts"
+
+requirements-completed: [RMV-01, RMV-02, EXE-04, EXE-05]
+
+# Metrics
+duration: ~3h (including 4 live-verification fix iterations)
+completed: 2026-06-12
 ---
 
-# Phase 5 Plan 07: GroupRow/GroupsPane Removal UI — Summary
+# Phase 5 Plan 07: GroupRow/GroupsPane Removal UI Surface Summary
 
-**One-liner:** GroupRow per-row removal status icons + sublines in checkbox slot, GroupsPane multi-state progress slot (scan / removal progress / PEER_FLOOD banner / summary band) + run-trigger + dialogs, TargetCard locked during active run.
+**Per-row removal status rendering (6 states), run-trigger, throttled progress indicator, summary band, and crash-resume dialog wired end-to-end; live human verification approved 2026-06-12 after 4 fix iterations including a critical GramJS ignoreMigrated inversion bug and a tsc --noEmit no-op discovery.**
 
-## Tasks Completed
+## Performance
 
-| Task | Name | Commit | Files |
-|------|------|--------|-------|
-| 1 | Extend GroupRow with optional removal status props and status rendering | 2066e6a | src/renderer/groups/GroupRow.tsx |
-| 2 | Wire GroupsPane run-trigger, progress slot, summary band, dialogs; lock TargetCard | 65dc8a0 | src/renderer/groups/GroupsPane.tsx, src/renderer/target/TargetCard.tsx |
+- **Duration:** ~3h (2 auto tasks + human-verify checkpoint with 4 fix iterations)
+- **Started:** 2026-06-12
+- **Completed:** 2026-06-12 (human verification approved)
+- **Tasks:** 3 (Task 1, Task 2 auto; Task 3 human-verify — APPROVED)
+- **Files modified:** 9
 
-## What Was Built
+## Accomplishments
 
-### Task 1: GroupRow — removal status rendering
+- GroupRow.tsx extended with 6 removal status states: queued (checked+disabled), removing (spinner), done/already-gone (green check), failed (red icon + inline retry link), skipped (minus icon) — all per UI-SPEC
+- GroupsPane.tsx wired with run-trigger button, multi-state progress slot (scan/removal/flood/summary), RemovalConfirmDialog and ResumeJobDialog, checklist lock during active run, TargetCard disabled while running
+- Four blocking bugs discovered and fixed during live verification — all documented as deviations
+- Live verification passed 2026-06-12: name search found target in 3 supergroups, scan verified membership, ban run executed with live per-row progress, summary band showed correct counts, target confirmed banned and unable to rejoin in Telegram
 
-**GroupRowProps extended** with five optional fields:
-- `removalStatus?: 'queued' | 'removing' | 'done' | 'already-gone' | 'failed' | 'skipped' | null`
-- `removalNote?: 'basic-group-ban-fallback' | null`
-- `onRetryRemoval?: (dialogId: string) => void`
-- `errorCode?: RmvErrorCode | null`
-- `severity?: 'kick' | 'ban'` (defaults 'ban')
+## Task Commits
 
-**Checkbox slot** — `renderCheckboxSlot()` function implements the FIRST-FIRES-removalStatus order:
-1. removalStatus non-null: `Loader2 animate-spin` (removing) / `Check text-success` (done, already-gone) / `AlertCircle text-destructive` (failed) / `Minus text-muted-foreground` (skipped) / `Checkbox checked disabled` (queued)
-2. isPending: pulse skeleton (unchanged)
-3. isActionable: interactive Checkbox (unchanged)
-4. fallback: grey-disabled div (unchanged)
+1. **Task 1: Extend GroupRow with removal status props and status rendering** - `2066e6a` (feat)
+2. **Task 2: Wire GroupsPane run-trigger, progress slot, summary band, dialogs; lock TargetCard** - `65dc8a0` (feat)
+3. **Task 3: Checkpoint metadata (pre-verification)** - `fe6b371` (docs)
+4. **Fix 1: removalStore stable getSnapshot reference** - `8929d79` (fix)
+5. **Fix 2: GramJS ignoreMigrated inversion + regression test** - `a53d520` (fix)
+6. **Fix 3: removal:start auth gate sm.getAuthState() does not exist** - `f809cb9` (fix)
+7. **Fix 4: abortExecution on idle emits phantom stopped summary** - `af0b779` (fix)
 
-**Subline column** — `renderRemovalSubline()` prepended before grey-reason sublines:
-- removing: "Removing…"
-- done: "Banned" / "Removed" / "Removed — rejoin can't be blocked in basic groups" (per severity + removalNote)
-- already-gone: "Already gone"
-- failed: `{RMV_ERROR_COPY[errorCode]}` + "retry removal" inline button (text-primary, aria-label)
-- skipped: "Skipped — removal stopped"
-- queued: null (no subline)
+## Files Created/Modified
 
-Grey reason, failed-verify, and type badge are suppressed when `removalStatus != null` (`isRemovalActive` guard).
+- `src/renderer/groups/GroupRow.tsx` — extended GroupRowProps with removalStatus, removalNote, errorCode, severity, onRetryRemoval; checkbox slot and subline updated with all 6 status branches
+- `src/renderer/groups/GroupsPane.tsx` — run-trigger, multi-state progress slot, summary band, PEER_FLOOD banner, RemovalConfirmDialog and ResumeJobDialog wired, checklist lock
+- `src/renderer/target/TargetCard.tsx` — imports useRemovalStore; Change target button disabled during running/stopping with "Stop the removal first" tooltip
+- `src/renderer/store/removalStore.ts` — getSnapshot cached to stable reference to satisfy React useSyncExternalStore contract (Fix 1)
+- `src/main/telegram/GroupEnumerator.ts` — fetch all dialogs without ignoreMigrated flag; filter migratedTo/deactivated husks in _classifyDialog(); removed TEMP-DIAG logging (Fixes 2, 4)
+- `src/main/index.ts` — getAuthState() corrected to getState() in removal:start handler (Fix 3)
+- `src/main/telegram/RemovalExecutor.ts` — abortExecution() on idle returns early without emitting state event (Fix 4)
+- `src/main/telegram/__mocks__/telegramClient.ts` — extended with migratedTo scenario for regression test (Fix 2)
+- `src/main/telegram/groupEnumerator.test.ts` — added ignoreMigrated regression test (Fix 2)
 
-### Task 2: GroupsPane — run-trigger, progress slot, summary band, dialogs
+## Decisions Made
 
-**Imports added:** `useRemovalStore`, `removalActions`, `RemovalConfirmDialog`, `ResumeJobDialog`, `removalCopy`, `Alert`, `AlertDescription`, `AlertTriangle`, `Loader2`.
-
-**State added:** `const [confirmOpen, setConfirmOpen] = useState(false)` + `const { state: removal, pendingJob } = useRemovalStore()`.
-
-**Target identity derived:** `confirmedTarget`, `targetId`, `targetUsername`, `targetAvatar` from `targetState.target`.
-
-**Run-trigger button** — right-aligned in checklist-mode toolbar:
-- Visible: `mode === 'checklist' && scan.step === 'complete' && checkedCount > 0 && removal.step === 'idle'`
-- Disabled (not hidden): `removal.step === 'stopping'`
-- onClick: `setConfirmOpen(true)` (never calls startRemoval directly — T-05-07-A)
-- Label: `removalCopy.runTriggerLabel('ban', checkedCount)`
-- aria-label: full sentence with targetName
-
-**Progress slot** — `renderProgressSlot()` multi-state conditional (one state at a time per UI-SPEC slot ownership):
-- `running|stopping`: progress label + h-1 bar + Stop removal ghost button (disables to "Stopping…" + Loader2)
-- `hard-stopped`: destructive Alert (AlertTriangle + peerFloodBanner copy + "Resume removal" button)
-- `complete|stopped`: summary band (stopped prefix if stopped, summary counts, failed follow-up, timestamp)
-- `scanning && idle removal`: existing scan progress (unchanged)
-- else: null
-
-**GroupRow props extended** per-row via `getRemovalStatus(dialogId)` derivation:
-- Checks `removal.outcomes` for a recorded outcome
-- Falls back to `'removing'` if `currentGroupId` matches
-- Falls back to `'queued'` for all other groups in an active/complete/stopped/hard-stopped run
-- `outcome?.note`, `outcome?.errorCode`, `removal.severity` passed through
-- `onToggle` and `onRetry` replaced with no-ops during `isRunActive`
-
-**Dialogs:**
-- `ResumeJobDialog` rendered when `pendingJob && pendingJob.status !== 'complete'`
-- `RemovalConfirmDialog` always mounted; `open={confirmOpen}` toggle
-
-**TargetCard change-target lock** (T-05-07-B):
-- Imports `useRemovalStore`; derives `isRemovalRunning = removal.step === 'running' || 'stopping'`
-- Button `disabled={isRemovalRunning} aria-disabled={isRemovalRunning}`
-- Tooltip text switches to "Stop the removal first" while locked
+- **tsc --noEmit is a NO-OP** for this project's tsconfig (files: [] + project references). PLAN.md verify blocks using it silently pass invalid code. Real gate is `tsc --build`. Future plans must use `tsc --build` in verify blocks.
+- **Hardcoded severity='ban'** for Phase 5 test default per user decision. Phase 6 will expose the kick/ban toggle.
+- **TargetCard imports useRemovalStore directly** — avoids prop drilling through AppShell for a simple local guard; consistent with the existing pattern where each component reads its own store.
+- **GramJS ignoreMigrated quirk** documented as permanent library gotcha — affects all future dialog enumeration work.
 
 ## Deviations from Plan
 
-### Auto-fixed Issues
+### Auto-fixed Issues — Live Verification Iteration
 
-**1. [Rule 2 - Missing critical functionality] TargetCard "Change target" lock**
+All 4 fixes were discovered and applied during the Task 3 human-verify checkpoint on 2026-06-12. The checkpoint was approved after all 4 fixes landed.
 
-The plan stated: "If the Change target button is in a sibling component, read AppShell.tsx to determine where it is. Wire this via a prop or shared store check." TargetCard is in the left pane, rendering independently. Rather than threading a prop through AppShell → TargetCard (adding unnecessary prop coupling), imported `useRemovalStore` directly in TargetCard — consistent with the existing pattern where each component reads its own store. This is the simplest, most maintainable approach and fully satisfies T-05-07-B.
+---
 
-**Files modified:** src/renderer/target/TargetCard.tsx
-**Commit:** 65dc8a0
+**1. [Rule 1 - Bug] removalStore getSnapshot returned fresh object per call — React "Maximum update depth" crash unmounting login tree**
+- **Found during:** Task 3 human-verify (first launch attempt after Tasks 1-2 committed)
+- **Issue:** `removalStore.getSnapshot()` returned a newly constructed object on every call. React's `useSyncExternalStore` uses referential equality to detect changes — a new object every time triggered infinite re-renders and crashed the component tree with "Maximum update depth exceeded" immediately after the LoginScreen unmounted post-login.
+- **Fix:** Introduced a module-level `_snapshot` cache variable. `getSnapshot()` returns the cached reference and only replaces it when the underlying state actually changes. `subscribe()` invalidates the cache on each state update.
+- **Files modified:** `src/renderer/store/removalStore.ts`
+- **Verification:** App launched, login completed, component tree stable.
+- **Committed in:** `8929d79`
 
-### Noted Variations
+---
 
-**1. getRemovalStatus() covers all terminal states (complete/stopped/hard-stopped)**
+**2. [Rule 1 - Bug] GramJS telegram@2.26.x ignoreMigrated inverted — all supergroups/channels silently dropped from dialog enumeration**
+- **Found during:** Task 3 human-verify (name search returned 0 groups for a target present in 3 supergroups)
+- **Issue:** `getDialogs({ ignoreMigrated: true })` in GramJS 2.26.x has an inverted filter: the internal `migratedTo` check retains only `Api.Chat` objects with a `migratedTo` field (i.e., dead basic-group husks), dropping every supergroup and channel. Dialog enumeration, membership scanning, and name search all operated on an empty set.
+- **Fix:** Changed `GroupEnumerator` to call `getDialogs()` without the `ignoreMigrated` flag, then filter husks explicitly in `_classifyDialog()`: skip any `Api.Chat` with `migratedTo` set or `deactivated === true`. Added a regression test with a mock client that returns a migrated `Api.Chat` entity alongside live supergroups.
+- **Files modified:** `src/main/telegram/GroupEnumerator.ts`, `src/main/telegram/__mocks__/telegramClient.ts`, `src/main/telegram/groupEnumerator.test.ts`
+- **Verification:** Name search found target in all 3 supergroups; membership scan and checklist populated correctly.
+- **Committed in:** `a53d520`
 
-The plan specified queued for rows "in the run but not yet processed" during running/stopping. Extended this to also cover complete/stopped/hard-stopped so that grouped outcomes (already processed) and unprocessed rows display correctly across all terminal states — this is required for the summary band to make visual sense and matches the UI-SPEC row rendering table.
+---
 
-**2. Failed rows summary (SCAN_COPY.failedN) suppressed during active removal**
+**3. [Rule 1 - Bug] removal:start IPC handler called non-existent sm.getAuthState() — every removal run died silently before reaching the executor**
+- **Found during:** Task 3 human-verify (clicking "Ban from N groups…" and confirming produced no visible action)
+- **Issue:** The `removal:start` IPC handler in `main/index.ts` called `sm.getAuthState()` for the auth gate. `SessionManager` only exposes `sm.getState()`. The TypeError was swallowed by the IPC error boundary so the executor never received the start signal. The bug slipped through automated verify because `tsc --noEmit` is a no-op for this project's tsconfig — it reported zero errors despite the invalid call.
+- **Fix:** Changed `sm.getAuthState()` to `sm.getState()` in the `removal:start` handler.
+- **Files modified:** `src/main/index.ts`
+- **Verification:** Clicking confirm triggered the run; progress indicator appeared and bar advanced.
+- **Committed in:** `f809cb9`
 
-Added `!isRunActive && removal.step === 'idle'` guard to the failed-rows summary paragraph. When a removal run is active or has completed, the progress slot owns the status display; showing the scan's failed count simultaneously would confuse the user. This is not a plan deviation — the plan does not mention this paragraph in the removal context, and it's the correct visual behavior per UI-SPEC slot ownership rule.
+---
 
-**3. PEER_FLOOD "Resume removal" button calls startRemoval directly**
+**4. [Rule 1 - Bug] abortExecution() on idle executor emitted phantom 'stopped 0/0' summary on every target change**
+- **Found during:** Task 3 human-verify (after a completed run, changing the target showed a spurious "Stopped (0/0 groups)" summary band)
+- **Issue:** `RemovalExecutor.abortExecution()` emitted a `stopped` state event regardless of whether a run was active. The TARGET_RESET path calls `executor.abortExecution()` to cancel any in-progress run — when idle, this produced a phantom stopped event, which removalStore rendered as a summary band on every subsequent target change.
+- **Fix:** Added an early-return guard in `abortExecution()` when `this._state.step === 'idle'` — no event emitted, no state transition. Also removed TEMP-DIAG `console.log` statements from `GroupEnumerator.ts` and `ParticipantSearcher.ts`.
+- **Files modified:** `src/main/telegram/RemovalExecutor.ts`, `src/main/telegram/GroupEnumerator.ts`, `src/main/telegram/ParticipantSearcher.ts`
+- **Verification:** Changing target after a completed run showed clean idle state with no phantom summary band.
+- **Committed in:** `af0b779`
 
-The plan suggested `{/* set a flag to show ResumeJobDialog (same pendingJob check) */}`. On closer reading, the ResumeJobDialog is already rendered when `pendingJob` is non-null and non-complete — triggering it via a boolean flag would just show the same dialog. Instead, the banner button calls `removalActions.startRemoval` directly with the remaining dialogIds from `pendingJob` — this is the actual resume action. This matches the UI-SPEC "explicit click = explicit consent; no silent auto-resume" requirement and is more direct.
+---
+
+**Total deviations:** 4 auto-fixed (all Rule 1 bugs)
+**Impact on plan:** All fixes were blocking correctness issues discovered during live verification. No scope creep. The GramJS ignoreMigrated inversion (Fix 2) is a permanent library gotcha documented in STATE.md decisions and CLAUDE.md.
+
+## Issues Encountered
+
+- **tsc --noEmit no-op:** This project's root `tsconfig.json` has `files: []` and uses project references. `tsc --noEmit` at the root silently succeeds even when source files contain type errors. Future PLAN.md verify blocks must use `tsc --build`.
+- **GramJS ignoreMigrated API quirk:** Documented in decisions. The correct pattern going forward is always fetch all dialogs and classify/filter husks in application code.
+
+## User Setup Required
+
+None — no external service configuration required.
+
+## Next Phase Readiness
+
+- Phase 5 Removal Execution Engine is fully complete and live-verified on a real Telegram account.
+- The app can: resolve a target by name, scan group membership, present a confirmation dialog, execute a ban run with live per-row progress, display a summary band with counts and timestamp, and persist the job file for crash-resume.
+- Phase 6 (UI Integration — Wizard, Safety Gates & Progress) can begin. Key inputs from Phase 5:
+  - `useRemovalStore()` + `removalActions` are the renderer-side interface for all removal operations
+  - `RemovalConfirmDialog` and `ResumeJobDialog` are already wired — Phase 6 should extend, not replace them
+  - Severity is hardcoded to 'ban' — Phase 6 should expose the kick/ban toggle per the original UI-SPEC
+- Known gap: `tsc --build` should replace `tsc --noEmit` in all plan verify blocks going forward.
 
 ## Threat Surface Scan
 
-No new network endpoints or auth paths introduced. Verified mitigations:
+No new network endpoints or auth paths introduced. Verified threat mitigations:
 
 | Threat | File | Mitigation Confirmed |
 |--------|------|----------------------|
-| T-05-07-A: Run-trigger bypasses confirm | GroupsPane.tsx | onClick sets `confirmOpen=true` only; `startRemoval` never called directly from button |
-| T-05-07-B: Change target during run | TargetCard.tsx | Button `disabled` + `aria-disabled` during running/stopping; tooltip shows "Stop the removal first" |
-| T-05-07-C: Repudiation | RemovalConfirmDialog.tsx | Dialog shows exact group count; per-group report + summary band from engine (Plans 03-06) |
-
-## Known Stubs
-
-None. All removal status rendering reads from `removalStore` which connects to the live engine via IPC (Plans 03-05). Dialogs connect to `removalActions` which connects to `removalClient` (Plan 05-06). The only hardcoded value is `severity='ban'` for Phase 5 manual verification — intentional per user decision in CONTEXT.md.
-
-## Human Verification Pending
-
-Task 3 is a `checkpoint:human-verify` gate. The human must verify the complete Phase 5 removal flow end-to-end using a real Telegram test account and test group. See checkpoint details below.
+| T-05-07-A: Run-trigger bypasses confirm | GroupsPane.tsx | onClick sets confirmOpen=true only; startRemoval never called directly from button |
+| T-05-07-B: Change target during run | TargetCard.tsx | Button disabled + aria-disabled during running/stopping; tooltip "Stop the removal first" |
+| T-05-07-C: Repudiation | RemovalConfirmDialog.tsx + engine | Dialog shows exact group count; per-group report + summary band from Plans 03-06 |
 
 ## Self-Check: PASSED
 
 Files verified:
-- src/renderer/groups/GroupRow.tsx — EXISTS (removalStatus props + rendering)
-- src/renderer/groups/GroupsPane.tsx — EXISTS (run-trigger + progress slot + dialogs)
-- src/renderer/target/TargetCard.tsx — EXISTS (removal lock)
+- `src/renderer/groups/GroupRow.tsx` — EXISTS (removalStatus props + rendering)
+- `src/renderer/groups/GroupsPane.tsx` — EXISTS (run-trigger + progress slot + dialogs)
+- `src/renderer/target/TargetCard.tsx` — EXISTS (removal lock)
+- `src/renderer/store/removalStore.ts` — EXISTS (stable snapshot)
+- `src/main/telegram/GroupEnumerator.ts` — EXISTS (ignoreMigrated fix)
+- `src/main/index.ts` — EXISTS (getState() fix)
+- `src/main/telegram/RemovalExecutor.ts` — EXISTS (idle abort guard)
 
 Commits verified:
-- 2066e6a: feat(05-07): extend GroupRow with removal status props and per-row status rendering
-- 65dc8a0: feat(05-07): wire GroupsPane run-trigger, progress slot, summary band, dialogs; lock TargetCard during run
+- `2066e6a` feat(05-07): extend GroupRow with removal status props and per-row status rendering
+- `65dc8a0` feat(05-07): wire GroupsPane run-trigger, progress slot, summary band, dialogs; lock TargetCard during run
+- `fe6b371` docs(05-07): complete GroupRow/GroupsPane removal UI plan — checkpoint pending human verify
+- `8929d79` fix(05): stable getSnapshot reference in removalStore
+- `a53d520` fix(05): GramJS ignoreMigrated drops all supergroups
+- `f809cb9` fix(05): removal:start auth gate crashed — sm.getAuthState() does not exist
+- `af0b779` fix(05): abortExecution on idle executor resets to clean idle
 
-TypeScript: npx tsc --noEmit exits 0 (verified after each task)
-Vitest: 213/215 tests pass; 2 pre-existing failures in config.test.ts (AUTH-03 env injection, unrelated to Plan 07)
+Human verification: APPROVED 2026-06-12
+
+---
+*Phase: 05-removal-execution-engine*
+*Completed: 2026-06-12*
