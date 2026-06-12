@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name via group-scoped participant search with candidate disambiguation, ending in the same identity-confirmation gate (completed 2026-06-12)
 - [x] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report (completed 2026-06-12)
 - [x] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view (completed 2026-06-12)
-- [ ] **Phase 7: Packaging, Signing & Release** - Code-signed, notarized portable builds verified launching on clean macOS and Windows machines
+- [x] **Phase 7: Packaging, Signing & Release** - Code-signed, notarized portable builds verified launching on clean macOS and Windows machines (completed 2026-06-12)
 - [ ] **Phase 8: Localization — i18n & Czech Translation (v1.5)** - Language switcher (English/Česky), i18n string externalization, full Czech translation — after v1 feature-freeze + UAT
 
 ## Phase Details
@@ -327,7 +327,7 @@ Plans:
 
 **Wave 5 (UAT checkpoint)** *(blocked on Wave 4 artifacts)*
 
-- [ ] 07-05-PLAN.md — Clean-machine UAT: ARM Mac + Intel Mac + Big Sur 11.7.10 Mac + Windows VM smoke tests (D-13/D-14/D-15/D-16)
+- [x] 07-05-PLAN.md — Clean-machine UAT: ARM Mac + Intel Mac + Big Sur 11.7.10 Mac + Windows VM smoke tests (D-13/D-14/D-15/D-16)
 
 ## Progress
 
@@ -343,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 4/5 | In Progress|  |
+| 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)

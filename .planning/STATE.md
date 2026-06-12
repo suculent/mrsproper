@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-06-12T21:35:55.622Z"
+status: verifying
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-06-12T21:43:53.260Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 48
-  completed_plans: 47
-  percent: 78
+  completed_plans: 48
+  percent: 89
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 Phase: 07 (packaging-signing-release) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-12
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Progress: [██████████] 98%
 | Phase 06 P03 | 8 | 2 tasks | 5 files |
 | Phase 07-packaging-signing-release P01 | 5 | 2 tasks | 2 files |
 | Phase 07-packaging-signing-release P04 | 180 | 2 tasks | 2 files |
+| Phase 07-packaging-signing-release P05 | 0 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ Recent decisions affecting current work:
 - [Phase 07-04]: DMG notarize+staple must be done explicitly in release.sh — electron-builder only staples the .app bundle, not the wrapping distributable DMG
 - [Phase 07-04]: npmRebuild:false in electron-builder.yml for Wine/Windows cross-compile — bufferutil/utf-8-validate are prebuilt N-API modules that do not need host-ABI rebuild
 - [Phase 07-04]: set -a before sourcing .env in release.sh so env vars are auto-exported to notarytool subprocess
+- [Phase ?]: Big Sur 11.7.10 smoke test deferred to after Phase 8 localization — machine unavailable; explicit user decision, not a test failure; tracked in 07-HUMAN-UAT.md
+- [Phase ?]: Windows 10 unsigned build (0.9.1 NSIS) showed no SmartScreen dialog at all — better than expected D-05; README bypass instructions remain valid
 
 ### Pending Todos
 
@@ -181,6 +184,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-12T21:35:55.617Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-06-12T21:43:53.254Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
