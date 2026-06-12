@@ -285,3 +285,29 @@ describe('getState() and refresh()', () => {
     expect(loadedStates.length).toBeGreaterThanOrEqual(2)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Migrated basic-group husks (GramJS ignoreMigrated bug regression)
+// ---------------------------------------------------------------------------
+
+describe('migrated basic-group husk filtering', () => {
+  it('excludes deactivated/migrated Api.Chat husks; keeps the live supergroup and active basic groups', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        { entity: 'Chat', id: '500', title: 'Husk', creator: true, migratedTo: { channelId: '900' }, deactivated: true },
+        { entity: 'Chat', id: '501', title: 'Deactivated only', creator: true, deactivated: true },
+        { entity: 'Channel', id: '900', title: 'Live Supergroup', megagroup: true, creator: true },
+        { entity: 'Chat', id: '502', title: 'Active Basic', creator: true },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+
+    const loaded = emitted.find((s) => s.step === 'loaded') as { step: 'loaded'; dialogs: Array<{ id: string }> }
+    expect(loaded).toBeDefined()
+    const ids = loaded.dialogs.map((d) => d.id)
+    expect(ids).not.toContain('500')
+    expect(ids).not.toContain('501')
+    expect(ids).toContain('900')
+    expect(ids).toContain('502')
+  })
+})

@@ -128,6 +128,9 @@ export interface MockClientConfig {
     megagroup?: boolean
     creator?: boolean
     adminRights?: { banUsers?: boolean }
+    /** Basic-group husk flags (migrated-to-supergroup duplicates). */
+    migratedTo?: unknown
+    deactivated?: boolean
   }>
   /** If set, GetParticipant throws USER_NOT_PARTICIPANT for these dialogIds. */
   notMemberDialogIds?: string[]
@@ -456,7 +459,7 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       if (config.getDialogsError) throw makeRPCError(config.getDialogsError)
       return (config.getDialogsResult ?? []).map((d) => ({
         entity: d.entity === 'Chat'
-          ? Object.assign(new Api.Chat({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights })
+          ? Object.assign(new Api.Chat({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights, migratedTo: d.migratedTo, deactivated: d.deactivated })
           : Object.assign(new Api.Channel({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights }),
         inputEntity: { channelId: bigInt(d.id), accessHash: bigInt.zero },
         title: d.title,

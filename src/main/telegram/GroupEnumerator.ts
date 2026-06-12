@@ -89,9 +89,20 @@ export class GroupEnumerator {
     this._emit({ step: 'loading' })
 
     try {
+      // NOTE: do NOT use getDialogs({ ignoreMigrated: true }) — in telegram@2.26.x the
+      // filter is inverted ("migratedTo" in entity keeps only Api.Chat objects), which
+      // silently drops every supergroup/channel and keeps the migrated basic-group husks.
+      // We fetch everything and filter migrated/deactivated husks in _classifyDialog.
       const dialogs = await this._governor.run(() =>
-        this._client.getDialogs({ ignoreMigrated: true })
+        this._client.getDialogs({})
       ) as unknown[]
+
+      // TEMP-DIAG (remove after Phase 5 verify): raw dialog inventory
+      console.log('[DIAG enumerate raw] count=%s items=%s', dialogs.length, JSON.stringify(dialogs.map((d) => {
+        const e = (d as { entity?: { className?: string; id?: { toString(): string }; megagroup?: boolean; deactivated?: boolean; migratedTo?: unknown; creator?: boolean } }).entity
+        const t = (d as { title?: string }).title
+        return `${e?.className}:${e?.id?.toString()}:${t}:mega=${e?.megagroup}:deact=${e?.deactivated}:migrated=${e?.migratedTo != null}:creator=${e?.creator}`
+      })))
 
       const classified: AdminDialogDTO[] = []
       for (const dialog of dialogs) {
@@ -159,6 +170,14 @@ export class GroupEnumerator {
     const title: string = (dialog as { title?: string })?.title ?? ''
 
     if (entity instanceof Api.Chat) {
+      // Skip migrated/deactivated basic-group husks — the live supergroup appears
+      // as its own Api.Channel dialog. GetFullChat on a husk returns
+      // ChatParticipantsForbidden, so keeping it would create dead duplicates.
+      const chatFlags = entity as unknown as { migratedTo?: unknown; deactivated?: boolean }
+      if (chatFlags.migratedTo != null || chatFlags.deactivated === true) {
+        return null
+      }
+
       // Basic group
       const id = entity.id.toString()
       this._dialogMap.set(id, entity)
