@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-06-12T16:40:26.954Z"
+status: verifying
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-06-12T18:05:02.969Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 43
-  completed_plans: 42
-  percent: 67
+  completed_plans: 43
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 06 — ui-integration-wizard
+**Current focus:** Phase 07 — packaging-signing-release
 
 ## Current Position
 
-Phase: 06 (ui-integration-wizard) — EXECUTING
+Phase: 06 (ui-integration-wizard) — COMPLETE
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — all plans executed and approved
 Last activity: 2026-06-12
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -137,6 +137,9 @@ Recent decisions affecting current work:
 - [Phase 05-07]: tsc --noEmit is a NO-OP for this project (files:[] + project references tsconfig) — real type-check gate is tsc --build; all future PLAN.md verify blocks must use tsc --build
 - [Phase 05-07]: GramJS telegram@2.26.x: getDialogs({ignoreMigrated:true}) drops ALL supergroups/channels (inverted filter) — correct pattern is fetch all dialogs and filter migratedTo/deactivated husks in application-level classification
 - [Phase ?]: Added @renderer alias to vitest.config.ts so renderer pure functions can be tested in node-env vitest without jsdom
+- [Phase 06-05]: Default severity changed to Ban (not Kick) — admins removing serial bad actors need block-rejoin behavior
+- [Phase 06-05]: big-integer externalized in Vite config (optimizeDeps.exclude + resolve.alias) — GramJS instanceof checks require singleton module; duplicate bundles cause CastError noise
+- [Phase 06-05]: Change-target wired through CHANGE_TARGET stage machine event in AppShell (not direct prop override) to ensure clean wizard state reset
 
 ### Pending Todos
 
@@ -170,6 +173,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-12T16:40:26.947Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-06-12T18:05:02.963Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None

@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Group Enumeration, Membership & Rights** - Membership-verified, rights-aware checklist of the groups the target can be removed from (verification: gaps_found 2026-06-12) (completed 2026-06-11)
 - [x] **Phase 4.1: Target Search by Name (INSERTED)** - Find a deletion target by First + Last Name via group-scoped participant search with candidate disambiguation, ending in the same identity-confirmation gate (completed 2026-06-12)
 - [x] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report (completed 2026-06-12)
-- [ ] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view
+- [x] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view (completed 2026-06-12)
 - [ ] **Phase 7: Packaging, Signing & Release** - Code-signed, notarized portable builds verified launching on clean macOS and Windows machines
 - [ ] **Phase 8: Localization — i18n & Czech Translation (v1.5)** - Language switcher (English/Česky), i18n string externalization, full Czech translation — after v1 feature-freeze + UAT
 
@@ -291,7 +291,7 @@ Plans:
 
 **Wave 4 (human checkpoint)** *(blocked on Wave 3 completion)*
 
-- [ ] 06-05-PLAN.md — Human visual verification: full wizard flow, Review screen content, single gate, FLOOD_WAIT subline, Remove someone else
+- [x] 06-05-PLAN.md — Human visual verification: full wizard flow, Review screen content, single gate, FLOOD_WAIT subline, Remove someone else
 
 **UI hint**: yes
 
@@ -321,7 +321,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
-| 6. UI Integration — Wizard, Safety Gates & Progress | 4/5 | In Progress|  |
+| 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
