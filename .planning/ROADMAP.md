@@ -251,7 +251,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 05-05-PLAN.md — IPC wiring: removalChannels.ts + main/index.ts + preload bridge + TARGET_RESET CR-01 update
+- [x] 05-05-PLAN.md — IPC wiring: removalChannels.ts + main/index.ts + preload bridge + TARGET_RESET CR-01 update
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -301,7 +301,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
-| 5. Removal Execution Engine | 4/7 | In Progress|  |
+| 5. Removal Execution Engine | 5/7 | In Progress|  |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |

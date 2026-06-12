@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 04.1-05-PLAN.md
-last_updated: "2026-06-12T08:49:01.457Z"
+last_updated: "2026-06-12T08:57:03.745Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 38
-  completed_plans: 35
+  completed_plans: 36
   percent: 56
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 Phase: 04 (group-enumeration-membership-rights) — EXECUTING
 Plan: 11 of 11
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-12
 
-Progress: [█████████░] 92%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 92%
 | Phase 04.1 P04 | 3 | 2 tasks | 4 files |
 | Phase 04.1 P05 | 15 | 2 tasks | 5 files |
 | Phase 05-removal-execution-engine P01 | 1 | 2 tasks | 3 files |
+| Phase 05-removal-execution-engine P05 | 25 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Inline SEARCH_MIN_LENGTH_COPY string in TargetInput.tsx with TODO — searchCopy.ts module created in Plan 05
 - [Phase ?]: wave-5-ui
 - [Phase ?]: Security boundary for Phase 5 removal types
+- [Phase 05-05]: registerRemovalChannels accepts getAuthState as a callback for isolated unit testing without importing SessionManager
+- [Phase 05-05]: CR-01 extended in Phase 5: executor.abortExecution() is first in TARGET_RESET chain before searcher/scanner/resolver
 
 ### Pending Todos
 
@@ -159,6 +162,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-12T08:49:01.450Z
+Last session: 2026-06-12T08:55:55.670Z
 Stopped at: Completed 04.1-05-PLAN.md
 Resume file: None
