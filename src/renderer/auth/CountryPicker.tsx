@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react'
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js/min'
 import type { CountryCode } from 'libphonenumber-js/min'
 import { Check, ChevronsUpDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import {
   Command,
@@ -68,6 +69,7 @@ interface CountryPickerProps {
 export { type CountryOption, DEFAULT_COUNTRY, COUNTRY_OPTIONS }
 
 export default function CountryPicker({ value, onChange, disabled }: CountryPickerProps): React.JSX.Element {
+  const { t } = useTranslation('auth')
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -89,7 +91,7 @@ export default function CountryPicker({ value, onChange, disabled }: CountryPick
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          aria-label="Select country code"
+          aria-label={t('countryPicker.aria')}
           disabled={disabled}
           className="min-w-[110px] justify-between font-normal"
         >
@@ -103,12 +105,12 @@ export default function CountryPicker({ value, onChange, disabled }: CountryPick
       <PopoverContent className="w-[280px] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search country…"
+            placeholder={t('countryPicker.placeholder')}
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandEmpty>{t('countryPicker.empty')}</CommandEmpty>
             <CommandGroup>
               {filtered.map((country) => (
                 <CommandItem

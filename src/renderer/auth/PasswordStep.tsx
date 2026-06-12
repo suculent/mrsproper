@@ -3,10 +3,10 @@
 
 import React, { useState, useCallback } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
 import { Label } from '@renderer/components/ui/label'
-import { getErrorCopy } from './errorCopy'
 import FloodCountdown from './FloodCountdown'
 import type { AuthState } from '@shared/authTypes'
 import { authActions } from '@renderer/store/authStore'
@@ -19,6 +19,7 @@ interface PasswordStepProps {
 }
 
 export default function PasswordStep({ authState, floodRemaining, onBack }: PasswordStepProps): React.JSX.Element {
+  const { t } = useTranslation('auth')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -31,7 +32,7 @@ export default function PasswordStep({ authState, floodRemaining, onBack }: Pass
   // Error on password step
   const serverError =
     authState.step === 'error' && authState.retryStep === 'password'
-      ? getErrorCopy(authState.code)
+      ? t(`errorCode.${authState.code}`)
       : null
 
   const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,30 +64,30 @@ export default function PasswordStep({ authState, floodRemaining, onBack }: Pass
           className="text-label text-muted-foreground hover:text-foreground transition-colors"
           disabled={disabled}
         >
-          Back
+          {t('passwordStep.back')}
         </button>
       </div>
 
       {/* Title + hint */}
       <div className="space-y-2">
-        <h1 className="text-display text-foreground">Two-step verification</h1>
+        <h1 className="text-display text-foreground">{t('passwordStep.title')}</h1>
         <p className="text-body text-muted-foreground">
-          Your account is protected by a password. Enter it to finish signing in.
+          {t('passwordStep.description')}
         </p>
         {hint && (
           <p className="text-label text-muted-foreground">
-            Hint: {hint}
+            {t('passwordStep.passwordHint', { hint })}
           </p>
         )}
       </div>
 
       {/* Password input */}
       <div className="space-y-2">
-        <Label htmlFor="2fa-password" className="text-label">Password</Label>
+        <Label htmlFor="2fa-password" className="text-label">{t('passwordStep.passwordLabel')}</Label>
         <Input
           id="2fa-password"
           type="password"
-          placeholder="Enter password"
+          placeholder={t('passwordStep.passwordPlaceholder')}
           value={password}
           onChange={handlePasswordChange}
           disabled={disabled}
@@ -116,12 +117,12 @@ export default function PasswordStep({ authState, floodRemaining, onBack }: Pass
         type="submit"
         className="w-full"
         disabled={disabled || !password}
-        aria-label={isFlood ? `Wait ${floodRemaining} seconds before trying again` : 'Sign in'}
+        aria-label={isFlood ? t('floodCountdownAria', { time: floodRemaining }) : t('passwordStep.signIn')}
       >
         {isProcessing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            Sign in
+            {t('passwordStep.signIn')}
           </>
         ) : isFlood ? (
           <>
@@ -129,7 +130,7 @@ export default function PasswordStep({ authState, floodRemaining, onBack }: Pass
             <FloodCountdown remaining={floodRemaining} />
           </>
         ) : (
-          'Sign in'
+          t('passwordStep.signIn')
         )}
       </Button>
     </form>

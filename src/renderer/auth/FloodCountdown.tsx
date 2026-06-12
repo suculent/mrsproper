@@ -5,6 +5,7 @@
 // the Phase 2 governor can feed it directly without UI rework.
 
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface FloodCountdownProps {
   remaining: number  // seconds remaining
@@ -20,11 +21,12 @@ function formatCountdown(seconds: number): string {
 export { formatCountdown }
 
 export default function FloodCountdown({ remaining }: FloodCountdownProps): React.JSX.Element {
+  const { t } = useTranslation('auth')
   return (
     <span
       className="text-mono text-label text-muted-foreground tabular-nums"
       aria-live="polite"
-      aria-label={`Wait ${formatCountdown(remaining)} before trying again`}
+      aria-label={t('floodCountdownAria', { time: formatCountdown(remaining) })}
     >
       {formatCountdown(remaining)}
     </span>

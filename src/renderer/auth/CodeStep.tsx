@@ -4,10 +4,10 @@
 
 import React, { useState, useCallback } from 'react'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
 import { Label } from '@renderer/components/ui/label'
-import { getErrorCopy } from './errorCopy'
 import FloodCountdown from './FloodCountdown'
 import type { AuthState } from '@shared/authTypes'
 import { authActions } from '@renderer/store/authStore'
@@ -20,6 +20,7 @@ interface CodeStepProps {
 }
 
 export default function CodeStep({ authState, floodRemaining, onBack }: CodeStepProps): React.JSX.Element {
+  const { t } = useTranslation('auth')
   const [code, setCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isResending, setIsResending] = useState(false)
@@ -34,7 +35,7 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
   // Error on code step
   const serverError =
     authState.step === 'error' && authState.retryStep === 'code'
-      ? getErrorCopy(authState.code)
+      ? t(`errorCode.${authState.code}`)
       : null
   const isExpired = authState.step === 'error' && authState.code === 'PHONE_CODE_EXPIRED'
 
@@ -77,30 +78,30 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
           className="text-label text-muted-foreground hover:text-foreground transition-colors"
           disabled={disabled}
         >
-          Back
+          {t('codeStep.back')}
         </button>
       </div>
 
       {/* Title + hint */}
       <div className="space-y-2">
-        <h1 className="text-display text-foreground">Enter the code</h1>
+        <h1 className="text-display text-foreground">{t('codeStep.title')}</h1>
         <p className="text-body text-muted-foreground">
-          We sent a code to your Telegram app.
+          {t('codeStep.description')}
         </p>
         {sentTo && (
           <p className="text-label text-muted-foreground">
-            Sent to {sentTo}
+            {t('codeStep.sentTo', { sentTo })}
           </p>
         )}
       </div>
 
       {/* Code input */}
       <div className="space-y-2">
-        <Label htmlFor="login-code" className="text-label">Login code</Label>
+        <Label htmlFor="login-code" className="text-label">{t('codeStep.codeLabel')}</Label>
         <Input
           id="login-code"
           type="text"
-          placeholder="Enter code"
+          placeholder={t('codeStep.codePlaceholder')}
           value={code}
           onChange={handleCodeChange}
           disabled={disabled}
@@ -142,10 +143,10 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
             {isResending ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                Resending…
+                {t('codeStep.resending')}
               </span>
             ) : (
-              'Resend code'
+              t('codeStep.resendCode')
             )}
           </button>
         )}
@@ -156,12 +157,12 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
         type="submit"
         className="w-full"
         disabled={disabled || !code.trim()}
-        aria-label={isFlood ? `Wait ${floodRemaining} seconds before trying again` : 'Verify code'}
+        aria-label={isFlood ? t('floodCountdownAria', { time: floodRemaining }) : t('codeStep.verify')}
       >
         {isProcessing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            Verify
+            {t('codeStep.verify')}
           </>
         ) : isFlood ? (
           <>
@@ -169,7 +170,7 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
             <FloodCountdown remaining={floodRemaining} />
           </>
         ) : (
-          'Verify'
+          t('codeStep.verify')
         )}
       </Button>
     </form>
