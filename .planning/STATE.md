@@ -144,6 +144,7 @@ Recent decisions affecting current work:
 
 - Make country rows clickable in login-form CountryPicker (`2026-06-11-country-picker-rows-clickable.md`, area: ui)
 - Default country Czechia (+420) in CountryPicker (`2026-06-11-default-country-czechia.md`, area: ui)
+- Add Day/Night theme toggle with new Day theme (`2026-06-12-add-day-night-theme-toggle-with-new-day-theme.md`, area: ui, resolves with Phase 8)
 
 ### Quick Tasks Completed
 
