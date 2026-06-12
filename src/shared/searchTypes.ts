@@ -29,7 +29,7 @@ export interface CandidateDTO {
  * Typed error codes for name search failures.
  * Mirrors GroupErrorCode taxonomy for consistent governor error handling.
  */
-export type SearchErrorCode = 'GROUPS_NOT_LOADED' | 'FLOOD_WAIT' | 'NETWORK' | 'UNKNOWN'
+export type SearchErrorCode = 'GROUPS_NOT_LOADED' | 'FLOOD_WAIT' | 'NETWORK' | 'UNKNOWN' | 'SEARCH_QUERY_TOO_SHORT'
 
 /**
  * Progress snapshot for the name search — streamed to renderer as group searches complete.

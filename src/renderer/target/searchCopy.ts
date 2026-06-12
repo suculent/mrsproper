@@ -13,6 +13,8 @@ export const SEARCH_ERROR_COPY: Record<SearchErrorCode, string> = {
   FLOOD_WAIT: "The name search couldn't complete. Check your connection and try again.",
   NETWORK: "The name search couldn't complete. Check your connection and try again.",
   UNKNOWN: "The name search couldn't complete. Check your connection and try again.",
+  // WR-01: defence-in-depth path when query is too short (client-side check missed it, e.g. whitespace-only after trim)
+  SEARCH_QUERY_TOO_SHORT: "Type at least 2 letters of their name.",
 }
 
 /**

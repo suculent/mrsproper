@@ -112,9 +112,12 @@ export class ParticipantSearcher {
    * CandidateDTO emitted here has no accessHash field by construction.
    */
   async search(query: string): Promise<void> {
-    // Validate query length before claiming generation
+    // Validate query length before claiming generation.
+    // WR-01: emit SEARCH_QUERY_TOO_SHORT instead of the misleading UNKNOWN code —
+    // this is a defence-in-depth path (the IPC layer Zod min(2) already rejects short
+    // queries, but a direct call or a forged payload reaches here).
     if (query.trim().length < 2) {
-      this._emit({ step: 'error', code: 'UNKNOWN' })
+      this._emit({ step: 'error', code: 'SEARCH_QUERY_TOO_SHORT' })
       return
     }
 
