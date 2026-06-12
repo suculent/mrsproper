@@ -247,7 +247,7 @@ Plans:
 **Wave 2** *(parallel — blocked on Wave 1)*
 
 - [x] 05-03-PLAN.md — AuditStore: atomic job file persistence, checkpoint, resume detection (GREEN tests)
-- [ ] 05-04-PLAN.md — RemovalExecutor: type-branching engine, generation guard, abort, PEER_FLOOD hard-stop (GREEN tests)
+- [x] 05-04-PLAN.md — RemovalExecutor: type-branching engine, generation guard, abort, PEER_FLOOD hard-stop (GREEN tests)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -301,7 +301,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
-| 5. Removal Execution Engine | 3/7 | In Progress|  |
+| 5. Removal Execution Engine | 4/7 | In Progress|  |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
