@@ -671,3 +671,146 @@ describe('RemovalExecutor — generation guard', () => {
     expect(executor.getState()).toBeDefined()
   }, 10000)
 })
+
+// ---------------------------------------------------------------------------
+// Phase 6 — _handleGovernorEvent + _runActive (flood plumbing, SAF-02)
+// ---------------------------------------------------------------------------
+
+describe('RemovalExecutor — _handleGovernorEvent + _runActive (Phase 6)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  it('_handleGovernorEvent is a no-op when _runActive is false (no removal run active)', () => {
+    // When no run is active, flood-tick events from other features must NOT leak
+    // into RemovalState (T-06-02-04: governor scope isolation).
+    const dialogs = [makeDialog('9001', 'supergroup')]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    // No execute() call — _runActive is false
+    executor._handleGovernorEvent({ type: 'flood-tick', remaining: 30 })
+
+    // No state should have been emitted
+    expect(states).toHaveLength(0)
+  })
+
+  it('_handleGovernorEvent with flood-tick emits floodWaitRemaining during an active run', async () => {
+    // During an active removal run, flood-tick events must propagate to RemovalState
+    // so the renderer can show the countdown (SAF-02).
+    const dialogs = [makeDialog('9002', 'supergroup')]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    // Start a run (sets _runActive = true)
+    const execPromise = executor.execute({ severity: 'ban', dialogIds: ['9002'] })
+
+    // Simulate a flood-tick event arriving from the governor during the run
+    executor._handleGovernorEvent({ type: 'flood-tick', remaining: 42 })
+
+    // The event should have caused a state emission with floodWaitRemaining
+    const floodState = states.find(s => s.floodWaitRemaining === 42)
+    expect(floodState).toBeDefined()
+
+    await vi.runAllTimersAsync()
+    await execPromise
+  })
+
+  it('_handleGovernorEvent with non-flood-tick event type does nothing', () => {
+    // Only 'flood-tick' events should produce a state change — other GovernorEvent
+    // types (hard-stop, wait-too-long, retry-attempt) are handled elsewhere.
+    const dialogs = [makeDialog('9003', 'supergroup')]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    // Simulate some initial state by pushing a known entry
+    const statesBefore = states.length
+
+    // hard-stop, wait-too-long, retry-attempt — none should emit RemovalState
+    executor._handleGovernorEvent({ type: 'hard-stop', code: 'PEER_FLOOD' })
+    executor._handleGovernorEvent({ type: 'wait-too-long', seconds: 7200 })
+    executor._handleGovernorEvent({ type: 'retry-attempt', attempt: 1, maxAttempts: 3 })
+
+    expect(states).toHaveLength(statesBefore)
+  })
+
+  it('execute() sets _runActive=true at start; terminal state (complete) emits floodWaitRemaining:null', async () => {
+    // execute() must set _runActive=true immediately (so flood-ticks mid-run are captured).
+    // Terminal state (step:'complete') must include floodWaitRemaining:null so the
+    // renderer can clear any displayed countdown.
+    const dialogs = [makeDialog('9004', 'supergroup')]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    const execPromise = executor.execute({ severity: 'ban', dialogIds: ['9004'] })
+
+    // Emit a flood-tick immediately after execute starts — _runActive must already be true
+    executor._handleGovernorEvent({ type: 'flood-tick', remaining: 10 })
+    expect(states.some(s => s.floodWaitRemaining === 10)).toBe(true)
+
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    // Terminal 'complete' state must carry floodWaitRemaining: null
+    const finalState = states[states.length - 1]
+    expect(finalState.step).toBe('complete')
+    expect(finalState.floodWaitRemaining).toBeNull()
+  })
+
+  it('execute() sets _runActive=false before emitting stopped (abort path)', async () => {
+    const dialogs = [
+      makeDialog('9005', 'supergroup'),
+      makeDialog('9006', 'supergroup'),
+    ]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    let abortFired = false
+    const auditStore = makeAuditStore(['9005', '9006'])
+    const { executor: ex, states: st } = makeExecutor({ dialogs, auditStore })
+
+    const originalCheckpoint = auditStore.checkpoint.bind(auditStore)
+    auditStore.checkpoint = (dialogId: string, outcome: RemovalGroupOutcome) => {
+      originalCheckpoint(dialogId, outcome)
+      if (dialogId === '9005' && !abortFired) {
+        abortFired = true
+        ex.abortExecution()
+      }
+    }
+
+    const execPromise = ex.execute({ severity: 'ban', dialogIds: ['9005', '9006'] })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    const stoppedState = st.find(s => s.step === 'stopped')
+    expect(stoppedState).toBeDefined()
+    expect(stoppedState!.floodWaitRemaining).toBeNull()
+
+    // After run is stopped, _runActive must be false: subsequent flood-ticks are no-ops
+    const stateCountAfterStop = st.length
+    ex._handleGovernorEvent({ type: 'flood-tick', remaining: 99 })
+    expect(st).toHaveLength(stateCountAfterStop)
+  })
+
+  it('floodWaitRemaining is null in the interim state after each per-group governor.run() resolves', async () => {
+    // After a group's API call resolves, the next emitted state must reset
+    // floodWaitRemaining to null so the renderer clears the countdown.
+    const dialogs = [
+      makeDialog('9007', 'supergroup'),
+      makeDialog('9008', 'supergroup'),
+    ]
+    const { executor, states } = makeExecutor({ dialogs })
+
+    const execPromise = executor.execute({ severity: 'ban', dialogIds: ['9007', '9008'] })
+
+    // Emit a flood-tick during the first group's API call
+    executor._handleGovernorEvent({ type: 'flood-tick', remaining: 15 })
+
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    // After the first group resolves, the next running state for group 9008
+    // (the pre-call emit) should have floodWaitRemaining: null
+    const g2RunningStates = states.filter(
+      s => s.step === 'running' && s.currentGroupId === '9008'
+    )
+    expect(g2RunningStates.length).toBeGreaterThanOrEqual(1)
+    // The pre-call state for 9008 should have null floodWaitRemaining
+    expect(g2RunningStates[0].floodWaitRemaining).toBeNull()
+  })
+})
