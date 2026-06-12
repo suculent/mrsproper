@@ -98,7 +98,15 @@ export function registerRemovalChannels(
       return executor.getState()
     }
 
-    // Layer 3: Dialog security gate — each dialogId must be in enumerator's known dialog map
+    // Layer 3: Double-start guard (CR-01) — if executor is already running or stopping,
+    // silently return current state without dispatching a new execute().
+    // Prevents a second removal:start from overwriting the active job file on disk.
+    const currentStep = executor.getState().step
+    if (currentStep === 'running' || currentStep === 'stopping') {
+      return executor.getState()
+    }
+
+    // Layer 4: Dialog security gate — each dialogId must be in enumerator's known dialog map
     // Prevents renderer from injecting groups not in the current enumeration (T-05-05-A).
     const groupsState = enumerator.getState()
     if (groupsState.step === 'loaded') {

@@ -258,6 +258,56 @@ describe('removalChannels — security gates', () => {
     ).rejects.toThrow('unknown dialogId')
     expect(executor.execute).not.toHaveBeenCalled()
   })
+
+  // CR-01 regression: double-start guard — second call while running returns current state without re-dispatching
+  it('CR-01: removal:start returns current state without calling execute() when step is running', async () => {
+    const win = makeMockWin()
+    const RUNNING_STATE: RemovalState = {
+      step: 'running',
+      severity: 'ban',
+      targetId: '123',
+      targetName: 'Test',
+      progress: { processed: 1, total: 3 },
+      outcomes: [],
+    }
+    const executor = makeMockExecutor(RUNNING_STATE)
+    const enumerator = makeMockEnumerator(['111', '222'])
+    const auditStore = makeMockAuditStore()
+    const getAuthState = makeGetAuthState('authorized')
+
+    registerRemovalChannels(win as never, executor as never, enumerator as never, auditStore as never, getAuthState)
+
+    const result = await capturedHandlers['removal:start']({}, { severity: 'ban', dialogIds: ['111'] })
+
+    // execute() must NOT have been called — the double-start guard fires first
+    expect(executor.execute).not.toHaveBeenCalled()
+    // Returns current running state
+    expect((result as RemovalState).step).toBe('running')
+  })
+
+  // CR-01 regression: stopping state also blocks re-dispatch
+  it('CR-01: removal:start returns current state without calling execute() when step is stopping', async () => {
+    const win = makeMockWin()
+    const STOPPING_STATE: RemovalState = {
+      step: 'stopping',
+      severity: 'ban',
+      targetId: '123',
+      targetName: 'Test',
+      progress: { processed: 1, total: 3 },
+      outcomes: [],
+    }
+    const executor = makeMockExecutor(STOPPING_STATE)
+    const enumerator = makeMockEnumerator(['111', '222'])
+    const auditStore = makeMockAuditStore()
+    const getAuthState = makeGetAuthState('authorized')
+
+    registerRemovalChannels(win as never, executor as never, enumerator as never, auditStore as never, getAuthState)
+
+    const result = await capturedHandlers['removal:start']({}, { severity: 'ban', dialogIds: ['111'] })
+
+    expect(executor.execute).not.toHaveBeenCalled()
+    expect((result as RemovalState).step).toBe('stopping')
+  })
 })
 
 // ---------------------------------------------------------------------------
