@@ -270,7 +270,7 @@ app.whenReady().then(async () => {
     },
   })
 
-  registerRemovalChannels(currentWin, executor, enumerator, auditStore, () => sm.getAuthState())
+  registerRemovalChannels(currentWin, executor, enumerator, auditStore, () => sm.getState())
 
   // ── On-launch job-file detection (Resume/Discard) ─────────────────────────
   // Read the job file BEFORE sm.initialize() so the pending state is available
