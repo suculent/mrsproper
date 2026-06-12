@@ -336,19 +336,15 @@ export class RemovalExecutor {
       this._abortController.abort()
       this._abortController = null
     }
-    // The generation guard in execute() will handle marking remaining groups as skipped
-    // and emitting the stopped state for an in-flight run. Only an ACTIVE run may
-    // transition to 'stopped' — aborting an idle/finished executor (e.g. TARGET_RESET
-    // on target change) must reset to a clean idle state instead, otherwise a phantom
-    // "Removal stopped — 0 of 0 processed" summary band renders after every target change.
-    if (this._currentState.step === 'running' || this._currentState.step === 'stopping') {
-      const current = this._currentState
-      this._emit({
-        ...current,
-        step: 'stopped',
-        summary: this._buildSummary(current.outcomes ?? [], new Date().toISOString()),
-      })
-    } else {
+    // WR-02: for an active run (running/stopping), do NOT emit here — the execute() loop's
+    // generation guard will detect the increment, mark remaining groups skipped, and emit
+    // the authoritative 'stopped' state with correct outcomes. Emitting here too would
+    // produce a double-emit with potentially stale outcomes (the loop may have added
+    // outcomes after the last _emit() call).
+    //
+    // For idle/complete/stopped/hard-stopped: reset to idle immediately (TARGET_RESET path).
+    // Aborting a non-active executor must not leave a phantom 'stopped' summary band.
+    if (this._currentState.step !== 'running' && this._currentState.step !== 'stopping') {
       this._emit({
         step: 'idle',
         severity: this._currentState.severity,
@@ -358,6 +354,7 @@ export class RemovalExecutor {
         outcomes: [],
       })
     }
+    // For active runs: the execute() loop handles the 'stopped' emission
   }
 
   /**
