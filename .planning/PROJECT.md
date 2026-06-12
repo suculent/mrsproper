@@ -24,18 +24,20 @@ A group admin can confidently remove the right person from every relevant commun
 - ✓ Resolve a target person by username OR phone number — Phase 3 (4/4 verified incl. human-verified real-API smoke test; gap closure via code-review fixes + plan 03-06)
 - ✓ Show the target's avatar plus identity details (name, username, ID, bio) for visual verification, with a graceful "no photo" fallback — Phase 3 (TargetCard with confirm gate; app renamed Mrs. Proper with custom icons en route)
 
+- ✓ Search for a target by First + Last Name across the admin's groups (group-scoped participant search, candidate disambiguation) — Phase 4.1
+- ✓ List only the groups where the target is actually a member (membership verified before display) — Phase 4
+- ✓ Present groups as a checklist pre-checked for removal (default = remove everywhere; uncheck to keep them in selected groups) — Phase 4
+- ✓ Show groups where the admin lacks kick rights as greyed-out with a reason (visible but not actionable) — Phase 4
+- ✓ Per-run choice between ban (kick + block rejoin) and kick (removable, can rejoin) — Phase 6 (Review screen segmented control, default Ban, persisted)
+- ✓ Final review screen showing target identity + the exact list of affected groups, requiring one explicit confirmation before execution — Phase 6 (SAF-01/02/03 human-verified)
+- ✓ Execute removals as a throttled, sequential job with automatic FLOOD_WAIT back-off so Telegram rate limits are never hit — Phase 5
+- ✓ Show live progress during execution and a per-group success/failure report afterward — Phase 6 (live wizard run stage + structured report band; known defects in resume-after-restart path tracked in 06-HUMAN-UAT.md / 06-REVIEW.md)
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Search for a target by First + Last Name across the admin's groups (group-scoped participant search, candidate disambiguation) — Phase 4.1
-- [ ] List only the groups where the target is actually a member (membership verified before display)
-- [ ] Present groups as a checklist pre-checked for removal (default = remove everywhere; uncheck to keep them in selected groups)
-- [ ] Show groups where the admin lacks kick rights as greyed-out with a reason (visible but not actionable)
-- [ ] Per-run choice between ban (kick + block rejoin) and kick (removable, can rejoin)
-- [ ] Final review screen showing target identity + the exact list of affected groups, requiring one explicit confirmation before execution
-- [ ] Execute removals as a throttled, sequential job with automatic FLOOD_WAIT back-off so Telegram rate limits are never hit
-- [ ] Show live progress during execution and a per-group success/failure report afterward
+- [ ] Code-signed, notarized portable builds verified launching on clean macOS and Windows machines — Phase 7
 
 ### Out of Scope
 
@@ -100,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-11 after Phase 3 (Target Resolution & Verification) completion*
+*Last updated: 2026-06-12 after Phase 6 (UI Integration — Wizard, Safety Gates & Progress) completion*
