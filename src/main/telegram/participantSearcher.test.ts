@@ -444,4 +444,36 @@ describe('ParticipantSearcher', () => {
       expect(complete.errorCount).toBe(0)
     }
   })
+
+  // ---------------------------------------------------------------------------
+  // WR-01: short query emits SEARCH_QUERY_TOO_SHORT, not UNKNOWN
+  // ---------------------------------------------------------------------------
+
+  it('WR-01: query shorter than 2 chars emits SEARCH_QUERY_TOO_SHORT error code', async () => {
+    const dialog = makeDialog('100', 'Any Group', 'supergroup')
+    const { searcher, states } = makeSearcher({ dialogs: [dialog] })
+
+    await searcher.search('A')  // 1 char — too short
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('error')
+    if (last.step === 'error') {
+      expect(last.code).toBe('SEARCH_QUERY_TOO_SHORT')
+      // Must NOT emit the misleading UNKNOWN code
+      expect(last.code).not.toBe('UNKNOWN')
+    }
+  })
+
+  it('WR-01: whitespace-only query (trims to empty) emits SEARCH_QUERY_TOO_SHORT', async () => {
+    const dialog = makeDialog('100', 'Any Group', 'supergroup')
+    const { searcher, states } = makeSearcher({ dialogs: [dialog] })
+
+    await searcher.search('   ')  // trims to '' — too short
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('error')
+    if (last.step === 'error') {
+      expect(last.code).toBe('SEARCH_QUERY_TOO_SHORT')
+    }
+  })
 })

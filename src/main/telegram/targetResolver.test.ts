@@ -627,4 +627,69 @@ describe('TargetResolver.resolveByCandidate (TGT-05j, TGT-05i)', () => {
     expect(idleIdx).toBeGreaterThanOrEqual(0)
     expect(states.slice(idleIdx).some(s => s.step === 'resolved')).toBe(false)
   })
+
+  it('WR-02: reset() during username fallback path does not leave stale identity in getResolvedUser()', async () => {
+    // Scenario: GetUsers throws, username fallback resolves, but reset() fires while
+    // the fallback _resolveByUsername is in flight. After completion,
+    // getResolvedUser() must return null — not the stale A-identity.
+
+    let unblockUsernameResolve!: () => void
+    const usernameDeferred = new Promise<void>((res) => { unblockUsernameResolve = res })
+
+    const { TargetResolver: TR } = await import('./TargetResolver')
+
+    const baseClient = createMockTelegramClient({
+      resolveUsernameResult: {
+        userId: '7777',
+        username: 'stalefallback',
+        firstName: 'Stale',
+        accessHash: '12345',
+      },
+    })
+
+    // Override invoke so that:
+    //  - users.GetUsers → throws (simulates an expired accessHash)
+    //  - contacts.ResolveUsername → pauses until unblockUsernameResolve is called
+    const originalInvoke = baseClient.invoke.bind(baseClient)
+    baseClient.invoke = async (request: unknown): Promise<unknown> => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetUsers' || className === 'users.GetUsers') {
+        throw Object.assign(new Error('USER_ID_INVALID'), { errorMessage: 'USER_ID_INVALID' })
+      }
+      if (ctorName === 'ResolveUsername' || className === 'contacts.ResolveUsername') {
+        await usernameDeferred // pause here so reset() can fire
+      }
+      return originalInvoke(request)
+    }
+
+    const states: TargetState[] = []
+    const resolver = new TR({
+      client: baseClient as never,
+      onStateChange: (s: TargetState) => states.push(s),
+      onGovernorEvent: vi.fn(),
+    })
+
+    // Start resolveByCandidate with a username so it falls back to _resolveByUsername
+    const pending = resolver.resolveByCandidate(7777n, 99999n, 'stalefallback')
+
+    // reset() fires while _resolveByUsername is awaiting ResolveUsername
+    resolver.reset()
+
+    // Unblock the username resolve
+    unblockUsernameResolve()
+
+    await pending
+
+    // State must be idle (reset won) — no resolved state may follow the idle from reset
+    expect(resolver.getState().step).toBe('idle')
+
+    // WR-02 core assertion: getResolvedUser() must be null — not stale A-identity
+    expect(resolver.getResolvedUser()).toBeNull()
+
+    // No 'resolved' state may appear after the reset's 'idle'
+    const idleIdx = states.findLastIndex(s => s.step === 'idle')
+    expect(idleIdx).toBeGreaterThanOrEqual(0)
+    expect(states.slice(idleIdx + 1).some(s => s.step === 'resolved')).toBe(false)
+  })
 })
