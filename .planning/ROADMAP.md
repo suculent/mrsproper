@@ -200,10 +200,29 @@ Plans:
   3. Picking a candidate resolves them through the existing TargetResolver path (stable numeric ID, exactly-once resolution) and lands in the same TargetCard confirm gate as username/phone entry
   4. When no candidates match after the scan completes, user gets a clear, accurate empty-state message (not an error and not a dead end — they can edit the search)
 
-**Plans**: 0 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 4.1 to break down)
+
+**Wave 1** *(shared types + test stubs + mock client extension)*
+
+- [ ] 04.1-01-PLAN.md — Shared types (searchTypes.ts), channel constants, opTypes additions, mock client extension (GetParticipants/GetUsers), Wave 0 test stubs (Nyquist)
+
+**Wave 2** *(implementation — blocked on Wave 1)*
+
+- [ ] 04.1-02-PLAN.md — ParticipantSearcher.ts (GREEN tests) + TargetResolver.resolveByCandidate()
+
+**Wave 3** *(IPC wiring — blocked on Wave 2)*
+
+- [ ] 04.1-03-PLAN.md — searchChannels.ts + TARGET_RESET CR-01 update + main/index.ts wiring + preload bridge
+
+**Wave 4** *(renderer foundation — blocked on Wave 3)*
+
+- [ ] 04.1-04-PLAN.md — searchClient.ts + searchStore.ts + TargetInput name mode extension + resolveCopy hint
+
+**Wave 5** *(UI components + human checkpoint — blocked on Wave 4)*
+
+- [ ] 04.1-05-PLAN.md — searchCopy.ts + CandidateRow.tsx + CandidateList.tsx + AppShell wiring + visual verification
 
 ### Phase 5: Removal Execution Engine
 
@@ -259,6 +278,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Rate-Limit Governor & Error Classification | 4/4 | Complete   | 2026-06-11 |
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-11 |
+| 4.1 Target Search by Name (INSERTED) | 0/5 | Not started | - |
 | 5. Removal Execution Engine | 0/TBD | Not started | - |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
