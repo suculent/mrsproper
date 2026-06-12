@@ -7,6 +7,7 @@
  *   - bio fetch via users.GetFullUser (graceful — bio is null on any failure)
  *   - avatar download via downloadProfilePhoto (empty buffer → null)
  *   - resolved target state machine (idle → resolving → resolved | error)
+ *   - candidate resolution via resolveByCandidate(userId, accessHash) — Phase 4.1
  *   - confirm gate: resolved → confirmed (D-11)
  *   - reset: any state → idle (D-14)
  *
@@ -26,6 +27,7 @@
  */
 
 import { Api } from 'telegram'
+import bigInt from 'big-integer'
 import type { BigInteger } from 'big-integer'
 import type { TargetState, ResolvedTargetDTO, TargetErrorCode } from '@shared/targetTypes'
 import type { GovernorEvent } from '@shared/opTypes'
@@ -141,6 +143,95 @@ export class TargetResolver {
         step: 'error',
         code: classified.code as TargetErrorCode,
         input,
+      })
+    }
+  }
+
+  /**
+   * Resolve a target by numeric userId + accessHash (Phase 4.1, TGT-05j).
+   *
+   * Called after a ParticipantSearcher candidate is selected.
+   * Uses users.GetUsers([InputUser(userId, accessHash)]) — direct resolution without
+   * username or phone. Falls through _fetchBio/_fetchAvatar/_buildDTO exactly as
+   * resolve() does — emits the same resolved TargetState shape.
+   *
+   * Security (T-03-01, T-04.1-05):
+   *   - accessHash stored in _resolvedAccessHash private field only (never in DTO)
+   *   - Generation guard applied before writing private fields and before emitting
+   *
+   * RESEARCH Open Question 2 (RESOLVED Option A): users.GetUsers is the direct path.
+   * The optional `username` fallback parameter is available if GetUsers returns empty
+   * for a username-having candidate whose accessHash has expired.
+   *
+   * @param userId    Native bigint numeric user ID from ParticipantSearcher
+   * @param accessHash Native bigint accessHash from ParticipantSearcher._candidateAccessHashes
+   * @param username  Optional fallback username (used only if GetUsers fails/empty)
+   */
+  async resolveByCandidate(userId: bigint, accessHash: bigint, username?: string): Promise<void> {
+    // WR-03: claim a new generation — invalidates any older in-flight resolve
+    const gen = ++this._generation
+
+    this._emit({ step: 'resolving' })
+
+    try {
+      // Construct InputUser from provided bigint values
+      const inputUser = new Api.InputUser({
+        userId: bigInt(userId.toString()) as BigInteger,
+        accessHash: bigInt(accessHash.toString()) as BigInteger,
+      })
+
+      let users: Api.TypeUser[]
+      try {
+        users = await this._governor.run(() =>
+          this._client.invoke(new Api.users.GetUsers({ id: [inputUser] }))
+        ) as Api.TypeUser[]
+      } catch (getErr) {
+        // Fallback: if GetUsers throws and candidate has a username, try username path
+        if (username && gen === this._generation) {
+          const dto = await this._resolveByUsername(stripLeadingAt(username), gen)
+          if (gen !== this._generation) return
+          this._emit({ step: 'resolved', target: dto })
+          return
+        }
+        throw getErr
+      }
+
+      // Fallback: if GetUsers returns empty and candidate has a username, try username path
+      if (!users.length) {
+        if (username && gen === this._generation) {
+          const dto = await this._resolveByUsername(stripLeadingAt(username), gen)
+          if (gen !== this._generation) return
+          this._emit({ step: 'resolved', target: dto })
+          return
+        }
+        throw Object.assign(new Error('USER_ID_INVALID'), { errorMessage: 'USER_ID_INVALID' })
+      }
+
+      // WR-03: generation guard before writing private identity fields
+      if (gen !== this._generation) return
+
+      // Cast the first user to the ApiUserShape interface
+      const targetUser = users[0] as unknown as ApiUserShape
+
+      // Store access hash privately (T-03-01 — never in DTO)
+      this._resolvedUserId = BigInt(targetUser.id.toString())
+      this._resolvedAccessHash =
+        targetUser.accessHash != null ? BigInt(targetUser.accessHash.toString()) : BigInt(0)
+
+      const bio = await this._fetchBio(targetUser)
+      const avatar = await this._fetchAvatar(targetUser)
+
+      // WR-03: generation guard before emitting
+      if (gen !== this._generation) return
+
+      this._emit({ step: 'resolved', target: this._buildDTO(targetUser, bio, avatar) })
+    } catch (err) {
+      if (gen !== this._generation) return // WR-03: stale — never emit
+      const classified = classifyRpcError(err)
+      this._emit({
+        step: 'error',
+        code: classified.code as TargetErrorCode,
+        input: userId.toString(),
       })
     }
   }

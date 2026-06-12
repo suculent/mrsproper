@@ -515,3 +515,116 @@ describe('TargetResolver.reset', () => {
     expect(resolver.getResolvedUser()?.id).toBe(BigInt('304'))
   })
 })
+
+// ---------------------------------------------------------------------------
+// TGT-05j, TGT-05i — resolveByCandidate (Phase 4.1)
+// ---------------------------------------------------------------------------
+
+describe('TargetResolver.resolveByCandidate (TGT-05j, TGT-05i)', () => {
+  it('TGT-05j: resolveByCandidate calls GetUsers and emits resolved state with same shape as username/phone path', async () => {
+    const { resolver, states } = makeResolver({
+      getUsersResult: {
+        '12345': {
+          firstName: 'Anna',
+          lastName: 'Smith',
+          username: 'annasmith',
+          accessHash: '0',
+        },
+      },
+    })
+
+    await resolver.resolveByCandidate(12345n, 0n)
+
+    const last = states[states.length - 1]
+    expect(last.step).toBe('resolved')
+    const resolved = last as Extract<TargetState, { step: 'resolved' }>
+    expect(resolved.target.id).toBe('12345')
+    expect(resolved.target.name).toBe('Anna Smith')
+    // Security (T-03-01, T-04.1-05): accessHash must NOT appear in DTO
+    expect((resolved.target as unknown as Record<string, unknown>).accessHash).toBeUndefined()
+  })
+
+  it('TGT-05j: state transitions through resolving → resolved', async () => {
+    const { resolver, states } = makeResolver({
+      getUsersResult: {
+        '12345': { firstName: 'Anna', accessHash: '0' },
+      },
+    })
+
+    await resolver.resolveByCandidate(12345n, 0n)
+
+    expect(states.some(s => s.step === 'resolving')).toBe(true)
+    expect(states[states.length - 1].step).toBe('resolved')
+  })
+
+  it('TGT-05j: resolveByCandidate result is compatible with getResolvedUser() after confirm', async () => {
+    const { resolver } = makeResolver({
+      getUsersResult: {
+        '42000': { firstName: 'TestUser', accessHash: '9999999' },
+      },
+    })
+
+    await resolver.resolveByCandidate(42000n, 9999999n)
+    resolver.confirm()
+
+    const user = resolver.getResolvedUser()
+    expect(user).not.toBeNull()
+    expect(typeof user!.id).toBe('bigint')
+    expect(user!.id).toBe(42000n)
+  })
+
+  it('TGT-05i: generation superseded by reset() during resolveByCandidate must not emit resolved state', async () => {
+    // Use a deferred promise to pause the GetUsers call mid-flight
+    let resolveDeferred!: () => void
+    const deferred = new Promise<void>((res) => { resolveDeferred = res })
+
+    const { resolver: baseResolver } = makeResolver({})
+
+    // Create a custom client that pauses on GetUsers
+    const { createMockTelegramClient: _, ...rest } = await import('./__mocks__/telegramClient')
+    void rest
+    const pausingClient = createMockTelegramClient({
+      getUsersResult: { '99': { firstName: 'Pausing', accessHash: '0' } },
+    })
+
+    const originalInvoke = pausingClient.invoke.bind(pausingClient)
+    pausingClient.invoke = async (request: unknown): Promise<unknown> => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetUsers' || className === 'users.GetUsers') {
+        await deferred // pause until reset() is called
+      }
+      return originalInvoke(request)
+    }
+
+    const states: TargetState[] = []
+    const { TargetResolver: TR } = await import('./TargetResolver')
+    const resolver = new TR({
+      client: pausingClient as never,
+      onStateChange: (s: TargetState) => states.push(s),
+      onGovernorEvent: vi.fn(),
+    })
+
+    void baseResolver // suppress unused warning
+
+    // Start resolveByCandidate (will pause at GetUsers)
+    const pending = resolver.resolveByCandidate(99n, 0n)
+
+    // reset() supersedes the in-flight resolveByCandidate
+    resolver.reset()
+
+    // Unblock GetUsers
+    resolveDeferred()
+
+    await pending
+
+    // Final state must be idle (from reset), not resolved
+    expect(resolver.getState().step).toBe('idle')
+    expect(resolver.getResolvedUser()).toBeNull()
+
+    // No 'resolved' state may appear after the 'idle' from reset
+    const idleIdx = states.findIndex(s => s.step === 'idle')
+    expect(idleIdx).toBeGreaterThanOrEqual(0)
+    expect(states.slice(idleIdx).some(s => s.step === 'resolved')).toBe(false)
+  })
+})
