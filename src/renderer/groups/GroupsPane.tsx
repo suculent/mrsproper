@@ -445,6 +445,21 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           </div>
         )}
 
+        {/* Checklist mode: "Change target" affordance — navigates back to target step */}
+        {/* Disabled while removal is running (T-05-07-B parity with TargetCard button) */}
+        {mode === 'checklist' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-label text-muted-foreground hover:text-foreground"
+            onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
+            disabled={isRunActive}
+            aria-label={wizardCopy.changeTargetAria}
+          >
+            {wizardCopy.changeTarget}
+          </Button>
+        )}
+
         {/* Sort toggle (both modes) */}
         <Button
           variant="ghost"

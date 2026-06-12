@@ -104,4 +104,9 @@ export const wizardCopy = {
   // --- Report stage ---
 
   removeSomeoneElse: "Remove someone else",
+
+  // --- GroupsPane checklist toolbar ---
+
+  changeTarget: "Change target",
+  changeTargetAria: "Clear current target and return to the target step",
 } as const
