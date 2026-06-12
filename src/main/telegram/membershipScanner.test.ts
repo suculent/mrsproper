@@ -10,7 +10,7 @@
  *   - GRP-01: retryGroup single-group re-check
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import bigInt from 'big-integer'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { RateLimitGovernor } from './governor'

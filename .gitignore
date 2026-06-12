@@ -30,5 +30,16 @@ desktop.ini
 release/
 tsconfig.node.tsbuildinfo
 *.tsbuildinfo
+# tsc --build artifacts (composite project, no outDir — output lands next to source)
+electron.vite.config.js
+electron.vite.config.d.ts
+# tsc --build emits .js/.jsx alongside .ts/.tsx source files in composite mode
+# These are generated artifacts, not source files
+src/**/*.js
+src/**/*.jsx
+# tsc also emits .d.ts declaration files alongside sources in composite mode
+# Exception: src/main/env.d.ts is an intentional type augmentation (not generated)
+src/**/*.d.ts
+!src/main/env.d.ts
 # roborev snapshots
 /.roborev/

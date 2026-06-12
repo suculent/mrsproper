@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import type { TargetState, ResolvedTargetDTO } from '@shared/targetTypes'
+import type { TargetState } from '@shared/targetTypes'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 
 // RED: This import will fail — TargetResolver.ts does not exist yet (Wave 0).

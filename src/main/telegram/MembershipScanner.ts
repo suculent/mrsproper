@@ -27,7 +27,7 @@
 
 import bigInt from 'big-integer'
 import { Api } from 'telegram'
-import type { ScanState, ScanProgressDTO, MembershipResultDTO, AdminDialogDTO } from '@shared/groupTypes'
+import type { ScanState, MembershipResultDTO, AdminDialogDTO } from '@shared/groupTypes'
 import type { RateLimitGovernor } from './governor'
 import type { GroupEnumerator } from './GroupEnumerator'
 

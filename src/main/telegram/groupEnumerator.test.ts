@@ -6,7 +6,7 @@
  *   - GRP-05: dialog entity classification (Chat, Channel megagroup, Channel broadcast)
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { RateLimitGovernor } from './governor'
 import { GroupEnumerator } from './GroupEnumerator'

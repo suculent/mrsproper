@@ -55,7 +55,7 @@ const SubmitPasswordSchema = z.object({
  * @param win  The main BrowserWindow (used for webContents.send)
  * @param sm   The SessionManager instance (constructed in main/index.ts)
  */
-export function registerAuthChannels(win: BrowserWindow, sm: SessionManager): void {
+export function registerAuthChannels(_win: BrowserWindow, sm: SessionManager): void {
   // ── Wire SessionManager state emissions to the renderer ─────────────────
   // The SessionManager was constructed with a placeholder emit; we now wire it
   // to win.webContents.send so auth state changes reach the renderer.

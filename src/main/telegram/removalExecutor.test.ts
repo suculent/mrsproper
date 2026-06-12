@@ -192,9 +192,6 @@ describe('RemovalExecutor — kick mechanic', () => {
     const dialogs = [makeDialog('2001', 'supergroup')]
     const { executor, mockClient } = makeExecutor({ dialogs })
 
-    const callTimestamps: number[] = []
-    const originalEditBannedCalls = mockClient.editBannedCalls
-
     // Track timing by recording when each call happens
     const execPromise = executor.execute({ severity: 'kick', dialogIds: ['2001'] })
     await vi.runAllTimersAsync()
@@ -758,8 +755,6 @@ describe('RemovalExecutor — _handleGovernorEvent + _runActive (Phase 6)', () =
       makeDialog('9005', 'supergroup'),
       makeDialog('9006', 'supergroup'),
     ]
-    const { executor, states } = makeExecutor({ dialogs })
-
     let abortFired = false
     const auditStore = makeAuditStore(['9005', '9006'])
     const { executor: ex, states: st } = makeExecutor({ dialogs, auditStore })

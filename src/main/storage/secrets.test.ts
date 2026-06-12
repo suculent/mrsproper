@@ -9,9 +9,8 @@
  *   - isEncryptionAvailable()===false → no plaintext written, returns null/routes to login [-t "unavailable"]
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createMockSafeStorage } from './__mocks__/safeStorage'
-import type { MockSafeStorage } from './__mocks__/safeStorage'
 
 // RED: This import will fail — secrets.ts does not exist yet (Wave 0).
 // Plans 03/04 create: src/main/storage/secrets.ts

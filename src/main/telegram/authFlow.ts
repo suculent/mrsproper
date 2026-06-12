@@ -162,7 +162,7 @@ export class AuthFlow {
     try {
       await this._client.signInWithPassword(this._apiCreds, {
         password: async (_hint?: string) => payload.password,
-        onError: async (err: Error) => {
+        onError: async (_err: Error) => {
           // Classification handled below in the catch; return false to let error propagate
           return false
         },

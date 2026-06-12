@@ -407,7 +407,7 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         const viewMessages = bannedRights?.viewMessages ?? false
         const untilDate = bannedRights?.untilDate ?? 0
         // Record the call for sequence assertions
-        config.editBannedCalls.push({ channelId, viewMessages, untilDate })
+        _editBannedCalls.push({ channelId, viewMessages, untilDate })
         // Check error/success controls
         if (config.removeAlreadyGoneDialogIds?.includes(channelId)) {
           throw Object.assign(new Error('USER_NOT_PARTICIPANT'), { errorMessage: 'USER_NOT_PARTICIPANT' })
@@ -423,7 +423,7 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       if (ctorName === 'DeleteChatUser' || (request as { className?: string })?.className === 'messages.DeleteChatUser') {
         const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
         // Record the call for sequence assertions
-        config.deleteChatUserCalls.push({ chatId })
+        _deleteChatUserCalls.push({ chatId })
         // Check error/success controls
         if (config.removeAlreadyGoneDialogIds?.includes(chatId)) {
           throw Object.assign(new Error('USER_NOT_PARTICIPANT'), { errorMessage: 'USER_NOT_PARTICIPANT' })
@@ -459,8 +459,10 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       if (config.getDialogsError) throw makeRPCError(config.getDialogsError)
       return (config.getDialogsResult ?? []).map((d) => ({
         entity: d.entity === 'Chat'
-          ? Object.assign(new Api.Chat({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights, migratedTo: d.migratedTo, deactivated: d.deactivated })
-          : Object.assign(new Api.Channel({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights }),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? Object.assign(new (Api.Chat as any)({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights, migratedTo: d.migratedTo, deactivated: d.deactivated })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          : Object.assign(new (Api.Channel as any)({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights }),
         inputEntity: { channelId: bigInt(d.id), accessHash: bigInt.zero },
         title: d.title,
         id: bigInt(d.id),
