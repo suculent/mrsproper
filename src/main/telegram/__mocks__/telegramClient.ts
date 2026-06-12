@@ -149,6 +149,38 @@ export interface MockClientConfig {
   getParticipantsError?: Record<string, MockRPCErrorCode>
   /** If set, users.GetUsers returns this user for the given userId. */
   getUsersResult?: Record<string, { firstName?: string; lastName?: string; username?: string; accessHash?: string }>
+
+  // ── Phase 5: removal mock controls ───────────────────────────────────────
+  /**
+   * If set, EditBanned/DeleteChatUser returns {} (success) for matching channelId/chatId.
+   * If undefined, all removal calls succeed by default (empty array = explicit list of successes,
+   * undefined = all succeed; the default catch-all returns {} anyway).
+   */
+  removeSuccessDialogIds?: string[]
+  /**
+   * If set, EditBanned/DeleteChatUser throws USER_NOT_PARTICIPANT for matching channelId/chatId.
+   * Used to test 'already-gone' outcome classification.
+   */
+  removeAlreadyGoneDialogIds?: string[]
+  /**
+   * Maps dialogId → errorMessage string. EditBanned/DeleteChatUser throws with the mapped
+   * errorMessage for the matching channelId/chatId.
+   */
+  removeErrorDialogIds?: Record<string, string>
+
+  // ── Phase 5: call-recording arrays (reset in factory, pushed on each invoke) ─
+  /**
+   * Records each EditBanned call for sequence assertions.
+   * ban = 1 call (viewMessages=true, untilDate=0)
+   * kick = 2 calls (restrict + unban, 500ms sleep between)
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  editBannedCalls?: Array<{ channelId: string; viewMessages: boolean; untilDate: number }>
+  /**
+   * Records each DeleteChatUser call.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  deleteChatUserCalls?: Array<{ chatId: string }>
 }
 
 const DEFAULT_IDENTITY = {
@@ -164,6 +196,13 @@ const DEFAULT_IDENTITY = {
  * Exposes the same surface as the real client that our auth/session code calls.
  */
 export function createMockTelegramClient(config: MockClientConfig = {}) {
+  // Phase 5: initialize call-recording arrays on the config object (always reset per factory call)
+  config.editBannedCalls = []
+  config.deleteChatUserCalls = []
+  // Expose on the returned client for test assertions (read after execute)
+  const _editBannedCalls = config.editBannedCalls
+  const _deleteChatUserCalls = config.deleteChatUserCalls
+
   const sessionStr = config.sessionString ?? 'mock-session-string'
 
   const client = {
@@ -357,6 +396,42 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         }]
       }
 
+      // ── Phase 5: channels.EditBanned — supergroup/channel ban/kick (RMV-01, RMV-02) ─
+      if (ctorName === 'EditBanned' || (request as { className?: string })?.className === 'channels.EditBanned') {
+        const channelId = (request as { channel?: { channelId?: { toString(): string } } })
+          .channel?.channelId?.toString() ?? ''
+        const bannedRights = (request as { bannedRights?: { viewMessages?: boolean; untilDate?: number } }).bannedRights
+        const viewMessages = bannedRights?.viewMessages ?? false
+        const untilDate = bannedRights?.untilDate ?? 0
+        // Record the call for sequence assertions
+        config.editBannedCalls.push({ channelId, viewMessages, untilDate })
+        // Check error/success controls
+        if (config.removeAlreadyGoneDialogIds?.includes(channelId)) {
+          throw Object.assign(new Error('USER_NOT_PARTICIPANT'), { errorMessage: 'USER_NOT_PARTICIPANT' })
+        }
+        if (config.removeErrorDialogIds?.[channelId]) {
+          const msg = config.removeErrorDialogIds[channelId]!
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        return {}  // success
+      }
+
+      // ── Phase 5: messages.DeleteChatUser — basic group removal (RMV-02) ──────
+      if (ctorName === 'DeleteChatUser' || (request as { className?: string })?.className === 'messages.DeleteChatUser') {
+        const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
+        // Record the call for sequence assertions
+        config.deleteChatUserCalls.push({ chatId })
+        // Check error/success controls
+        if (config.removeAlreadyGoneDialogIds?.includes(chatId)) {
+          throw Object.assign(new Error('USER_NOT_PARTICIPANT'), { errorMessage: 'USER_NOT_PARTICIPANT' })
+        }
+        if (config.removeErrorDialogIds?.[chatId]) {
+          const msg = config.removeErrorDialogIds[chatId]!
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        return {}  // success
+      }
+
       // messages.GetFullChat — basic group membership (GRP-01)
       if (ctorName === 'GetFullChat' || (request as { className?: string })?.className === 'messages.GetFullChat') {
         const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
@@ -438,6 +513,12 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       if (!id.hasPhoto) return null
       return Buffer.from([0x89, 0x50, 0x4e, 0x47]) // minimal PNG magic bytes
     },
+
+    // ── Phase 5: call-recording accessors ───────────────────────────────────
+    // Exposed directly on the client for test assertions after execute().
+    // These are the same array instances as config.editBannedCalls / config.deleteChatUserCalls.
+    editBannedCalls: _editBannedCalls,
+    deleteChatUserCalls: _deleteChatUserCalls,
   }
 
   return client
