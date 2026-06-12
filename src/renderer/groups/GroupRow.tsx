@@ -5,18 +5,22 @@
 // D-03: grey-out reason always visible (no hover required)
 // D-04: type badge on greyed rows only
 // D-07: failed-verify shows destructive text + inline retry button
+// Phase 5: removalStatus prop renders per-group removal status in checkbox slot + subline.
 
 import React from 'react'
+import { Check, Loader2, AlertCircle, Minus } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
+import type { RmvErrorCode } from '@shared/removalTypes'
 import {
   GROUP_GREY_COPY,
   GROUP_TYPE_LABEL,
   formatMemberCount,
 } from './groupsCopy'
+import { RMV_ERROR_COPY, removalCopy } from '../removal/removalCopy'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from TargetCard — avoids premature abstraction per PATTERNS.md
@@ -69,6 +73,16 @@ export interface GroupRowProps {
   isChecked: boolean
   onToggle: (dialogId: string) => void
   onRetry: (dialogId: string) => void
+  /** Removal status for this group. null/undefined = not in a removal run. */
+  removalStatus?: 'queued' | 'removing' | 'done' | 'already-gone' | 'failed' | 'skipped' | null
+  /** 'basic-group-ban-fallback' annotation or null — affects done copy */
+  removalNote?: 'basic-group-ban-fallback' | null
+  /** Called when user clicks the "retry removal" link for a failed row */
+  onRetryRemoval?: (dialogId: string) => void
+  /** Typed failure code — present when removalStatus === 'failed' */
+  errorCode?: RmvErrorCode | null
+  /** Removal severity — affects done copy ("Banned" vs "Removed") */
+  severity?: 'kick' | 'ban'
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +95,11 @@ export function GroupRow({
   isChecked,
   onToggle,
   onRetry,
+  removalStatus,
+  removalNote,
+  onRetryRemoval,
+  errorCode,
+  severity = 'ban',
 }: GroupRowProps): React.JSX.Element {
   const isActionable = dialog.canAct && membershipStatus === 'member'
   const isPending = membershipStatus === null || membershipStatus === 'pending'
@@ -90,6 +109,147 @@ export function GroupRow({
   const initial = getInitials(dialog.title)
   const avatarBg = getAvatarColor(dialog.id)
 
+  // When a removal is active for this row, disable toggle interactions
+  const isRemovalActive = removalStatus != null
+
+  // ---------------------------------------------------------------------------
+  // Checkbox slot — Phase 5 removal status branch is FIRST
+  // ---------------------------------------------------------------------------
+
+  function renderCheckboxSlot(): React.JSX.Element {
+    // 1. removalStatus branch (non-null): switch on removalStatus
+    if (removalStatus != null) {
+      switch (removalStatus) {
+        case 'removing':
+          return (
+            <Loader2
+              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'done':
+        case 'already-gone':
+          return (
+            <Check
+              className="h-4 w-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+          )
+        case 'failed':
+          return (
+            <AlertCircle
+              className="h-4 w-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
+          )
+        case 'skipped':
+          return (
+            <Minus
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'queued':
+          // queued: checked + disabled checkbox (non-interactive, visually filled)
+          return (
+            <Checkbox
+              checked={true}
+              disabled={true}
+              aria-label={`${dialog.title} — include in removal`}
+            />
+          )
+      }
+    }
+
+    // 2. Existing isPending branch (unchanged)
+    if (isPending) {
+      return <div className="h-4 w-4 shrink-0 rounded animate-pulse bg-muted" />
+    }
+
+    // 3. Existing isActionable branch (unchanged)
+    if (isActionable) {
+      return (
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={() => onToggle(dialog.id)}
+          aria-label={`${dialog.title} — include in removal`}
+        />
+      )
+    }
+
+    // 4. Existing grey-disabled fallback (unchanged)
+    return (
+      <div
+        className="h-4 w-4 shrink-0 rounded-sm border border-primary/30 cursor-not-allowed"
+        role="checkbox"
+        aria-checked="false"
+        aria-disabled="true"
+      />
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Removal-status subline — Phase 5 addition
+  // ---------------------------------------------------------------------------
+
+  function renderRemovalSubline(): React.JSX.Element | null {
+    if (removalStatus == null) return null
+
+    switch (removalStatus) {
+      case 'removing':
+        return (
+          <span className="text-label text-muted-foreground">
+            {removalCopy.rowStatus.removing}
+          </span>
+        )
+      case 'done': {
+        let doneCopy: string
+        if (removalNote === 'basic-group-ban-fallback') {
+          doneCopy = removalCopy.rowStatus.doneBasicFallback
+        } else if (severity === 'ban') {
+          doneCopy = removalCopy.rowStatus.doneBan
+        } else {
+          doneCopy = removalCopy.rowStatus.doneKick
+        }
+        return (
+          <span className="text-label text-muted-foreground">{doneCopy}</span>
+        )
+      }
+      case 'already-gone':
+        return (
+          <span className="text-label text-muted-foreground">
+            {removalCopy.rowStatus.alreadyGone}
+          </span>
+        )
+      case 'failed': {
+        const reasonCopy = errorCode
+          ? (RMV_ERROR_COPY[errorCode] ?? RMV_ERROR_COPY['UNKNOWN'])
+          : RMV_ERROR_COPY['UNKNOWN']
+        return (
+          <span className="text-label text-destructive inline-flex items-baseline gap-1">
+            {reasonCopy}
+            <button
+              onClick={() => onRetryRemoval?.(dialog.id)}
+              className="text-label text-primary underline-offset-2 hover:underline"
+              aria-label={`Retry removal for ${dialog.title}`}
+            >
+              {removalCopy.retryRowLabel}
+            </button>
+          </span>
+        )
+      }
+      case 'skipped':
+        return (
+          <span className="text-label text-muted-foreground">
+            {removalCopy.rowStatus.skipped}
+          </span>
+        )
+      case 'queued':
+        // No subline for queued rows
+        return null
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -97,26 +257,8 @@ export function GroupRow({
         !dialog.canAct && 'opacity-50'
       )}
     >
-      {/* Checkbox area — left side */}
-      {isPending ? (
-        // Scan-pending skeleton (UI-SPEC scan-pending row)
-        <div className="h-4 w-4 shrink-0 rounded animate-pulse bg-muted" />
-      ) : isActionable ? (
-        // Actionable: real Checkbox (D-02)
-        <Checkbox
-          checked={isChecked}
-          onCheckedChange={() => onToggle(dialog.id)}
-          aria-label={`${dialog.title} — include in removal`}
-        />
-      ) : (
-        // Greyed or failed: non-interactive placeholder (UI-SPEC greyed rows + pending states)
-        <div
-          className="h-4 w-4 shrink-0 rounded-sm border border-primary/30 cursor-not-allowed"
-          role="checkbox"
-          aria-checked="false"
-          aria-disabled="true"
-        />
-      )}
+      {/* Checkbox area — left side (Phase 5 removal status renders first) */}
+      {renderCheckboxSlot()}
 
       {/* Group avatar (36px per UI-SPEC) */}
       <Avatar className="h-9 w-9 shrink-0">
@@ -131,15 +273,18 @@ export function GroupRow({
         {/* Group name (D-02) */}
         <span className="text-label font-medium truncate">{dialog.title}</span>
 
-        {/* Grey reason — canAct=false, not failed-verify (D-03) */}
-        {!dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
+        {/* Removal status subline — Phase 5 addition; renders before the grey-reason subline */}
+        {renderRemovalSubline()}
+
+        {/* Grey reason — canAct=false, not failed-verify (D-03) — only when no removal active */}
+        {!isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
           <span className="text-label text-muted-foreground">
             {GROUP_GREY_COPY[dialog.greyReason]}
           </span>
         )}
 
         {/* Failed-verify state (D-07) — destructive text + inline retry button */}
-        {isFailed && (
+        {!isRemovalActive && isFailed && (
           <span className="text-label text-destructive inline-flex items-baseline gap-1">
             {GROUP_GREY_COPY['verify-failed']}
             <button
@@ -152,8 +297,8 @@ export function GroupRow({
           </span>
         )}
 
-        {/* Type badge — greyed rows only, not failed-verify (D-04) */}
-        {!dialog.canAct && !isFailed && (
+        {/* Type badge — greyed rows only, not failed-verify (D-04) — only when no removal active */}
+        {!isRemovalActive && !dialog.canAct && !isFailed && (
           <Badge variant="secondary" className="w-fit mt-0.5">
             {GROUP_TYPE_LABEL[dialog.type]}
           </Badge>
