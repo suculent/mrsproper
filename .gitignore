@@ -30,3 +30,5 @@ desktop.ini
 release/
 tsconfig.node.tsbuildinfo
 *.tsbuildinfo
+# roborev snapshots
+/.roborev/
