@@ -167,7 +167,7 @@ export function RemovalConfirmDialog({
             variant="destructive"
             onClick={handleConfirm}
             disabled={isDispatching}
-            aria-label={`Confirm ban from ${n} groups`}
+            aria-label={severity === 'ban' ? `Confirm ban from ${n} groups` : `Confirm removal from ${n} groups`}
           >
             {isDispatching ? (
               <>
