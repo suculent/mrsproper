@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-MrProper ships as distributable installers verified launching on clean machines: a code-signed and notarized macOS build (separate x64 and arm64 DMGs) that opens without a Gatekeeper block, and an unsigned-by-decision Windows build (NSIS installer + portable .exe) with documented "More info → Run anyway" instructions. Release is a local scripted process on the dev Mac; distribution is direct share to known admins. Verification is a launch + Telegram-login smoke test on an ARM Mac, an Intel Mac, and a Windows VM, confirmed informally.
+MrProper ships as distributable installers verified launching on clean machines: a code-signed and notarized macOS build (separate x64 and arm64 DMGs) that opens without a Gatekeeper block, and an unsigned-by-decision Windows build (NSIS installer + portable .exe) with documented "More info → Run anyway" instructions. The macOS build MUST run on macOS 11.7.10 Big Sur (the primary admin's machine — she cannot upgrade), which requires downgrading Electron from 42 to the newest version supporting macOS 11. Release is a local scripted process on the dev Mac; distribution is direct share to known admins. Verification is a launch + Telegram-login smoke test on an ARM Mac, an Intel Mac, a macOS 11.7.10 Big Sur Mac, and a Windows VM, confirmed informally.
 
 Requirements: APP-03.
 
@@ -34,7 +34,8 @@ Requirements: APP-03.
 - **D-12:** **Auto-update is OUT** — deferred. Direct-share distribution has no update feed; new versions are shared the same way.
 
 ### Clean-Machine Verification
-- **D-13:** Verification matrix: **ARM Mac (Apple Silicon) + Intel Mac + Windows VM** — all three are available to the user, covering the full ROADMAP criterion.
+- **D-13:** Verification matrix: **ARM Mac (Apple Silicon) + Intel Mac + macOS 11.7.10 (Big Sur) Mac + Windows VM**. The Big Sur machine is an explicit, REQUIRED matrix entry — it belongs to the primary admin the app is being built for, and she cannot upgrade beyond 11.7.10.
+- **D-16:** The app MUST run on macOS 11.7.10 Big Sur. Electron 42 requires macOS 12 (`LSMinimumSystemVersion: 12.0`), so this phase MUST downgrade Electron to the newest major version whose macOS minimum is ≤ 11 (research to confirm the exact version) and re-verify the app works on it before packaging. Big Sur support takes priority over staying on the latest Electron.
 - **D-14:** Verification depth: **launch + login smoke** — install from the distributed artifact, app opens with no Gatekeeper/SmartScreen hard block, Telegram login reaches the code-entry step (proves embedded api_id/api_hash work in the packaged build). No destructive actions.
 - **D-15:** Recording is **informal** — the user runs the checks and confirms back; no persisted UAT checklist document required for this phase.
 
