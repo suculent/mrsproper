@@ -241,7 +241,7 @@ Plans:
 Plans:
 **Wave 1** *(parallel — shared types + mock client/test stubs)*
 
-- [ ] 05-01-PLAN.md — Shared contracts: removalTypes.ts, channels.ts + opTypes.ts augmentation (REMOVAL_* constants, RMV_* error codes)
+- [x] 05-01-PLAN.md — Shared contracts: removalTypes.ts, channels.ts + opTypes.ts augmentation (REMOVAL_* constants, RMV_* error codes)
 - [ ] 05-02-PLAN.md — Mock client extension (EditBanned/DeleteChatUser call-recording) + Wave 0 RED test stubs
 
 **Wave 2** *(parallel — blocked on Wave 1)*
@@ -301,7 +301,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Target Resolution & Verification | 6/6 | Complete   | 2026-06-11 |
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
-| 5. Removal Execution Engine | 0/TBD | Not started | - |
+| 5. Removal Execution Engine | 1/7 | In Progress|  |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 0/TBD | Not started | - |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |

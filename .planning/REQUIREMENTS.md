@@ -39,8 +39,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Removal Action
 
-- [ ] **RMV-01**: User can choose per-run between ban (block rejoin) and kick (removable, can rejoin)
-- [ ] **RMV-02**: App applies the correct removal mechanic per group type (basic group `deleteChatUser` vs supergroup/channel `editBanned`; kick = restrict-then-unban)
+- [x] **RMV-01**: User can choose per-run between ban (block rejoin) and kick (removable, can rejoin)
+- [x] **RMV-02**: App applies the correct removal mechanic per group type (basic group `deleteChatUser` vs supergroup/channel `editBanned`; kick = restrict-then-unban)
 
 ### Safety Gates
 
@@ -53,8 +53,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **EXE-01**: All Telegram calls funnel through a single serialized, rate-limited governor (no parallel blasting)
 - [x] **EXE-02**: App honors FLOOD_WAIT by sleeping the server-specified time and resuming (never treated as a hard failure)
 - [x] **EXE-03**: App detects PEER_FLOOD distinctly and hard-stops the job (no retry), warning the user
-- [ ] **EXE-04**: App shows live progress during execution
-- [ ] **EXE-05**: App shows a per-group success/failure report after execution, with each group's failure isolated from the rest
+- [x] **EXE-04**: App shows live progress during execution
+- [x] **EXE-05**: App shows a per-group success/failure report after execution, with each group's failure isolated from the rest
 
 ### Application & Packaging
 
@@ -133,10 +133,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | GRP-03 | Phase 4 | Complete |
 | GRP-04 | Phase 4 | Complete |
 | GRP-05 | Phase 4 | Complete |
-| RMV-01 | Phase 5 | Pending |
-| RMV-02 | Phase 5 | Pending |
-| EXE-04 | Phase 5 | Pending |
-| EXE-05 | Phase 5 | Pending |
+| RMV-01 | Phase 5 | Complete |
+| RMV-02 | Phase 5 | Complete |
+| EXE-04 | Phase 5 | Complete |
+| EXE-05 | Phase 5 | Complete |
 | SAF-01 | Phase 6 | Pending |
 | SAF-02 | Phase 6 | Pending |
 | SAF-03 | Phase 6 | Pending |
