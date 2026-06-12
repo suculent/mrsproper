@@ -77,8 +77,11 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
       {/* Step indicator strip — below header, above main */}
       <StepIndicator currentStage={stage} />
 
-      {/* Stage-conditional main layout */}
-      <main className="flex flex-1 overflow-hidden">
+      {/* Stage-conditional main layout.
+          Review stage uses flex-col so ReviewScreen's w-full/max-w-2xl/mx-auto
+          center as expected in a block-level context. Two-pane stages use flex-row
+          (the Tailwind default) for side-by-side pane layout. */}
+      <main className={`flex flex-1 overflow-hidden${stage === 'review' ? ' flex-col w-full overflow-y-auto' : ''}`}>
         {stage === 'review' ? (
           <ReviewScreen
             severity={severity}

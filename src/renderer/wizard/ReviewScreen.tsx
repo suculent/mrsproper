@@ -233,8 +233,9 @@ export function ReviewScreen({
           </Button>
         </div>
 
-        {/* Consequence line */}
-        <p className="text-body text-muted-foreground">
+        {/* Consequence line — min-h reserves two lines of space so toggling
+            Kick/Ban never causes a layout shift even if the text wraps */}
+        <p className="text-body text-muted-foreground min-h-[2.5rem]">
           {removalCopy.severityLine(severity, actionableCount)}
         </p>
       </div>
