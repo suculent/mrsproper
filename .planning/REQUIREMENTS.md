@@ -44,9 +44,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Safety Gates
 
-- [ ] **SAF-01**: Before execution, app shows a final review screen with target identity (including numeric ID) and the exact list of affected groups
-- [ ] **SAF-02**: Execution requires one explicit confirmation on the review screen
-- [ ] **SAF-03**: User can run a dry-run/preview that reports what would happen without performing any removal
+- [x] **SAF-01**: Before execution, app shows a final review screen with target identity (including numeric ID) and the exact list of affected groups
+- [x] **SAF-02**: Execution requires one explicit confirmation on the review screen
+- [x] **SAF-03**: User can run a dry-run/preview that reports what would happen without performing any removal
 
 ### Execution & Rate Limiting
 
@@ -137,9 +137,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | RMV-02 | Phase 5 | Complete |
 | EXE-04 | Phase 5 | Complete |
 | EXE-05 | Phase 5 | Complete |
-| SAF-01 | Phase 6 | Pending |
-| SAF-02 | Phase 6 | Pending |
-| SAF-03 | Phase 6 | Pending |
+| SAF-01 | Phase 6 | Complete |
+| SAF-02 | Phase 6 | Complete |
+| SAF-03 | Phase 6 | Complete |
 | APP-03 | Phase 7 | Pending |
 | LOC-01 | Phase 8 (v1.5) | Pending |
 | LOC-02 | Phase 8 (v1.5) | Pending |

@@ -278,7 +278,7 @@ Plans:
 
 **Wave 1** *(Plans 01 and 02 run in parallel — no file overlap)*
 
-- [ ] 06-01-PLAN.md — Shared contracts: removalTypes.ts floodWaitRemaining + SEVERITY_GET/SET channels + preload bridge + severityClient + Wave 0 test stubs
+- [x] 06-01-PLAN.md — Shared contracts: removalTypes.ts floodWaitRemaining + SEVERITY_GET/SET channels + preload bridge + severityClient + Wave 0 test stubs
 - [ ] 06-02-PLAN.md — electron-store install + severityChannels.ts (main IPC) + RemovalExecutor _handleGovernorEvent flood plumbing + main/index.ts wiring
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -321,7 +321,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Group Enumeration, Membership & Rights | 11/11 | Complete   | 2026-06-12 |
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
-| 6. UI Integration — Wizard, Safety Gates & Progress | 0/5 | Not started | - |
+| 6. UI Integration — Wizard, Safety Gates & Progress | 1/5 | In Progress|  |
 | 7. Packaging, Signing & Release | 0/TBD | Not started | - |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
