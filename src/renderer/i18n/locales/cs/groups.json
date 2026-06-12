@@ -1,1 +1,40 @@
-{}
+{
+  "greyReason": {
+    "not-creator": "Členy mohou odebírat pouze zakladatelé skupiny",
+    "no-ban-right": "Nemáte právo k zákazu v této skupině",
+    "broadcast-channel": "Kanál — odběratele nelze odebrat",
+    "not-admin": "Nejste správce této skupiny",
+    "verify-failed": "Ověření se nezdařilo —"
+  },
+  "groupTypeLabel": {
+    "basic-group": "Skupina",
+    "supergroup": "Superskupina",
+    "broadcast-channel": "Kanál"
+  },
+  "groupError": {
+    "FLOOD_WAIT": "Příliš mnoho požadavků. Seznam skupin se načte automaticky, jakmile to Telegram povolí.",
+    "NETWORK": "Nepodařilo se připojit k Telegramu. Zkontrolujte připojení a klikněte na Obnovit.",
+    "UNKNOWN": "Nepodařilo se načíst vaše skupiny. Klikněte na Obnovit a zkuste to znovu."
+  },
+  "scan": {
+    "scanning": "Prohledávám vaše skupiny…",
+    "failedN_one": "{{count}} skupinu se nepodařilo ověřit. Můžete to zkusit znovu výše.",
+    "failedN_few": "{{count}} skupiny se nepodařilo ověřit. Můžete to zkusit znovu výše.",
+    "failedN_other": "{{count}} skupin se nepodařilo ověřit. Můžete to zkusit znovu výše."
+  },
+  "emptyState": {
+    "noGroups": {
+      "heading": "Žádné skupiny nenalezeny",
+      "body": "Zdá se, že váš účet Telegram nespravuje žádné skupiny ani kanály."
+    },
+    "noMatches": {
+      "heading": "Žádné shody",
+      "body": "Žádné skupiny neodpovídají tomuto filtru. Zkuste jiný název."
+    },
+    "notInAnyHeading": "Není v žádné z vašich skupin",
+    "notInAnyBody": "{{name}} není členem žádné skupiny, ze které byste ho mohli odebrat. Možná skupinu již opustil, nebo nemáte práva k odebrání ve všech vašich skupinách."
+  },
+  "stopRemovalAria": "Zastavit odebírání",
+  "filterPlaceholder": "Filtrovat skupiny",
+  "refreshAria": "Obnovit seznam skupin"
+}

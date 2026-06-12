@@ -1,1 +1,46 @@
-{}
+{
+  "resolveError": {
+    "TARGET_USERNAME_NOT_FOUND": "Nikdo s tímto uživatelským jménem neexistuje. Zkontrolujte pravopis — uživatelská jména se mohou měnit nebo být smazána. Pokud znáte pouze jméno, napište ho s mezerou pro vyhledání ve skupinách.",
+    "TARGET_PHONE_NOT_FOUND": "Toto číslo není na Telegramu, nebo jejich nastavení soukromí blokuje vyhledávání podle telefonu. Pokud znáte jejich @uživatelské jméno, zkuste to místo toho.",
+    "TARGET_NO_PUBLIC_PROFILE": "Tuto osobu nelze veřejně vyhledat. Telegram umožňuje vyhledávání pouze tehdy, když to jejich nastavení dovoluje — zkuste jejich @uživatelské jméno, pokud ho máte.",
+    "FLOOD_WAIT": "Příliš mnoho vyhledávání. Počkejte prosím, až odpočítávání skončí.",
+    "NETWORK": "Nepodařilo se připojit k Telegramu. Zkontrolujte připojení a zkuste to znovu.",
+    "UNKNOWN": "Něco se pokazilo při vyhledávání. Zkuste to prosím znovu."
+  },
+  "invalidUsernameFormat": "Toto nevypadá jako platné uživatelské jméno. Uživatelská jména mají 5–32 písmen, číslic a podtržítek.",
+  "invalidPhoneFormat": "Toto telefonní číslo nevypadá správně. Zkontrolujte zemi a číslo a zkuste to znovu.",
+  "phoneModeDisclosureHint": "Vyhledávání podle telefonu funguje pouze tehdy, pokud jejich nastavení soukromí dovoluje být nalezen podle telefonního čísla.",
+  "floodWaitSubtext": "Telegram nás požádal, abychom zpomalili. Vyhledávání se odemkne automaticky.",
+  "searchError": {
+    "GROUPS_NOT_LOADED": "Váš seznam skupin se stále načítá — zkuste to za chvíli.",
+    "FLOOD_WAIT": "Vyhledávání jmen se nepodařilo dokončit. Zkontrolujte připojení a zkuste to znovu.",
+    "NETWORK": "Vyhledávání jmen se nepodařilo dokončit. Zkontrolujte připojení a zkuste to znovu.",
+    "UNKNOWN": "Vyhledávání jmen se nepodařilo dokončit. Zkontrolujte připojení a zkuste to znovu.",
+    "SEARCH_QUERY_TOO_SHORT": "Napište alespoň 2 písmena jejich jména."
+  },
+  "search": {
+    "searching": "Prohledávám skupinu {{x}} z {{total}}…",
+    "stopped": "Vyhledávání zastaveno — nalezeno {{n}}.",
+    "capNotice": "Zobrazuji prvních 100 — upřesněte vyhledávání.",
+    "failedN_one": "{{count}} skupinu se nepodařilo prohledat",
+    "failedN_few": "{{count}} skupiny se nepodařilo prohledat",
+    "failedN_other": "{{count}} skupin se nepodařilo prohledat",
+    "emptyHeading": "Nikdo se jménem '{{query}}' nebyl nalezen ve vašich {{n}} skupinách",
+    "emptyBody": "Zkontrolujte pravopis nebo zkuste jejich @uživatelské jméno či telefonní číslo.",
+    "floodSubline": "Telegram nás požádal, abychom zpomalili — automaticky pokračujeme.",
+    "nameHint": "Prohledává členy skupin, které spravujete. Funguje první nebo příjmení.",
+    "minLengthError": "Napište alespoň 2 písmena jejich jména.",
+    "noGroupsError": "Nespravujete žádné skupiny pro vyhledávání."
+  },
+  "nameModeAria": "Režim vyhledávání jmen",
+  "usernameModeAria": "Režim uživatelského jména",
+  "phoneModeAria": "Režim telefonního čísla",
+  "findingPerson": "Hledám osobu…",
+  "findPerson": "Najít osobu",
+  "stopRemovalFirst": "Nejprve zastavte odebírání",
+  "clearTargetTooltip": "Vymaže tuto osobu a všechny výběry skupin",
+  "candidateRowAria_one": "{{name}} — nalezen v {{count}} z vašich skupin",
+  "candidateRowAria_few": "{{name}} — nalezen v {{count}} z vašich skupin",
+  "candidateRowAria_other": "{{name}} — nalezen v {{count}} z vašich skupin",
+  "foundInMore": "+{{count}} dalších"
+}

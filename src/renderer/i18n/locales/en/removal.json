@@ -1,1 +1,57 @@
-{}
+{
+  "rowError": {
+    "RMV_TARGET_IS_ADMIN": "They're an admin here — make them a regular member in Telegram first, then",
+    "RMV_NO_RIGHTS": "You no longer have removal rights in this group —",
+    "RMV_USER_INVALID": "Connection dropped — check your network, then",
+    "RMV_CHANNEL_PRIVATE": "Telegram refused this removal —",
+    "NETWORK": "Connection dropped — check your network, then",
+    "UNKNOWN": "Telegram refused this removal —"
+  },
+  "confirmTitleBan_one": "Ban {{name}} from {{count}} group?",
+  "confirmTitleBan_other": "Ban {{name}} from {{count}} groups?",
+  "confirmTitleKick_one": "Remove {{name}} from {{count}} group?",
+  "confirmTitleKick_other": "Remove {{name}} from {{count}} groups?",
+  "confirmDestructiveBan_one": "Ban from {{count}} group",
+  "confirmDestructiveBan_other": "Ban from {{count}} groups",
+  "confirmDestructiveKick_one": "Remove from {{count}} group",
+  "confirmDestructiveKick_other": "Remove from {{count}} groups",
+  "confirmNeutral": "Keep them",
+  "confirmDispatching": "Starting…",
+  "severityLineBan_one": "They'll be banned from all {{count}} selected group and can't rejoin until you unban them in Telegram.",
+  "severityLineBan_other": "They'll be banned from all {{count}} selected groups and can't rejoin until you unban them in Telegram.",
+  "severityLineKick_one": "They'll be removed from all {{count}} selected group, but they can rejoin later.",
+  "severityLineKick_other": "They'll be removed from all {{count}} selected groups, but they can rejoin later.",
+  "runTriggerLabelBan_one": "Ban from {{count}} group…",
+  "runTriggerLabelBan_other": "Ban from {{count}} groups…",
+  "runTriggerLabelKick_one": "Remove from {{count}} group…",
+  "runTriggerLabelKick_other": "Remove from {{count}} groups…",
+  "stopLabel": "Stop removal",
+  "stoppingLabel": "Stopping…",
+  "retryRowLabel": "retry removal",
+  "progressLabel": "Removing {{name}} from group {{x}} of {{n}}…",
+  "floodWaitSubline": "Telegram asked us to slow down — resuming automatically.",
+  "resumeTitle": "Finish removing {{name}}?",
+  "resumeBody": "{{x}} of {{n}} groups were processed before the run stopped. Resuming continues from the first unprocessed group.",
+  "resumeDestructive": "Resume removal",
+  "resumeNeutral": "Discard job",
+  "peerFloodBanner": "Telegram has flagged this account for too many actions. Wait a few hours before resuming — your progress is saved and the job can continue from where it stopped.",
+  "peerFloodResumeLabel": "Resume removal",
+  "rowStatus": {
+    "removing": "Removing…",
+    "doneBan": "Banned",
+    "doneKick": "Removed",
+    "doneBasicFallback": "Removed — rejoin can't be blocked in basic groups",
+    "alreadyGone": "Already gone",
+    "skipped": "Skipped — removal stopped"
+  },
+  "summaryPart": {
+    "removed": "Removed",
+    "alreadyGone": "Already gone",
+    "failed": "Failed",
+    "skipped": "Skipped"
+  },
+  "summaryFailed_one": "{{count}} removal failed. You can retry it in the list.",
+  "summaryFailed_other": "{{count}} removals failed. You can retry them in the list.",
+  "summaryStopped": "Removal stopped — {{x}} of {{n}} processed.",
+  "finishedAt": "Finished {{time}}"
+}

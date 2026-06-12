@@ -1,1 +1,44 @@
-{}
+{
+  "resolveError": {
+    "TARGET_USERNAME_NOT_FOUND": "No one has that username. Check the spelling — usernames can change or be deleted. If you only know their name, type it with a space to search your groups by name.",
+    "TARGET_PHONE_NOT_FOUND": "That number isn't on Telegram, or their privacy settings block phone lookup. If you know their @username, try that instead.",
+    "TARGET_NO_PUBLIC_PROFILE": "This person can't be looked up publicly. Telegram only allows lookup when their settings permit it — try their @username if you have it.",
+    "FLOOD_WAIT": "Too many lookups. Please wait for the countdown to finish.",
+    "NETWORK": "Couldn't reach Telegram. Check your connection and try again.",
+    "UNKNOWN": "Something went wrong looking that up. Please try again."
+  },
+  "invalidUsernameFormat": "That doesn't look like a valid username. Usernames have 5–32 letters, numbers, and underscores.",
+  "invalidPhoneFormat": "That phone number doesn't look right. Check the country and number, then try again.",
+  "phoneModeDisclosureHint": "Phone lookup only works if their privacy settings allow being found by phone number.",
+  "floodWaitSubtext": "Telegram asked us to slow down. The search will unlock automatically.",
+  "searchError": {
+    "GROUPS_NOT_LOADED": "Your group list is still loading — try again in a moment.",
+    "FLOOD_WAIT": "The name search couldn't complete. Check your connection and try again.",
+    "NETWORK": "The name search couldn't complete. Check your connection and try again.",
+    "UNKNOWN": "The name search couldn't complete. Check your connection and try again.",
+    "SEARCH_QUERY_TOO_SHORT": "Type at least 2 letters of their name."
+  },
+  "search": {
+    "searching": "Searching group {{x}} of {{total}}…",
+    "stopped": "Search stopped — {{n}} found so far.",
+    "capNotice": "Showing first 100 — refine your search.",
+    "failedN_one": "Couldn't search {{count}} group",
+    "failedN_other": "Couldn't search {{count}} groups",
+    "emptyHeading": "No one named '{{query}}' found in your {{n}} groups",
+    "emptyBody": "Check the spelling, or try their @username or phone number instead.",
+    "floodSubline": "Telegram asked us to slow down — resuming automatically.",
+    "nameHint": "Searches members of the groups you administer. First or last name works.",
+    "minLengthError": "Type at least 2 letters of their name.",
+    "noGroupsError": "You don't administer any groups to search."
+  },
+  "nameModeAria": "Name search mode detected",
+  "usernameModeAria": "Username mode detected",
+  "phoneModeAria": "Phone mode detected",
+  "findingPerson": "Finding person…",
+  "findPerson": "Find person",
+  "stopRemovalFirst": "Stop the removal first",
+  "clearTargetTooltip": "Clears this person and any group selections",
+  "candidateRowAria_one": "{{name}} — found in {{count}} of your groups",
+  "candidateRowAria_other": "{{name}} — found in {{count}} of your groups",
+  "foundInMore": "+{{count}} more"
+}

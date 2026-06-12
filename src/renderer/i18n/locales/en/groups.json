@@ -1,1 +1,39 @@
-{}
+{
+  "greyReason": {
+    "not-creator": "Only group creators can remove members here",
+    "no-ban-right": "You don't have the ban right in this group",
+    "broadcast-channel": "Channel — subscribers can't be removed",
+    "not-admin": "You're not an admin here",
+    "verify-failed": "Couldn't verify —"
+  },
+  "groupTypeLabel": {
+    "basic-group": "Group",
+    "supergroup": "Supergroup",
+    "broadcast-channel": "Channel"
+  },
+  "groupError": {
+    "FLOOD_WAIT": "Too many requests. The group list will load automatically when Telegram allows it.",
+    "NETWORK": "Couldn't reach Telegram. Check your connection, then tap Refresh.",
+    "UNKNOWN": "Something went wrong loading your groups. Tap Refresh to try again."
+  },
+  "scan": {
+    "scanning": "Scanning your groups…",
+    "failedN_one": "{{count}} group couldn't be verified. You can retry them above.",
+    "failedN_other": "{{count}} groups couldn't be verified. You can retry them above."
+  },
+  "emptyState": {
+    "noGroups": {
+      "heading": "No groups found",
+      "body": "Your Telegram account doesn't appear to administer any groups or channels."
+    },
+    "noMatches": {
+      "heading": "No matches",
+      "body": "No groups match that filter. Try a different name."
+    },
+    "notInAnyHeading": "Not in any of your groups",
+    "notInAnyBody": "{{name}} isn't a member of any group you can remove them from. They may have already left, or you lack removal rights in all your groups."
+  },
+  "stopRemovalAria": "Stop the removal run",
+  "filterPlaceholder": "Filter groups",
+  "refreshAria": "Refresh group list"
+}

@@ -1,1 +1,21 @@
-{}
+{
+  "settingsLabel": "Nastavení",
+  "settingsMenuAriaLabel": "Nabídka nastavení",
+  "logOut": "Odhlásit se",
+  "logOutTitle": "Odhlásit se?",
+  "logOutDescription": "Budete se muset znovu přihlásit pomocí kódu.",
+  "logOutPartialAlert": "Jste odhlášeni na tomto zařízení, ale nepodařilo se potvrdit, že Telegram zrušil relaci. Otevřete Telegram → Nastavení → Zařízení a odeberte ji ručně.",
+  "cancel": "Zrušit",
+  "confirmLogOut": "Potvrdit odhlášení",
+  "loggingOut": "Odhlašuji…",
+  "logOutButton": "Odhlásit se",
+  "signedInAria": "Přihlášen/a",
+  "languageHeader": "Jazyk",
+  "themeHeader": "Motiv",
+  "language": {
+    "en": "English",
+    "cs": "Česky"
+  },
+  "themeDay": "Denní",
+  "themeNight": "Noční"
+}

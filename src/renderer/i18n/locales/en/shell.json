@@ -1,1 +1,21 @@
-{}
+{
+  "settingsLabel": "Settings",
+  "settingsMenuAriaLabel": "Settings menu",
+  "logOut": "Log out",
+  "logOutTitle": "Log out?",
+  "logOutDescription": "You'll need to sign in again with a code.",
+  "logOutPartialAlert": "You're signed out on this device, but we couldn't confirm Telegram revoked the session. Open Telegram → Settings → Devices to remove it manually.",
+  "cancel": "Cancel",
+  "confirmLogOut": "Confirm log out",
+  "loggingOut": "Logging out…",
+  "logOutButton": "Log out",
+  "signedInAria": "Signed in",
+  "languageHeader": "Language",
+  "themeHeader": "Theme",
+  "language": {
+    "en": "English",
+    "cs": "Česky"
+  },
+  "themeDay": "Day",
+  "themeNight": "Night"
+}
