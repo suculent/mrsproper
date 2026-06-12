@@ -15,6 +15,7 @@ import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
 import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
+import { registerSeverityChannels } from './ipc/severityChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
@@ -139,6 +140,13 @@ app.whenReady().then(async () => {
   // SessionManager, TargetResolver, and every Phase 4+ consumer share THIS
   // instance so no two governed Telegram calls can ever run concurrently —
   // "no feature can flood the account" must hold across features, not per-feature.
+
+  // Phase 6 flood plumbing: forward reference so executor._handleGovernorEvent
+  // can be called from inside governor.onEvent. The executor is constructed after
+  // the governor, so a mutable reference initialized before governor construction
+  // is the cleanest forward-reference pattern without restructuring the setup order.
+  let executorRef: import('./telegram/RemovalExecutor').RemovalExecutor | null = null
+
   const governor = new RateLimitGovernor({
     client: client as unknown as ConstructorParameters<typeof RateLimitGovernor>[0]['client'],
     // WR-04 (Phase 2): with floodSleepThreshold=0 every FLOOD_WAIT on governed
@@ -149,6 +157,9 @@ app.whenReady().then(async () => {
       if (!currentWin.isDestroyed()) {
         currentWin.webContents.send(OP_GOVERNOR_EVENT, event)
       }
+      // Phase 6: forward flood events to the executor when a removal run is active.
+      // _handleGovernorEvent is a no-op when _runActive is false (T-06-02-04 isolation).
+      executorRef?._handleGovernorEvent(event)
     },
   })
 
@@ -271,6 +282,12 @@ app.whenReady().then(async () => {
   })
 
   registerRemovalChannels(currentWin, executor, enumerator, auditStore, () => sm.getState())
+
+  // Phase 6: assign executorRef so governor.onEvent can call _handleGovernorEvent
+  executorRef = executor
+
+  // Phase 6: register severity preference IPC handlers (kick/ban toggle, electron-store)
+  registerSeverityChannels()
 
   // ── On-launch job-file detection (Resume/Discard) ─────────────────────────
   // Read the job file BEFORE sm.initialize() so the pending state is available
