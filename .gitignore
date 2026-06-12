@@ -41,5 +41,6 @@ src/**/*.jsx
 # Exception: src/main/env.d.ts is an intentional type augmentation (not generated)
 src/**/*.d.ts
 !src/main/env.d.ts
+!src/renderer/i18n/i18next.d.ts
 # roborev snapshots
 /.roborev/
