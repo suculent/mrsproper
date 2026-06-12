@@ -102,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-12 after Phase 6 (UI Integration — Wizard, Safety Gates & Progress) completion*
+*Last updated: 2026-06-12 after Phase 7 (Packaging, Signing & Release) completion — 0.9.1 RC built, signed, notarized; UAT 3/4 machines passed, Big Sur smoke test deferred to post-Phase 8 (tracked in 07-HUMAN-UAT.md)*
