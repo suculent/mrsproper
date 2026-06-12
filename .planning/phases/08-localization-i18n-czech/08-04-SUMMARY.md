@@ -75,8 +75,14 @@ metrics:
 ## Verification
 
 - `tsc --build` clean after all changes
-- `npm test` — 255/255 non-env tests pass; 2 pre-existing API_HASH/API_ID env failures unchanged
-- Human checkpoint pending: visual verification of language/theme switcher + persistence
+- `npm test` — 257/257 tests pass (25 test files, 19 todo)
+- Human checkpoint: APPROVED — visual verification passed:
+  - Language section shows "English" (checkmarked) and "Česky" in settings gear menu
+  - Clicking "Česky" switches the entire app to Czech instantly (Language → "Jazyk", Theme → "Motiv")
+  - Day/Night theme toggle works with Sun/Moon icons and checkmarks
+  - App restores language and theme on relaunch with no flash of wrong state
+  - "English" and "Česky" labels remain self-named in both locales
+  - Log out button still opens the confirmation dialog unchanged
 
 ## Deviations from Plan
 
