@@ -60,12 +60,15 @@ const ResolveTargetSchema = z.object({
  *                  MembershipScanner and creating a circular dependency (CR-01-MAIN).
  * @param searcher  Structural type — only abortSearch() is needed; avoids importing
  *                  ParticipantSearcher and creating a circular dependency (CR-01 for name search).
+ * @param executor  Structural type — only abortExecution() is needed; avoids importing
+ *                  RemovalExecutor and creating a circular dependency (CR-01 for removal).
  */
 export function registerTargetChannels(
   win: BrowserWindow,
   resolver: TargetResolver,
   scanner: { abortScan(): void },
-  searcher: { abortSearch(): void }
+  searcher: { abortSearch(): void },
+  executor?: { abortExecution(): void }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
@@ -84,14 +87,16 @@ export function registerTargetChannels(
   })
 
   // ── Handle: target:reset ─────────────────────────────────────────────────
-  // CR-01-MAIN: order is critical — searcher.abortSearch() FIRST, then scanner.abortScan(),
-  // then resolver.reset(). This ensures:
-  //   1. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
-  //   2. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
-  //   3. resolver.reset() last so target state returns to idle after all downstream cleanup.
+  // CR-01: abort removal FIRST (Phase 5), then name search, then scan, then resolver.
+  // Order ensures:
+  //   1. Any running removal is safely aborted-with-checkpoint before state is wiped (T-05-05-D).
+  //   2. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
+  //   3. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
+  //   4. resolver.reset() last so target state returns to idle after all downstream cleanup.
   ipcMain.handle(TARGET_RESET, () => {
-    searcher.abortSearch()   // CR-01 for name search: clears stale candidates (Phase 4.1)
-    scanner.abortScan()      // CR-01: scan → idle before resolver reset
+    executor?.abortExecution() // CR-01: abort removal first, then search, then scan, then resolver
+    searcher.abortSearch()     // CR-01 for name search: clears stale candidates (Phase 4.1)
+    scanner.abortScan()        // CR-01: scan → idle before resolver reset
     resolver.reset()
     return resolver.getState()
   })

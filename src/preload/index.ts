@@ -3,6 +3,7 @@ import type { AuthState, FloodTick } from '../shared/authTypes'
 import type { TargetState } from '../shared/targetTypes'
 import type { GroupsState, ScanState } from '../shared/groupTypes'
 import type { SearchState } from '../shared/searchTypes'
+import type { RemovalState, RemovalJobFile } from '../shared/removalTypes'
 import type { GovernorEvent } from '../shared/opTypes'
 import {
   TARGET_RESOLVE,
@@ -24,6 +25,13 @@ import {
   SEARCH_GET_STATE,
   SEARCH_STATE,
   TARGET_RESOLVE_CANDIDATE,
+  REMOVAL_START,
+  REMOVAL_ABORT,
+  REMOVAL_RETRY_GROUP,
+  REMOVAL_GET_STATE,
+  REMOVAL_STATE,
+  REMOVAL_GET_JOB,
+  REMOVAL_DISCARD_JOB,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -122,4 +130,28 @@ contextBridge.exposeInMainWorld('mrsproper', {
   // target:resolveCandidate carries only userId — accessHash never crosses IPC (T-03-01).
   selectCandidate: (userId: string): Promise<TargetState> =>
     ipcRenderer.invoke(TARGET_RESOLVE_CANDIDATE, { userId }) as Promise<TargetState>,
+
+  // ── Removal execution bridge (Phase 5, RMV-01/RMV-02/EXE-04/EXE-05) ──────
+  // removal:start carries { severity, dialogIds }; Zod-validated + auth-gated + dialog-map-gated
+  // in removalChannels.ts before reaching RemovalExecutor. Target is resolved in main only (T-05-04-B).
+  startRemoval: (severity: 'kick' | 'ban', dialogIds: string[]): Promise<RemovalState> =>
+    ipcRenderer.invoke(REMOVAL_START, { severity, dialogIds }) as Promise<RemovalState>,
+  abortRemoval: (): Promise<RemovalState> =>
+    ipcRenderer.invoke(REMOVAL_ABORT) as Promise<RemovalState>,
+  // removal:retryGroup carries only { dialogId }; Zod-validated + job-dialogId-gated (T-05-05-D).
+  retryRemovalGroup: (dialogId: string): Promise<void> =>
+    ipcRenderer.invoke(REMOVAL_RETRY_GROUP, { dialogId }) as Promise<void>,
+  getRemovalState: (): Promise<RemovalState> =>
+    ipcRenderer.invoke(REMOVAL_GET_STATE) as Promise<RemovalState>,
+  onRemovalState: (cb: (s: RemovalState) => void): (() => void) => {
+    const h = (_: unknown, s: RemovalState): void => cb(s)
+    ipcRenderer.on(REMOVAL_STATE, h)
+    return () => ipcRenderer.removeListener(REMOVAL_STATE, h)
+  },
+  // removal:getJob — returns RemovalJobFile | null; used on launch to detect pending jobs.
+  getRemovalJob: (): Promise<RemovalJobFile | null> =>
+    ipcRenderer.invoke(REMOVAL_GET_JOB) as Promise<RemovalJobFile | null>,
+  // removal:discardJob — clears the job file; called when user clicks Discard in ResumeJobDialog.
+  discardRemovalJob: (): Promise<null> =>
+    ipcRenderer.invoke(REMOVAL_DISCARD_JOB) as Promise<null>,
 })

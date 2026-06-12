@@ -6,12 +6,15 @@ import { SessionManager } from './telegram/SessionManager'
 import { TargetResolver } from './telegram/TargetResolver'
 import { GroupEnumerator } from './telegram/GroupEnumerator'
 import { MembershipScanner } from './telegram/MembershipScanner'
+import { RemovalExecutor } from './telegram/RemovalExecutor'
 import { RateLimitGovernor } from './telegram/governor'
 import { createSecretsStore } from './storage/secrets'
+import { createAuditStore } from './storage/auditStore'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
 import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
 import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
+import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
@@ -248,10 +251,44 @@ app.whenReady().then(async () => {
 
   registerSearchChannels(currentWin, searcher, resolver)
 
-  // CR-01-MAIN: registerTargetChannels receives searcher so TARGET_RESET aborts name search first (Phase 4.1).
-  // Order: searcher.abortSearch() → scanner.abortScan() → resolver.reset() — stale candidates
-  // cleared before scan/resolver reset (T-04.1-10).
-  registerTargetChannels(currentWin, resolver, scanner, searcher)
+  // ── Wire AuditStore ───────────────────────────────────────────────────────
+  // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
+  const auditStore = createAuditStore()
+
+  // ── Wire RemovalExecutor ──────────────────────────────────────────────────
+  // Shares the same client, governor, enumerator, resolver, and auditStore.
+  // onStateChange pushes RemovalState updates to the renderer via emitRemovalState.
+  // Target is read from resolver.getResolvedUser() in main process only (T-05-04-B).
+  const executor = new RemovalExecutor({
+    client: client as unknown as ConstructorParameters<typeof RemovalExecutor>[0]['client'],
+    governor,
+    enumerator,
+    resolver,
+    auditStore,
+    onStateChange: (state) => {
+      emitRemovalState(currentWin, state)
+    },
+  })
+
+  registerRemovalChannels(currentWin, executor, enumerator, auditStore, () => sm.getAuthState())
+
+  // ── On-launch job-file detection (Resume/Discard) ─────────────────────────
+  // Read the job file BEFORE sm.initialize() so the pending state is available
+  // the moment the renderer first calls removal:getJob on launch.
+  // No silent auto-resume: renderer shows ResumeJobDialog when getRemovalJob() returns
+  // a non-complete job; user explicitly chooses Resume or Discard.
+  // (The job data is on disk; the executor reads it on demand — no init needed here.)
+  const _pendingJob = auditStore.readJob()
+  if (_pendingJob && _pendingJob.status !== 'complete') {
+    // Job file exists and is incomplete — renderer will detect this via removal:getJob.
+    // Log for diagnostics; no other action needed at this point.
+    console.log('[main] Incomplete removal job detected on launch — resumable via renderer')
+  }
+
+  // CR-01-MAIN: registerTargetChannels receives executor so TARGET_RESET aborts removal first (Phase 5).
+  // Order: executor.abortExecution() → searcher.abortSearch() → scanner.abortScan() → resolver.reset()
+  // Removal abort precedes scan/resolver reset so a mid-run removal is safely checkpointed first.
+  registerTargetChannels(currentWin, resolver, scanner, searcher, executor)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.
