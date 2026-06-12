@@ -359,13 +359,16 @@ export class RemovalExecutor {
 
   /**
    * Re-run removal for a single group.
-   * Only available when step is 'complete' or 'stopped'.
+   * Available when step is 'complete', 'stopped', or 'hard-stopped'.
+   * WR-04: 'hard-stopped' is included so failed-group retries are functional after
+   * a PEER_FLOOD pause (groups processed before the flood may have failed).
    * Generation-guarded (CR-02): captures gen before the async gap, guards after.
    */
   async retryGroup(dialogId: string): Promise<void> {
     if (
       this._currentState.step !== 'complete' &&
-      this._currentState.step !== 'stopped'
+      this._currentState.step !== 'stopped' &&
+      this._currentState.step !== 'hard-stopped'
     ) {
       return
     }
@@ -395,7 +398,8 @@ export class RemovalExecutor {
     if (gen !== this._generation) return
     if (
       this._currentState.step !== 'complete' &&
-      this._currentState.step !== 'stopped'
+      this._currentState.step !== 'stopped' &&
+      this._currentState.step !== 'hard-stopped'
     ) {
       return
     }
