@@ -632,22 +632,25 @@ This makes `t('wizard:reviewTitle')` type-safe — typos become TypeScript error
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **FloodCountdown.tsx contents**
    - What we know: File exists at `src/renderer/auth/FloodCountdown.tsx`; renders a countdown, likely has suffix text
    - What's unclear: Whether it contains translatable strings or just the raw number
    - Recommendation: Read file in Wave 0 before planning auth namespace keys
+   - RESOLVED: FloodCountdown has an `aria-label` with dynamic time — answered in PATTERNS.md as `floodCountdownAria` key with `{{time}}` interpolation in the auth namespace.
 
 2. **`removeEventListener` for `nativeTheme` when user sets explicit theme**
    - What we know: Main sets `nativeTheme.themeSource`; `updated` still fires; `syncRendererTheme` reads `shouldUseDarkColors` which reflects forced source
    - What's unclear: Whether setting `themeSource` to `'dark'` and then OS switches to light causes a spurious `updated` event that re-asserts the correct `shouldUseDarkColors`
    - Recommendation: Test empirically in Wave 3; fallback is storing theme pref in main memory and checking it inside `syncRendererTheme` before applying
+   - RESOLVED: Resolved via `themeSource` approach per Pitfall 2 in PATTERNS.md — setting `nativeTheme.themeSource` to `'light'` or `'dark'` suppresses OS-driven changes; `syncRendererTheme` is made conditional on whether a stored user pref exists.
 
 3. **`formatMemberCount` locale sensitivity**
    - What we know: It uses `Intl.NumberFormat('en', ...)` with hard-coded `'en'` locale for compact notation
    - What's unclear: Should it use the active i18n language for number formatting?
    - Recommendation: Leave `'en'` for now (compact number notation is consistent across locales for this tool); not a LOC-02 requirement
+   - RESOLVED: Leave `'en'` locale hardcoded in `formatMemberCount`. Compact number notation (1.2k etc.) is locale-consistent for this tool's purpose; switching locale would not meaningfully improve Czech UX. This is not a LOC-02 requirement.
 
 ---
 
