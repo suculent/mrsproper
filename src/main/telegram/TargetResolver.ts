@@ -171,6 +171,12 @@ export class TargetResolver {
     // WR-03: claim a new generation — invalidates any older in-flight resolve
     const gen = ++this._generation
 
+    // WR-02: save pre-call identity fields so we can restore them if a concurrent
+    // reset() runs during the _resolveByUsername fallback path and a stale write
+    // slips past the inner gen guard (defence-in-depth).
+    const prevResolvedUserId = this._resolvedUserId
+    const prevResolvedAccessHash = this._resolvedAccessHash
+
     this._emit({ step: 'resolving' })
 
     try {
@@ -226,7 +232,16 @@ export class TargetResolver {
 
       this._emit({ step: 'resolved', target: this._buildDTO(targetUser, bio, avatar) })
     } catch (err) {
-      if (gen !== this._generation) return // WR-03: stale — never emit
+      if (gen !== this._generation) {
+        // WR-02: stale resolution — restore identity fields to their pre-call state so
+        // getResolvedUser() doesn't return stale A-identity after a concurrent reset().
+        // The inner _resolveByUsername gen guard handles this for the normal path, but
+        // an unhandled window between the inner guard passing and field writes makes this
+        // outer restore the final safety net.
+        this._resolvedUserId = prevResolvedUserId
+        this._resolvedAccessHash = prevResolvedAccessHash
+        return
+      }
       const classified = classifyRpcError(err)
       this._emit({
         step: 'error',
