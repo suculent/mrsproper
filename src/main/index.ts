@@ -11,6 +11,8 @@ import { createSecretsStore } from './storage/secrets'
 import { registerAuthChannels, emitAuthState } from './ipc/authChannels'
 import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
+import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
+import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
@@ -232,11 +234,24 @@ app.whenReady().then(async () => {
 
   registerGroupChannels(currentWin, enumerator, scanner)
 
-  // CR-01-MAIN: registerTargetChannels moved here so scanner is in scope.
-  // TARGET_RESET calls scanner.abortScan() before resolver.reset(), ensuring
-  // scan state returns to 'idle' and the GroupsPane auto-start effect fires
-  // on the next target confirm.
-  registerTargetChannels(currentWin, resolver, scanner)
+  // ── Wire ParticipantSearcher ──────────────────────────────────────────────
+  // Shares the same client, governor, and enumerator as above.
+  // onStateChange pushes SearchState updates to the renderer via emitSearchState.
+  const searcher = new ParticipantSearcher({
+    client: client as unknown as ConstructorParameters<typeof ParticipantSearcher>[0]['client'],
+    governor,
+    enumerator,
+    onStateChange: (state) => {
+      emitSearchState(currentWin, state)
+    },
+  })
+
+  registerSearchChannels(currentWin, searcher, resolver)
+
+  // CR-01-MAIN: registerTargetChannels receives searcher so TARGET_RESET aborts name search first (Phase 4.1).
+  // Order: searcher.abortSearch() → scanner.abortScan() → resolver.reset() — stale candidates
+  // cleared before scan/resolver reset (T-04.1-10).
+  registerTargetChannels(currentWin, resolver, scanner, searcher)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.

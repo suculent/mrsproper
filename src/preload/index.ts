@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { AuthState, FloodTick } from '../shared/authTypes'
 import type { TargetState } from '../shared/targetTypes'
 import type { GroupsState, ScanState } from '../shared/groupTypes'
+import type { SearchState } from '../shared/searchTypes'
 import type { GovernorEvent } from '../shared/opTypes'
 import {
   TARGET_RESOLVE,
@@ -18,6 +19,11 @@ import {
   SCAN_RETRY_GROUP,
   SCAN_STATE,
   SCAN_GET_STATE,
+  SEARCH_START,
+  SEARCH_ABORT,
+  SEARCH_GET_STATE,
+  SEARCH_STATE,
+  TARGET_RESOLVE_CANDIDATE,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -98,4 +104,22 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.on(SCAN_STATE, h)
     return () => ipcRenderer.removeListener(SCAN_STATE, h)
   },
+
+  // ── Name search bridge (Phase 4.1, TGT-05) ───────────────────────────────
+  // search:start carries { query: string }; Zod-validated in searchChannels.ts.
+  // target:resolveCandidate carries only { userId: string } — accessHash never crosses IPC (T-03-01).
+  startSearch: (query: string): Promise<SearchState> =>
+    ipcRenderer.invoke(SEARCH_START, { query }) as Promise<SearchState>,
+  abortSearch: (): Promise<SearchState> =>
+    ipcRenderer.invoke(SEARCH_ABORT) as Promise<SearchState>,
+  getSearchState: (): Promise<SearchState> =>
+    ipcRenderer.invoke(SEARCH_GET_STATE) as Promise<SearchState>,
+  onSearchState: (cb: (s: SearchState) => void): (() => void) => {
+    const h = (_: unknown, s: SearchState): void => cb(s)
+    ipcRenderer.on(SEARCH_STATE, h)
+    return () => ipcRenderer.removeListener(SEARCH_STATE, h)
+  },
+  // target:resolveCandidate carries only userId — accessHash never crosses IPC (T-03-01).
+  selectCandidate: (userId: string): Promise<TargetState> =>
+    ipcRenderer.invoke(TARGET_RESOLVE_CANDIDATE, { userId }) as Promise<TargetState>,
 })
