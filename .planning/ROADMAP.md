@@ -237,7 +237,29 @@ Plans:
   4. A failure in one group is isolated and does not abort the rest of the job
   5. The job emits live progress during execution and produces a per-group success/failure report afterward
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+**Wave 1** *(parallel — shared types + mock client/test stubs)*
+
+- [ ] 05-01-PLAN.md — Shared contracts: removalTypes.ts, channels.ts + opTypes.ts augmentation (REMOVAL_* constants, RMV_* error codes)
+- [ ] 05-02-PLAN.md — Mock client extension (EditBanned/DeleteChatUser call-recording) + Wave 0 RED test stubs
+
+**Wave 2** *(parallel — blocked on Wave 1)*
+
+- [ ] 05-03-PLAN.md — AuditStore: atomic job file persistence, checkpoint, resume detection (GREEN tests)
+- [ ] 05-04-PLAN.md — RemovalExecutor: type-branching engine, generation guard, abort, PEER_FLOOD hard-stop (GREEN tests)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-05-PLAN.md — IPC wiring: removalChannels.ts + main/index.ts + preload bridge + TARGET_RESET CR-01 update
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 05-06-PLAN.md — Renderer foundation: removalClient, removalStore, removalCopy, RemovalConfirmDialog, ResumeJobDialog
+
+**Wave 5 (human checkpoint)** *(blocked on Wave 4)*
+
+- [ ] 05-07-PLAN.md — GroupRow/GroupsPane removal surface + live verification checkpoint
 
 ### Phase 6: UI Integration — Wizard, Safety Gates & Progress
 
