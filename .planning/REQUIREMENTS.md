@@ -68,9 +68,9 @@ Ships after v1 feature-freeze + UAT (Phase 8). i18n hygiene (strings in dedicate
 
 ### Localization
 
-- [ ] **LOC-01**: Settings has a `Language` row with `English` and `Česky` options; preference persists across launches
-- [ ] **LOC-02**: All user-facing strings are externalized through an i18n layer (no hardcoded strings in components)
-- [ ] **LOC-03**: Complete Czech translation of the app
+- [x] **LOC-01**: Settings has a `Language` row with `English` and `Česky` options; preference persists across launches
+- [x] **LOC-02**: All user-facing strings are externalized through an i18n layer (no hardcoded strings in components)
+- [x] **LOC-03**: Complete Czech translation of the app
 
 ## v2 Requirements
 
@@ -141,9 +141,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SAF-02 | Phase 6 | Complete |
 | SAF-03 | Phase 6 | Complete |
 | APP-03 | Phase 7 | Complete |
-| LOC-01 | Phase 8 (v1.5) | Pending |
-| LOC-02 | Phase 8 (v1.5) | Pending |
-| LOC-03 | Phase 8 (v1.5) | Pending |
+| LOC-01 | Phase 8 (v1.5) | Complete |
+| LOC-02 | Phase 8 (v1.5) | Complete |
+| LOC-03 | Phase 8 (v1.5) | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

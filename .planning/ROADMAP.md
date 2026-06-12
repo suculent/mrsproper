@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 0/9 | In progress | - |
+| 8. Localization — i18n & Czech Translation (v1.5) | 1/9 | In Progress|  |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -366,7 +366,7 @@ Plans:
 Plans:
 **Wave 0** *(Nyquist test stubs — runs first)*
 
-- [ ] 08-01-PLAN.md — Wave 0: RED test stubs for IPC channels (languageChannels, themeChannels), i18n init/namespace/plural, errorCopy rewrite
+- [x] 08-01-PLAN.md — Wave 0: RED test stubs for IPC channels (languageChannels, themeChannels), i18n init/namespace/plural, errorCopy rewrite
 
 **Wave 1** *(parallel — IPC infrastructure + i18n setup)*
 
