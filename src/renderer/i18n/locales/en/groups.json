@@ -35,5 +35,8 @@
   },
   "stopRemovalAria": "Stop the removal run",
   "filterPlaceholder": "Filter groups",
-  "refreshAria": "Refresh group list"
+  "refreshAria": "Refresh group list",
+  "includeInRemovalAria": "{{title}} — include in removal",
+  "retryRemovalAria": "Retry removal for {{title}}",
+  "retryScanAria": "Retry membership check for {{title}}"
 }

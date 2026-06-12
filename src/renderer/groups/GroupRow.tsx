@@ -9,18 +9,14 @@
 
 import React from 'react'
 import { Check, Loader2, AlertCircle, Minus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { RmvErrorCode } from '@shared/removalTypes'
-import {
-  GROUP_GREY_COPY,
-  GROUP_TYPE_LABEL,
-  formatMemberCount,
-} from './groupsCopy'
-import { RMV_ERROR_COPY, removalCopy } from '../removal/removalCopy'
+import { formatMemberCount } from '@renderer/lib/format'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from TargetCard — avoids premature abstraction per PATTERNS.md
@@ -101,6 +97,9 @@ export function GroupRow({
   errorCode,
   severity = 'ban',
 }: GroupRowProps): React.JSX.Element {
+  const { t: tG } = useTranslation('groups')
+  const { t: tR } = useTranslation('removal')
+
   const isActionable = dialog.canAct && membershipStatus === 'member'
   const isPending = membershipStatus === null || membershipStatus === 'pending'
   const isFailed = membershipStatus === 'failed'
@@ -155,7 +154,7 @@ export function GroupRow({
             <Checkbox
               checked={true}
               disabled={true}
-              aria-label={`${dialog.title} — include in removal`}
+              aria-label={tG('includeInRemovalAria', { title: dialog.title })}
             />
           )
       }
@@ -172,7 +171,7 @@ export function GroupRow({
         <Checkbox
           checked={isChecked}
           onCheckedChange={() => onToggle(dialog.id)}
-          aria-label={`${dialog.title} — include in removal`}
+          aria-label={tG('includeInRemovalAria', { title: dialog.title })}
         />
       )
     }
@@ -199,17 +198,17 @@ export function GroupRow({
       case 'removing':
         return (
           <span className="text-label text-muted-foreground">
-            {removalCopy.rowStatus.removing}
+            {tR('rowStatus.removing')}
           </span>
         )
       case 'done': {
         let doneCopy: string
         if (removalNote === 'basic-group-ban-fallback') {
-          doneCopy = removalCopy.rowStatus.doneBasicFallback
+          doneCopy = tR('rowStatus.doneBasicFallback')
         } else if (severity === 'ban') {
-          doneCopy = removalCopy.rowStatus.doneBan
+          doneCopy = tR('rowStatus.doneBan')
         } else {
-          doneCopy = removalCopy.rowStatus.doneKick
+          doneCopy = tR('rowStatus.doneKick')
         }
         return (
           <span className="text-label text-muted-foreground">{doneCopy}</span>
@@ -218,22 +217,22 @@ export function GroupRow({
       case 'already-gone':
         return (
           <span className="text-label text-muted-foreground">
-            {removalCopy.rowStatus.alreadyGone}
+            {tR('rowStatus.alreadyGone')}
           </span>
         )
       case 'failed': {
         const reasonCopy = errorCode
-          ? (RMV_ERROR_COPY[errorCode] ?? RMV_ERROR_COPY['UNKNOWN'])
-          : RMV_ERROR_COPY['UNKNOWN']
+          ? tR(`rowError.${errorCode}`)
+          : tR('rowError.UNKNOWN')
         return (
           <span className="text-label text-destructive inline-flex items-baseline gap-1">
             {reasonCopy}
             <button
               onClick={() => onRetryRemoval?.(dialog.id)}
               className="text-label text-primary underline-offset-2 hover:underline"
-              aria-label={`Retry removal for ${dialog.title}`}
+              aria-label={tG('retryRemovalAria', { title: dialog.title })}
             >
-              {removalCopy.retryRowLabel}
+              {tR('retryRowLabel')}
             </button>
           </span>
         )
@@ -241,7 +240,7 @@ export function GroupRow({
       case 'skipped':
         return (
           <span className="text-label text-muted-foreground">
-            {removalCopy.rowStatus.skipped}
+            {tR('rowStatus.skipped')}
           </span>
         )
       case 'queued':
@@ -279,18 +278,18 @@ export function GroupRow({
         {/* Grey reason — canAct=false, not failed-verify (D-03) — only when no removal active */}
         {!isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
           <span className="text-label text-muted-foreground">
-            {GROUP_GREY_COPY[dialog.greyReason]}
+            {tG(`greyReason.${dialog.greyReason}`)}
           </span>
         )}
 
         {/* Failed-verify state (D-07) — destructive text + inline retry button */}
         {!isRemovalActive && isFailed && (
           <span className="text-label text-destructive inline-flex items-baseline gap-1">
-            {GROUP_GREY_COPY['verify-failed']}
+            {tG('greyReason.verify-failed')}
             <button
               onClick={() => onRetry(dialog.id)}
               className="text-label text-primary underline-offset-2 hover:underline"
-              aria-label={`Retry membership check for ${dialog.title}`}
+              aria-label={tG('retryScanAria', { title: dialog.title })}
             >
               retry
             </button>
@@ -300,7 +299,7 @@ export function GroupRow({
         {/* Type badge — greyed rows only, not failed-verify (D-04) — only when no removal active */}
         {!isRemovalActive && !dialog.canAct && !isFailed && (
           <Badge variant="secondary" className="w-fit mt-0.5">
-            {GROUP_TYPE_LABEL[dialog.type]}
+            {tG(`groupTypeLabel.${dialog.type}`)}
           </Badge>
         )}
       </div>

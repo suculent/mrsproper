@@ -36,5 +36,8 @@
   },
   "stopRemovalAria": "Zastavit odebírání",
   "filterPlaceholder": "Filtrovat skupiny",
-  "refreshAria": "Obnovit seznam skupin"
+  "refreshAria": "Obnovit seznam skupin",
+  "includeInRemovalAria": "{{title}} — zahrnout do odebrání",
+  "retryRemovalAria": "Zkusit znovu odebrat {{title}}",
+  "retryScanAria": "Zkusit znovu ověřit členství pro {{title}}"
 }
