@@ -323,7 +323,7 @@ Plans:
 
 **Wave 4 (checkpoint)** *(blocked on Wave 3)*
 
-- [ ] 07-04-PLAN.md — Run release script, confirm notarytool "status: Accepted", verify spctl+stapler pass on dev machine, confirm 4 artifacts in release/dist/
+- [x] 07-04-PLAN.md — Run release script, confirm notarytool "status: Accepted", verify spctl+stapler pass on dev machine, confirm 4 artifacts in release/dist/
 
 **Wave 5 (UAT checkpoint)** *(blocked on Wave 4 artifacts)*
 
@@ -343,7 +343,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4.1 Target Search by Name (INSERTED) | 5/5 | Complete   | 2026-06-12 |
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
-| 7. Packaging, Signing & Release | 3/5 | In Progress|  |
+| 7. Packaging, Signing & Release | 4/5 | In Progress|  |
 | 8. Localization — i18n & Czech Translation (v1.5) | 0/TBD | Not started | - |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)

@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-06-12T20:43:20.393Z"
+last_updated: "2026-06-12T21:35:55.622Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 48
-  completed_plans: 46
+  completed_plans: 47
   percent: 78
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 ## Current Position
 
 Phase: 07 (packaging-signing-release) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-12
 
-Progress: [██████████] 96%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [██████████] 96%
 | Phase 06 P02 | 20 | 3 tasks | 6 files |
 | Phase 06 P03 | 8 | 2 tasks | 5 files |
 | Phase 07-packaging-signing-release P01 | 5 | 2 tasks | 2 files |
+| Phase 07-packaging-signing-release P04 | 180 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,10 @@ Recent decisions affecting current work:
 - [Phase 06-05]: big-integer externalized in Vite config (optimizeDeps.exclude + resolve.alias) — GramJS instanceof checks require singleton module; duplicate bundles cause CastError noise
 - [Phase 06-05]: Change-target wired through CHANGE_TARGET stage machine event in AppShell (not direct prop override) to ensure clean wizard state reset
 - [Phase ?]: D-16: Electron pinned to exact 37.10.3 for Big Sur LSMinimumSystemVersion 11.0 compatibility. EOL Jan 2026 accepted tradeoff.
+- [Phase 07-04]: Version released as 0.9.1 instead of planned 0.9.0 — package.json was already at 0.9.0 from Plan 02; user chose 0.9.1 as the actual RC version
+- [Phase 07-04]: DMG notarize+staple must be done explicitly in release.sh — electron-builder only staples the .app bundle, not the wrapping distributable DMG
+- [Phase 07-04]: npmRebuild:false in electron-builder.yml for Wine/Windows cross-compile — bufferutil/utf-8-validate are prebuilt N-API modules that do not need host-ABI rebuild
+- [Phase 07-04]: set -a before sourcing .env in release.sh so env vars are auto-exported to notarytool subprocess
 
 ### Pending Todos
 
@@ -176,6 +181,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-12T20:43:20.386Z
+Last session: 2026-06-12T21:35:55.617Z
 Stopped at: Completed 07-01-PLAN.md
 Resume file: None
