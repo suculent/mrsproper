@@ -300,11 +300,11 @@ Plans:
 **Goal**: MrProper ships as code-signed, notarized portable installers that launch cleanly for non-technical admins on stock macOS and Windows without Gatekeeper or SmartScreen blocking.
 **Depends on**: Phase 6
 **Requirements**: APP-03
-**Success Criteria** (what must be TRUE):
+**Success Criteria** (what SHOULD be TRUE):
 
-  1. The macOS build is code-signed with a Developer ID and notarized, and launches on a clean macOS machine without a Gatekeeper block
-  2. The Windows build is code-signed and launches on a clean Windows machine without a SmartScreen block
-  3. Launch is verified on clean VMs covering both OSes (and Intel + ARM macOS) from the distributed installers
+  1. The macOS build is code-signed with a Developer ID and SHOULD be notarized to launche on a clean macOS machine without a Gatekeeper block (but if this will be a problem, it can be deferred)
+  2. The Windows build is code-signed and launches on a clean Windows machine without a SmartScreen block (if it is a problem to get signing certificate, e.g. it costs money, this can be deferred)
+  3. Launch is verified on Windows VM and Arm + Intel Mac covering both OSes (and Intel + ARM macOS) from the distributed installers
 
 **Plans**: TBD
 
