@@ -55,7 +55,12 @@ findings:
   warning: 6
   info: 5
   total: 13
-status: issues_found
+fixes:
+  fixed_at: 2026-06-13T00:00:00Z
+  fixed: 9
+  remaining_open: 4
+  scope: critical + warning + IN-03 (user-visible Czech text)
+status: fixed
 ---
 
 # Phase 8: Code Review Report
@@ -63,7 +68,27 @@ status: issues_found
 **Reviewed:** 2026-06-13
 **Depth:** standard
 **Files Reviewed:** 45
-**Status:** issues_found
+**Status:** fixed (was: issues_found)
+
+## Fix Resolution (2026-06-13)
+
+All Critical and Warning findings plus IN-03 were fixed; the remaining Info
+findings (IN-01, IN-02, IN-04, IN-05) stay open by scope decision. Gates after
+fixes: `npm test` 278/278 green (24 new real tests replacing the WR-01 .todo()
+stubs), `npx tsc --build` clean.
+
+| Finding | Status | Commit |
+|---|---|---|
+| CR-01 | fixed | 069b682 |
+| CR-02 | fixed | 186a35e |
+| WR-01 | fixed | 9a57a01 |
+| WR-02 | fixed | 395466a |
+| WR-03 | fixed | 34c81e7 |
+| WR-04 | fixed | 40ee3bf |
+| WR-05 | fixed | 780a5c0 |
+| WR-06 | fixed | bd39fc3 |
+| IN-03 | fixed | 0401d2e |
+| IN-01, IN-02, IN-04, IN-05 | open (out of fix scope) | — |
 
 ## Summary
 
@@ -146,6 +171,14 @@ screen reader) regardless of the selected language:
 The aria-only strings (CandidateList, ResumeJobDialog, TargetInput:379) must also go
 through `t()` — screen-reader output is user-facing copy.
 
+**Resolution (fixed, 069b682):** All 21 inventoried occurrences externalized. New keys
+added to BOTH locales: `target` (inputHeading/inputDescription/inputLabel/inputPlaceholder,
+modeChipName/Phone/Username, tryAgainIn, floodWaitAria with cs `_one/_few/_other` plurals,
+search.stopAria/stopLabel/resultsAria), `auth:tryAgainIn`, `groups`
+(scan.checkedCounter, sortAz/sortBySize, refreshTooltip/refreshBlockedTooltip,
+retryScanLabel), `shell:avatarAlt`, `wizard:idLine`, `removal:resumeDestructiveAria`.
+CandidateRow now reuses the existing `target:idLine` key. Czech copy uses formal vykání.
+
 ### CR-02: Persisted theme is never applied to `nativeTheme` at launch — stored preference races with and is overridden by OS theme
 
 **File:** `src/main/index.ts:56-63` (syncRendererTheme), `src/main/ipc/themeChannels.ts:86`, `src/renderer/main.tsx:24-25`
@@ -183,6 +216,13 @@ let currentWin = createWindow() // backgroundColor + syncRendererTheme now honor
 (Extract the lazy store factory from themeChannels.ts into a shared helper rather than
 duplicating it.)
 
+**Resolution (fixed, 186a35e):** `themeChannels.ts` now exports `getStoredTheme()`
+(reuses the existing lazy store singleton — no duplicate factory). `app.whenReady()`
+awaits it and seeds `nativeTheme.themeSource` BEFORE `createWindow()` (try/catch,
+non-fatal fallback to OS theme). With themeSource seeded, `backgroundColor`,
+`syncRendererTheme`, and every `nativeTheme 'updated'` event all follow the stored
+preference, so OS theme changes no longer override an explicit user choice.
+
 ## Warnings
 
 ### WR-01: All three new test suites are `.todo()` stubs — Zod rejection and Czech plural invariants are asserted nowhere
@@ -206,6 +246,15 @@ await expect(setHandler({} as never, { language: 'de' })).rejects.toThrow(ZodErr
 ```
 For Czech plurals: `i18n.t('wizard:groupCount', { count: 2 })` must contain "skupiny", etc.
 Update the stale header comments.
+
+**Resolution (fixed, 9a57a01):** All three suites implemented (24 real tests, 0 todos).
+languageChannels: GET null/stored, SET en/cs accepted, "de" and non-object payloads
+rejected with ZodError + store untouched. themeChannels: same matrix for light/dark/"blue",
+plus `nativeTheme.themeSource` assertion and `getStoredTheme()` coverage (CR-02 helper).
+i18n: isInitialized, all 6 namespaces × both locales non-empty, FLOOD_WAIT non-empty,
+no key passthrough; Czech plurals asserted as EXACT strings ("1 skupina"/"2 skupiny"/
+"5 skupin") so suffix selection is verified. Stale "module does not exist yet" headers
+replaced.
 
 ### WR-02: SettingsMenu mutates UI state before persistence and swallows IPC failures as unhandled rejections
 
@@ -231,6 +280,11 @@ const handleLanguageSelect = async (lang: 'en' | 'cs'): Promise<void> => {
 }
 ```
 
+**Resolution (fixed, 395466a):** Both `handleLanguageSelect` and `handleThemeSelect`
+wrap the persistence IPC call in try/catch with `console.error`. The in-session change
+still applies; failure only means the preference reverts on next launch — no unhandled
+rejection, no UI crash.
+
 ### WR-03: `main.tsx` has no failure containment — any pre-mount error leaves a permanently blank window
 
 **File:** `src/renderer/main.tsx:10-34`
@@ -251,6 +305,12 @@ void main().catch((err) => {
 })
 ```
 
+**Resolution (fixed, 34c81e7):** `void main()` replaced with `main().catch(...)` that
+logs and attempts a last-resort mount with defaults; if even that fails (e.g. #root
+missing), `document.body.textContent` shows a bilingual restart message instead of a
+blank window. The `as HTMLElement` cast inside `main()` was also replaced with an
+explicit null check.
+
 ### WR-04: Country names are hardcoded to English and computed once at module load — Czech UI lists countries in English
 
 **File:** `src/renderer/auth/CountryPicker.tsx:27, 51-58`
@@ -269,6 +329,12 @@ const options = useMemo(() => buildCountryOptions(i18n.language), [i18n.language
 // buildCountryOptions(lang) uses new Intl.DisplayNames([lang], { type: 'region' })
 ```
 
+**Resolution (fixed, 40ee3bf):** `buildCountryOptions(lang)` builds and locale-sorts
+(`localeCompare(..., lang)`) the list per language; the component memoizes on
+`i18n.language`, so both display names and the search filter follow the active UI
+language. `COUNTRY_OPTIONS` remains the exported English baseline for module-level
+code/dialCode consumers (TargetInput locale guess, DEFAULT_COUNTRY).
+
 ### WR-05: Stale `t` captured in `useCallback` — validation errors render in the previously selected language
 
 **File:** `src/renderer/auth/PhoneStep.tsx:52-70` (deps `[country, national]`), `src/renderer/target/TargetInput.tsx:173-211` (deps `[mode, normalized, isResolving, isFlood, isNameSearchRunning, country]`)
@@ -280,6 +346,9 @@ number — the inline error appears in the previous language. Server-derived err
 unaffected (computed during render), which makes the inconsistency more visible.
 **Fix:** Add `t` to both dependency arrays (the i18next eslint plugin or
 `react-hooks/exhaustive-deps` would have caught this).
+
+**Resolution (fixed, 780a5c0):** `t` added to both `useCallback` dependency arrays
+(PhoneStep `handleSubmit`, TargetInput `handleSubmit`).
 
 ### WR-06: `CandidateList.handleSelect` lacks try/finally — a failed candidate selection permanently disables every row
 
@@ -301,6 +370,9 @@ async function handleSelect(userId: string): Promise<void> {
   }
 }
 ```
+
+**Resolution (fixed, bd39fc3):** Applied exactly as suggested — `selectCandidate`
+wrapped in try/finally so `selectingId` is always cleared.
 
 ## Info
 
@@ -327,6 +399,9 @@ cleanup.
 **Issue:** "Funguje první nebo příjmení." is garbled Czech — "první" (first) is missing its
 noun. Should read "Funguje křestní jméno i příjmení." (first name or surname works).
 **Fix:** Replace with "Funguje křestní jméno i příjmení."
+
+**Resolution (fixed, 0401d2e):** Replaced with "Funguje křestní jméno i příjmení."
+(matches the en source "First or last name works.").
 
 ### IN-04: `floodCountdownAria` receives raw seconds in the step components but mm:ss in FloodCountdown
 
