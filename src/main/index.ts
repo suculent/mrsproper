@@ -17,7 +17,7 @@ import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
 import { registerSeverityChannels } from './ipc/severityChannels'
 import { registerLanguageChannels } from './ipc/languageChannels'
-import { registerThemeChannels } from './ipc/themeChannels'
+import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
@@ -105,6 +105,26 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  // CR-02 (Phase 8 review): seed the persisted theme preference into nativeTheme
+  // BEFORE createWindow(). Without this, themeSource stays 'system' at launch, so:
+  //   1. createWindow() paints backgroundColor from the OS theme (wrong-theme flash),
+  //   2. syncRendererTheme re-asserts the OS theme on did-finish-load, racing the
+  //      renderer's own stored-pref toggle (main.tsx), and
+  //   3. OS theme changes mid-session silently revert the user's explicit choice.
+  // With themeSource seeded, nativeTheme.shouldUseDarkColors follows the stored
+  // preference everywhere (backgroundColor, syncRendererTheme, 'updated' events),
+  // so main and renderer share one source of truth. When no preference is stored
+  // (null), themeSource stays 'system' and the OS appearance applies.
+  try {
+    const storedTheme = await getStoredTheme()
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+      nativeTheme.themeSource = storedTheme
+    }
+  } catch (err) {
+    // Non-fatal: fall back to OS theme rather than blocking launch.
+    console.error('[main] Failed to read stored theme preference:', err)
+  }
+
   // Track the CURRENT window (review WR-03): on macOS the app keeps running after
   // the window closes, and 'activate' creates a new one. All push emitters below
   // close over this mutable binding so re-activated windows keep receiving

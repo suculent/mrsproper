@@ -51,6 +51,20 @@ async function getStore(): Promise<ThemeStore> {
   return _store
 }
 
+// ── Launch-time theme read (CR-02) ─────────────────────────────────────────
+
+/**
+ * Read the persisted theme preference for launch-time seeding of
+ * nativeTheme.themeSource (main/index.ts, before createWindow()).
+ * Returns null when no preference is stored (first launch) — caller leaves
+ * themeSource at 'system' so the OS appearance applies.
+ * Reuses the same lazy store singleton as the IPC handlers below.
+ */
+export async function getStoredTheme(): Promise<'light' | 'dark' | null> {
+  const store = await getStore()
+  return store.get('theme') ?? null
+}
+
 // ── IPC handler registration ───────────────────────────────────────────────
 
 /**
