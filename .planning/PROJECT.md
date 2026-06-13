@@ -32,12 +32,14 @@ A group admin can confidently remove the right person from every relevant commun
 - ✓ Final review screen showing target identity + the exact list of affected groups, requiring one explicit confirmation before execution — Phase 6 (SAF-01/02/03 human-verified)
 - ✓ Execute removals as a throttled, sequential job with automatic FLOOD_WAIT back-off so Telegram rate limits are never hit — Phase 5
 - ✓ Show live progress during execution and a per-group success/failure report afterward — Phase 6 (live wizard run stage + structured report band; known defects in resume-after-restart path tracked in 06-HUMAN-UAT.md / 06-REVIEW.md)
+- ✓ Code-signed, notarized portable builds verified launching on clean macOS and Windows machines — Phase 7 (0.9.1 RC; 3/4 machines passed, Big Sur smoke test deferred — 07-HUMAN-UAT.md)
+- ✓ Language switcher (English/Česky) with persisted preference, all UI strings externalized via i18next, complete Czech translation (formal vykání, 3-form plurals), plus Day/Night theme toggle — Phase 8 (v1.5; UAT approved after one TargetCard fix cycle; re-confirmation items in 08-HUMAN-UAT.md)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Code-signed, notarized portable builds verified launching on clean macOS and Windows machines — Phase 7
+- (none — all v1/v1.5 requirements delivered; next milestone not yet defined)
 
 ### Out of Scope
 
@@ -102,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-12 after Phase 7 (Packaging, Signing & Release) completion — 0.9.1 RC built, signed, notarized; UAT 3/4 machines passed, Big Sur smoke test deferred to post-Phase 8 (tracked in 07-HUMAN-UAT.md)*
+*Last updated: 2026-06-13 after Phase 8 (Localization — i18n & Czech Translation, v1.5) completion — i18next integrated, full Czech translation, Day/Night theme; all 9 milestone phases complete. Big Sur smoke test still pending (07-HUMAN-UAT.md)*
