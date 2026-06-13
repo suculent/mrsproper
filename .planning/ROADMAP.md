@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 7/9 | In Progress|  |
+| 8. Localization — i18n & Czech Translation (v1.5) | 8/9 | In Progress|  |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -385,7 +385,7 @@ Plans:
 **Wave 4** *(parallel — blocked on Wave 3 completion)*
 
 - [x] 08-07-PLAN.md — Groups namespace migration: GroupRow/GroupsPane (all 3 namespaces) + delete groupsCopy.ts
-- [ ] 08-08-PLAN.md — Wizard/Removal namespace migration: ReviewScreen/StepIndicator/ResumeJobDialog + delete wizardCopy.ts/removalCopy.ts
+- [x] 08-08-PLAN.md — Wizard/Removal namespace migration: ReviewScreen/StepIndicator/ResumeJobDialog + delete wizardCopy.ts/removalCopy.ts
 
 **Wave 5 (human UAT checkpoint)** *(blocked on Wave 4 completion)*
 
