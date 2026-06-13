@@ -30,14 +30,26 @@ export default function SettingsMenu(): React.JSX.Element {
   const handleLanguageSelect = async (lang: 'en' | 'cs'): Promise<void> => {
     setMenuOpen(false)
     await i18n.changeLanguage(lang)
-    await window.mrsproper.setLanguage(lang)
+    // WR-02: persistence failure must not surface as an unhandled rejection.
+    // The in-session change above still applies; only the next launch reverts.
+    try {
+      await window.mrsproper.setLanguage(lang)
+    } catch (err) {
+      console.error('Failed to persist language preference', err)
+    }
   }
 
   const handleThemeSelect = async (theme: 'light' | 'dark'): Promise<void> => {
     setMenuOpen(false)
     document.documentElement.classList.toggle('dark', theme === 'dark')
     setActiveTheme(theme)
-    await window.mrsproper.setTheme(theme)
+    // WR-02: persistence failure must not surface as an unhandled rejection.
+    // The in-session change above still applies; only the next launch reverts.
+    try {
+      await window.mrsproper.setTheme(theme)
+    } catch (err) {
+      console.error('Failed to persist theme preference', err)
+    }
   }
 
   return (
