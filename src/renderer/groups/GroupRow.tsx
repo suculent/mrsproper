@@ -291,7 +291,7 @@ export function GroupRow({
               className="text-label text-primary underline-offset-2 hover:underline"
               aria-label={tG('retryScanAria', { title: dialog.title })}
             >
-              retry
+              {tG('retryScanLabel')}
             </button>
           </span>
         )}

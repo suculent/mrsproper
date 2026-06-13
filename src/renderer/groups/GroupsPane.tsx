@@ -403,7 +403,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <div className="flex items-center justify-between mb-1">
             <span className="text-label text-muted-foreground">{tG('scan.scanning')}</span>
             <span className="text-label font-semibold text-foreground">
-              checked {scan.progress.checked} / {scan.progress.total}
+              {tG('scan.checkedCounter', { checked: scan.progress.checked, total: scan.progress.total })}
             </span>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -464,7 +464,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           onClick={() => setSort((s) => (s === 'az' ? 'size' : 'az'))}
           aria-pressed={sort === 'size'}
         >
-          {sort === 'az' ? 'A–Z' : 'By size'}
+          {sort === 'az' ? tG('sortAz') : tG('sortBySize')}
         </Button>
 
         {/* Refresh button — disabled during removal run */}
@@ -473,7 +473,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           size="icon"
           onClick={() => void groupsActions.refreshGroups()}
           aria-label={tG('refreshAria')}
-          title={isRunActive ? 'Removal in progress' : 'Re-fetch your group list from Telegram'}
+          title={isRunActive ? tG('refreshBlockedTooltip') : tG('refreshTooltip')}
           aria-disabled={isRunActive}
           disabled={isRunActive}
         >

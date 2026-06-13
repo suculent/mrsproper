@@ -126,7 +126,7 @@ export default function PasswordStep({ authState, floodRemaining, onBack }: Pass
           </>
         ) : isFlood ? (
           <>
-            Try again in{' '}
+            {t('tryAgainIn')}{' '}
             <FloodCountdown remaining={floodRemaining} />
           </>
         ) : (

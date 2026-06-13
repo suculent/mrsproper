@@ -82,7 +82,7 @@ export function ResumeJobDialog({
           <Button
             variant="destructive"
             onClick={handleResume}
-            aria-label="Resume removal job"
+            aria-label={t('resumeDestructiveAria')}
           >
             {t('resumeDestructive')}
           </Button>

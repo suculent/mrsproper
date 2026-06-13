@@ -135,7 +135,7 @@ export default function PhoneStep({ authState, floodRemaining }: PhoneStepProps)
           </>
         ) : isFlood ? (
           <>
-            Try again in{' '}
+            {t('tryAgainIn')}{' '}
             <FloodCountdown remaining={floodRemaining} />
           </>
         ) : (

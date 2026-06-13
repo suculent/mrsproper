@@ -206,7 +206,7 @@ export function ReviewScreen({
                 <span className="mx-1">·</span>
               </>
             ) : null}
-            <span>ID {targetId}</span>
+            <span>{t('idLine', { id: targetId })}</span>
           </span>
         </div>
       </div>

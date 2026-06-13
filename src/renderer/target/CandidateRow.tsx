@@ -92,8 +92,8 @@ export function CandidateRow({
   const avatarBg = getAvatarColor(candidate.id)
 
   const identityLine = candidate.username
-    ? `@${candidate.username} · ID ${candidate.id}`
-    : `ID ${candidate.id}`
+    ? `@${candidate.username} · ${t('idLine', { id: candidate.id })}`
+    : t('idLine', { id: candidate.id })
 
   const titles = candidate.foundIn
   const overflow = Math.max(0, titles.length - 2)

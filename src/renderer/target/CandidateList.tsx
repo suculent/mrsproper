@@ -58,10 +58,10 @@ export function CandidateList(): React.JSX.Element | null {
               variant="ghost"
               size="sm"
               className="text-label text-muted-foreground hover:text-foreground"
-              aria-label="Stop name search"
+              aria-label={t('search.stopAria')}
               onClick={() => void searchActions.abortSearch()}
             >
-              Stop search
+              {t('search.stopLabel')}
             </Button>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -94,7 +94,7 @@ export function CandidateList(): React.JSX.Element | null {
         <div
           className="rounded-lg border divide-y divide-border"
           role="list"
-          aria-label="Search results"
+          aria-label={t('search.resultsAria')}
         >
           {candidates.map((c) => (
             <CandidateRow

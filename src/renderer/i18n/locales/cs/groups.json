@@ -18,6 +18,7 @@
   },
   "scan": {
     "scanning": "Prohledávám vaše skupiny…",
+    "checkedCounter": "ověřeno {{checked}} / {{total}}",
     "failedN_one": "{{count}} skupinu se nepodařilo ověřit. Můžete to zkusit znovu výše.",
     "failedN_few": "{{count}} skupiny se nepodařilo ověřit. Můžete to zkusit znovu výše.",
     "failedN_other": "{{count}} skupin se nepodařilo ověřit. Můžete to zkusit znovu výše."
@@ -37,6 +38,11 @@
   "stopRemovalAria": "Zastavit odebírání",
   "filterPlaceholder": "Filtrovat skupiny",
   "refreshAria": "Obnovit seznam skupin",
+  "refreshTooltip": "Znovu načíst seznam skupin z Telegramu",
+  "refreshBlockedTooltip": "Probíhá odebírání",
+  "sortAz": "A–Z",
+  "sortBySize": "Podle velikosti",
+  "retryScanLabel": "zkusit znovu",
   "includeInRemovalAria": "{{title}} — zahrnout do odebrání",
   "retryRemovalAria": "Zkusit znovu odebrat {{title}}",
   "retryScanAria": "Zkusit znovu ověřit členství pro {{title}}"

@@ -33,6 +33,7 @@
   "resumeTitle": "Finish removing {{name}}?",
   "resumeBody": "{{x}} of {{n}} groups were processed before the run stopped. Resuming continues from the first unprocessed group.",
   "resumeDestructive": "Resume removal",
+  "resumeDestructiveAria": "Resume removal job",
   "resumeNeutral": "Discard job",
   "peerFloodBanner": "Telegram has flagged this account for too many actions. Wait a few hours before resuming — your progress is saved and the job can continue from where it stopped.",
   "peerFloodResumeLabel": "Resume removal",

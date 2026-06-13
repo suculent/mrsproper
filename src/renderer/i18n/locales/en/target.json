@@ -9,6 +9,16 @@
   },
   "invalidUsernameFormat": "That doesn't look like a valid username. Usernames have 5–32 letters, numbers, and underscores.",
   "invalidPhoneFormat": "That phone number doesn't look right. Check the country and number, then try again.",
+  "inputHeading": "Who are you removing?",
+  "inputDescription": "Enter their @username or phone number. You'll confirm it's the right person before anything happens.",
+  "inputLabel": "Username or phone number",
+  "inputPlaceholder": "@username or phone number",
+  "modeChipName": "Name",
+  "modeChipPhone": "Phone",
+  "modeChipUsername": "Username",
+  "tryAgainIn": "Try again in",
+  "floodWaitAria_one": "Wait {{count}} second before trying again",
+  "floodWaitAria_other": "Wait {{count}} seconds before trying again",
   "phoneModeDisclosureHint": "Phone lookup only works if their privacy settings allow being found by phone number.",
   "floodWaitSubtext": "Telegram asked us to slow down. The search will unlock automatically.",
   "searchError": {
@@ -29,7 +39,10 @@
     "floodSubline": "Telegram asked us to slow down — resuming automatically.",
     "nameHint": "Searches members of the groups you administer. First or last name works.",
     "minLengthError": "Type at least 2 letters of their name.",
-    "noGroupsError": "You don't administer any groups to search."
+    "noGroupsError": "You don't administer any groups to search.",
+    "stopAria": "Stop name search",
+    "stopLabel": "Stop search",
+    "resultsAria": "Search results"
   },
   "nameModeAria": "Name search mode detected",
   "usernameModeAria": "Username mode detected",

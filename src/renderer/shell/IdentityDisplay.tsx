@@ -50,7 +50,7 @@ export default function IdentityDisplay({ identity }: IdentityDisplayProps): Rea
         {avatarUrl ? (
           <AvatarImage
             src={avatarUrl}
-            alt={`${identity.name}'s avatar`}
+            alt={t('avatarAlt', { name: identity.name })}
           />
         ) : null}
         {/* Initials fallback — shown when avatar is null (no broken image ring) */}

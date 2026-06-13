@@ -243,18 +243,17 @@ export function TargetInput(): React.JSX.Element {
       {/* Section heading + hint (xl gap below heading) */}
       <div className="space-y-2">
         <h2 className="text-heading font-semibold text-foreground">
-          Who are you removing?
+          {t('inputHeading')}
         </h2>
         <p className="text-body text-muted-foreground">
-          Enter their @username or phone number. You&rsquo;ll confirm it&rsquo;s the right person before
-          anything happens.
+          {t('inputDescription')}
         </p>
       </div>
 
       {/* Input row (md gap below heading block) */}
       <div className="space-y-2">
         <Label htmlFor="target-input" className="sr-only">
-          Username or phone number
+          {t('inputLabel')}
         </Label>
 
         {/* Input row: CountryPicker (bare digits only) + Input + mode chip */}
@@ -274,7 +273,7 @@ export function TargetInput(): React.JSX.Element {
               ref={inputRef}
               id="target-input"
               type="text"
-              placeholder="@username or phone number"
+              placeholder={t('inputPlaceholder')}
               value={rawInput}
               onChange={handleInputChange}
               disabled={isResolving}
@@ -307,17 +306,17 @@ export function TargetInput(): React.JSX.Element {
                 {isNameMode ? (
                   <>
                     <User className="h-3.5 w-3.5" />
-                    <span>Name</span>
+                    <span>{t('modeChipName')}</span>
                   </>
                 ) : isPhoneMode ? (
                   <>
                     <Phone className="h-3.5 w-3.5" />
-                    <span>Phone</span>
+                    <span>{t('modeChipPhone')}</span>
                   </>
                 ) : (
                   <>
                     <AtSign className="h-3.5 w-3.5" />
-                    <span>Username</span>
+                    <span>{t('modeChipUsername')}</span>
                   </>
                 )}
               </span>
@@ -376,7 +375,7 @@ export function TargetInput(): React.JSX.Element {
         disabled={isFindDisabled}
         aria-label={
           isFlood
-            ? `Wait ${governorFloodRemaining} seconds before trying again`
+            ? t('floodWaitAria', { count: governorFloodRemaining })
             : isResolving
               ? t('findingPerson')
               : t('findPerson')
@@ -389,7 +388,7 @@ export function TargetInput(): React.JSX.Element {
           </>
         ) : isFlood ? (
           <>
-            Try again in{' '}
+            {t('tryAgainIn')}{' '}
             <FloodCountdown remaining={governorFloodRemaining} />
           </>
         ) : (

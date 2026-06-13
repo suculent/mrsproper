@@ -10,6 +10,7 @@
   "loggingOut": "Logging out…",
   "logOutButton": "Log out",
   "signedInAria": "Signed in",
+  "avatarAlt": "{{name}}'s avatar",
   "languageHeader": "Language",
   "themeHeader": "Theme",
   "language": {

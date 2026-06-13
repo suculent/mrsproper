@@ -41,6 +41,7 @@
   "resumeTitle": "Dokončit odebrání {{name}}?",
   "resumeBody": "Bylo zpracováno {{x}} z {{n}} skupin před zastavením. Pokračování začíná od první nezpracované skupiny.",
   "resumeDestructive": "Pokračovat v odebírání",
+  "resumeDestructiveAria": "Pokračovat v úloze odebírání",
   "resumeNeutral": "Zrušit úlohu",
   "peerFloodBanner": "Telegram označil tento účet za příliš aktivní. Počkejte několik hodin před pokračováním — váš postup je uložen a úloha může pokračovat od místa, kde se zastavila.",
   "peerFloodResumeLabel": "Pokračovat v odebírání",

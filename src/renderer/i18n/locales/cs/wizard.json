@@ -8,6 +8,7 @@
     "report": "Zpráva"
   },
   "reviewTitle": "Přehled odebírání",
+  "idLine": "ID {{id}}",
   "severityLabel": "Akce",
   "severityGroupAria": "Akce odebírání",
   "severityKick": "Vyhodit",

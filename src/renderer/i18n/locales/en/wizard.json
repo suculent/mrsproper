@@ -8,6 +8,7 @@
     "report": "Report"
   },
   "reviewTitle": "Review removal",
+  "idLine": "ID {{id}}",
   "severityLabel": "Action",
   "severityGroupAria": "Removal action",
   "severityKick": "Kick",

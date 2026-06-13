@@ -10,6 +10,7 @@
   "loggingOut": "Odhlašuji…",
   "logOutButton": "Odhlásit se",
   "signedInAria": "Přihlášen/a",
+  "avatarAlt": "Profilová fotka uživatele {{name}}",
   "languageHeader": "Jazyk",
   "themeHeader": "Motiv",
   "language": {

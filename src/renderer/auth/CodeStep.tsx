@@ -166,7 +166,7 @@ export default function CodeStep({ authState, floodRemaining, onBack }: CodeStep
           </>
         ) : isFlood ? (
           <>
-            Try again in{' '}
+            {t('tryAgainIn')}{' '}
             <FloodCountdown remaining={floodRemaining} />
           </>
         ) : (

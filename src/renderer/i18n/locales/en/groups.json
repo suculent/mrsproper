@@ -18,6 +18,7 @@
   },
   "scan": {
     "scanning": "Scanning your groups…",
+    "checkedCounter": "checked {{checked}} / {{total}}",
     "failedN_one": "{{count}} group couldn't be verified. You can retry them above.",
     "failedN_other": "{{count}} groups couldn't be verified. You can retry them above."
   },
@@ -36,6 +37,11 @@
   "stopRemovalAria": "Stop the removal run",
   "filterPlaceholder": "Filter groups",
   "refreshAria": "Refresh group list",
+  "refreshTooltip": "Re-fetch your group list from Telegram",
+  "refreshBlockedTooltip": "Removal in progress",
+  "sortAz": "A–Z",
+  "sortBySize": "By size",
+  "retryScanLabel": "retry",
   "includeInRemovalAria": "{{title}} — include in removal",
   "retryRemovalAria": "Retry removal for {{title}}",
   "retryScanAria": "Retry membership check for {{title}}"
