@@ -1,20 +1,36 @@
 /**
- * RED stubs for languageChannels IPC round-trips and Zod rejection.
- * LOC-01 — Wave 0 Nyquist compliance.
+ * GREEN tests for languageChannels IPC round-trips and Zod rejection.
+ * LOC-01 — implemented per Phase 8 review WR-01 (formerly RED .todo() stubs).
  *
- * This file imports from ./languageChannels which does not exist yet.
- * The suite will fail with "Cannot find module" — intentionally RED.
- * All test cases are .todo() stubs pending GREEN implementation.
+ * Strategy: mock electron + electron-store, register the channels, capture the
+ * LANGUAGE_GET / LANGUAGE_SET handlers from the ipcMain.handle mock, and invoke
+ * them directly (same pattern as groupChannels.test.ts).
+ *
+ * Security invariant under test (T-08-01): LANGUAGE_SET parses the payload with
+ * z.enum(['en','cs']) BEFORE any store write — a compromised renderer cannot
+ * inject arbitrary locale strings into electron-store.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { ZodError } from 'zod'
+import { LANGUAGE_GET, LANGUAGE_SET } from '@shared/channels'
 
-// Mock electron-store before importing the channel module
-vi.mock('electron-store', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    get: vi.fn().mockReturnValue(null),
+// Shared mock store instance — hoisted so the electron-store mock factory and
+// the tests below reference the SAME object (singleton parity with getStore()).
+const mocks = vi.hoisted(() => {
+  const store = {
+    get: vi.fn<(key: string) => 'en' | 'cs' | null>().mockReturnValue(null),
     set: vi.fn(),
-  })),
+  }
+  return { store }
+})
+
+vi.mock('electron-store', () => ({
+  // Regular function (not arrow) — the module calls `new Store(...)`, and only
+  // constructible implementations survive `new`; the returned object overrides `this`.
+  default: vi.fn(function MockStore() {
+    return mocks.store
+  }),
 }))
 
 vi.mock('electron', () => ({
@@ -22,18 +38,58 @@ vi.mock('electron', () => ({
   nativeTheme: { themeSource: 'system' },
 }))
 
-// RED import — module does not exist yet; resolution triggers test failure
+import { ipcMain } from 'electron'
 import { registerLanguageChannels } from './languageChannels'
 
-describe('languageChannels', () => {
-  it.todo('LANGUAGE_GET returns null when no pref stored')
-  it.todo('LANGUAGE_SET accepts en')
-  it.todo('LANGUAGE_SET accepts cs')
-  it.todo('LANGUAGE_SET rejects invalid locale (e.g. "de") — ZodError thrown')
-  it.todo('LANGUAGE_GET returns stored value when pref is set to "cs"')
+type IpcHandler = (event: unknown, payload?: unknown) => Promise<unknown>
 
-  // Sentinel: ensures the import above is exercised by a non-todo suite entry
-  it('module registers without throwing (will fail RED until languageChannels.ts is created)', () => {
-    expect(registerLanguageChannels).toBeDefined()
+let getHandler: IpcHandler
+let setHandler: IpcHandler
+
+beforeAll(() => {
+  registerLanguageChannels()
+  const calls = vi.mocked(ipcMain.handle).mock.calls
+  getHandler = calls.find(([ch]) => ch === LANGUAGE_GET)![1] as unknown as IpcHandler
+  setHandler = calls.find(([ch]) => ch === LANGUAGE_SET)![1] as unknown as IpcHandler
+})
+
+beforeEach(() => {
+  mocks.store.get.mockReturnValue(null)
+  mocks.store.set.mockClear()
+})
+
+describe('languageChannels', () => {
+  it('registers handlers for LANGUAGE_GET and LANGUAGE_SET', () => {
+    expect(getHandler).toBeDefined()
+    expect(setHandler).toBeDefined()
+  })
+
+  it('LANGUAGE_GET returns null when no pref stored', async () => {
+    await expect(getHandler({})).resolves.toBeNull()
+  })
+
+  it('LANGUAGE_SET accepts en', async () => {
+    await expect(setHandler({}, { language: 'en' })).resolves.toBe('en')
+    expect(mocks.store.set).toHaveBeenCalledWith('language', 'en')
+  })
+
+  it('LANGUAGE_SET accepts cs', async () => {
+    await expect(setHandler({}, { language: 'cs' })).resolves.toBe('cs')
+    expect(mocks.store.set).toHaveBeenCalledWith('language', 'cs')
+  })
+
+  it('LANGUAGE_SET rejects invalid locale (e.g. "de") — ZodError thrown, store untouched', async () => {
+    await expect(setHandler({}, { language: 'de' })).rejects.toThrow(ZodError)
+    expect(mocks.store.set).not.toHaveBeenCalled()
+  })
+
+  it('LANGUAGE_SET rejects a non-object payload — ZodError thrown', async () => {
+    await expect(setHandler({}, 'cs')).rejects.toThrow(ZodError)
+    expect(mocks.store.set).not.toHaveBeenCalled()
+  })
+
+  it('LANGUAGE_GET returns stored value when pref is set to "cs"', async () => {
+    mocks.store.get.mockReturnValue('cs')
+    await expect(getHandler({})).resolves.toBe('cs')
   })
 })
