@@ -32,8 +32,13 @@ export function CandidateList(): React.JSX.Element | null {
 
   async function handleSelect(userId: string): Promise<void> {
     setSelectingId(userId)
-    await searchActions.selectCandidate(userId)
-    setSelectingId(null)
+    // WR-06: finally — a rejected selectCandidate (IPC error, expired accessHash)
+    // must not leave selectingId set, which would disable every row forever.
+    try {
+      await searchActions.selectCandidate(userId)
+    } finally {
+      setSelectingId(null)
+    }
   }
 
   // Derive total group count for empty state
