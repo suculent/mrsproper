@@ -60,7 +60,15 @@ fixes:
   fixed: 9
   remaining_open: 4
   scope: critical + warning + IN-03 (user-visible Czech text)
-status: fixed
+re_review:
+  reviewed: 2026-06-13T00:00:00Z
+  iteration: 2
+  commits: 069b682..0401d2e
+  verified_fixed: [CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, WR-05, WR-06, IN-03]
+  new_critical: 0
+  new_warning: 0
+  new_info: 1
+status: clean
 ---
 
 # Phase 8: Code Review Report
@@ -68,7 +76,42 @@ status: fixed
 **Reviewed:** 2026-06-13
 **Depth:** standard
 **Files Reviewed:** 45
-**Status:** fixed (was: issues_found)
+**Status:** clean (was: issues_found → fixed → re-reviewed clean)
+
+## Re-Review Verification (2026-06-13, iteration 2)
+
+All nine fixed findings were independently re-verified against fix commits
+069b682..0401d2e. No new Critical or Warning findings were introduced.
+One new Info-level observation recorded (IN-06 below).
+
+| Finding | Verification | Result |
+|---|---|---|
+| CR-01 | Grep-level sweep over all 14 re-reviewed components for hardcoded `aria-label`/`placeholder`/`title` literals and multi-word JSX text: zero matches except the deliberately self-named "English"/"Česky" labels in SettingsMenu and the documented bilingual last-resort message in main.tsx (pre-i18n failure path). All 21 inventoried strings now go through `t()`: `tryAgainIn` (PhoneStep:140, CodeStep:169, PasswordStep:129, TargetInput:393), `target:inputHeading/inputDescription/inputLabel/inputPlaceholder/modeChip*/floodWaitAria` (TargetInput:248–380), `target:search.stopAria/stopLabel/resultsAria` (CandidateList:66–102), `target:idLine` (CandidateRow:95–96), `groups:retryScanLabel` (GroupRow:294), `groups:scan.checkedCounter/sortAz/sortBySize/refreshTooltip/refreshBlockedTooltip` (GroupsPane:406–476), `shell:avatarAlt` (IdentityDisplay:53), `wizard:idLine` (ReviewScreen:209), `removal:resumeDestructiveAria` (ResumeJobDialog:85). | VERIFIED FIXED |
+| CR-01 (locale parity) | Programmatic flatten-and-diff of all six namespaces: en/cs key sets identical after plural-suffix normalization (zero en-only, zero cs-only keys). Every cs key with `_one` also has `_few` and `_other`. New keys confirmed present in BOTH locales: `target:floodWaitAria` (cs has `_one/_few/_other`), `auth:tryAgainIn`, `target:tryAgainIn`, `groups:scan.checkedCounter`, `shell:avatarAlt`, `wizard:idLine`, `removal:resumeDestructiveAria`. | VERIFIED FIXED |
+| CR-02 | `main/index.ts:118-126`: `getStoredTheme()` awaited inside `app.whenReady()` BEFORE `createWindow()`. All three cases correct: stored `'light'` → `themeSource='light'`; stored `'dark'` → `themeSource='dark'`; `null` (first launch) → guard not taken, `themeSource` stays `'system'` so OS appearance applies. The explicit `=== 'light' \|\| === 'dark'` comparison also re-validates against a hand-corrupted config.json (defense-in-depth over the typed return). try/catch is non-fatal. `getStoredTheme` (themeChannels.ts:63-66) reuses the existing lazy store singleton — no duplicate factory. With themeSource seeded, `backgroundColor` (index.ts:33,42), `syncRendererTheme` (did-finish-load), and every nativeTheme `'updated'` event all derive from the same stored preference — the race and mid-session OS override are gone. | VERIFIED FIXED |
+| WR-01 | All three suites are real behavioral tests, 24 total, 0 `.todo()`. themeChannels (9): GET null/stored, SET light/dark accepted with store-write assertion, `"blue"` rejected with ZodError AND `store.set` not called AND `nativeTheme.themeSource` unchanged, themeSource set on valid SET, `getStoredTheme` stored/null. languageChannels (7): same matrix incl. `"de"` and non-object payload rejection with store-untouched assertions. i18n (8): isInitialized, all 6 namespaces × both locales non-empty bundles, no key passthrough, Czech plurals asserted as EXACT strings (`'1 skupina'`/`'2 skupiny'`/`'5 skupin'` — suffix selection genuinely verified; substring checks would pass on the wrong form). Not tautologies. Suites pass: 24/24. | VERIFIED FIXED |
+| WR-02 | SettingsMenu.tsx:35-39, 48-52: both persistence IPC calls wrapped in try/catch with `console.error`. No unhandled rejection from `setLanguage`/`setTheme` failure. | VERIFIED FIXED |
+| WR-03 | main.tsx:38-55: `main().catch(...)` logs, attempts last-resort mount (with explicit `#root` null check — the `as HTMLElement` cast is gone), and falls back to bilingual `document.body.textContent` if even that fails. No blank-window dead end. | VERIFIED FIXED |
+| WR-04 | CountryPicker.tsx:42-65, 88-91: `buildCountryOptions(lang)` constructs `Intl.DisplayNames([lang])` with try/catch fallback to `'en'`, locale-sorts via `localeCompare(..., lang)`; component memoizes on `i18n.language`. Czech UI now shows "Česko"/"Německo" and the search filter matches Czech names. `COUNTRY_OPTIONS` retained only for code/dialCode consumers (TargetInput locale guess, DEFAULT_COUNTRY) — name field unused there, so the English baseline is harmless. | VERIFIED FIXED |
+| WR-05 | `t` added to both `useCallback` dependency arrays (PhoneStep.tsx:72, TargetInput.tsx:212). No re-render-loop risk: both callbacks are only passed as form `onSubmit` handlers, never as effect dependencies, and react-i18next's `t` identity changes only on language change. | VERIFIED FIXED |
+| WR-06 | CandidateList.tsx:33-42: `selectCandidate` wrapped in try/finally; `selectingId` always cleared. | VERIFIED FIXED |
+| IN-03 | cs/target.json:42: "Funguje křestní jméno i příjmení." — correct Czech, matches en source. | VERIFIED FIXED |
+
+**Gates (re-review run):** `npx tsc --build` exit 0. Three new suites: 24/24 pass.
+Full suite: 276/278 — the 2 failures are `src/main/telegram/config.test.ts`
+(AUTH-03 `API_ID`/`API_HASH` assertions), which require the build-time
+`MRSPROPER_API_ID`/`MRSPROPER_API_HASH` env vars absent in this review
+environment. That file was NOT touched by any fix commit (verified via
+`git diff --name-only 069b682^..0401d2e`) and is outside phase-8 scope —
+environment artifact, not a regression.
+
+### New findings from re-review
+
+#### IN-06: `i18n.changeLanguage` awaited outside the try/catch in SettingsMenu
+
+**File:** `src/renderer/shell/SettingsMenu.tsx:32`
+**Issue:** The WR-02 fix guards the persistence IPC call, but `await i18n.changeLanguage(lang)` on line 32 sits before the try block. If it ever rejected, `void handleLanguageSelect(...)` (line 106/122) would still produce an unhandled rejection and skip persistence. With statically bundled resources and eager `preload: ['en','cs']` this is effectively unreachable today — recorded for completeness only.
+**Fix:** Move the `changeLanguage` await inside the try, or extend the catch to cover it.
 
 ## Fix Resolution (2026-06-13)
 
@@ -179,6 +222,9 @@ search.stopAria/stopLabel/resultsAria), `auth:tryAgainIn`, `groups`
 retryScanLabel), `shell:avatarAlt`, `wizard:idLine`, `removal:resumeDestructiveAria`.
 CandidateRow now reuses the existing `target:idLine` key. Czech copy uses formal vykání.
 
+**Re-review (iteration 2): VERIFIED FIXED** — grep sweep zero hits; en/cs key parity
+programmatically confirmed across all six namespaces.
+
 ### CR-02: Persisted theme is never applied to `nativeTheme` at launch — stored preference races with and is overridden by OS theme
 
 **File:** `src/main/index.ts:56-63` (syncRendererTheme), `src/main/ipc/themeChannels.ts:86`, `src/renderer/main.tsx:24-25`
@@ -223,6 +269,9 @@ non-fatal fallback to OS theme). With themeSource seeded, `backgroundColor`,
 `syncRendererTheme`, and every `nativeTheme 'updated'` event all follow the stored
 preference, so OS theme changes no longer override an explicit user choice.
 
+**Re-review (iteration 2): VERIFIED FIXED** — all three cases (stored light / stored
+dark / null → system) traced correct at `main/index.ts:118-126`.
+
 ## Warnings
 
 ### WR-01: All three new test suites are `.todo()` stubs — Zod rejection and Czech plural invariants are asserted nowhere
@@ -256,6 +305,9 @@ no key passthrough; Czech plurals asserted as EXACT strings ("1 skupina"/"2 skup
 "5 skupin") so suffix selection is verified. Stale "module does not exist yet" headers
 replaced.
 
+**Re-review (iteration 2): VERIFIED FIXED** — 24 real behavioral tests, all pass,
+no tautologies.
+
 ### WR-02: SettingsMenu mutates UI state before persistence and swallows IPC failures as unhandled rejections
 
 **File:** `src/renderer/shell/SettingsMenu.tsx:30-41` (call sites at 94, 110, 136, 155)
@@ -285,6 +337,9 @@ wrap the persistence IPC call in try/catch with `console.error`. The in-session 
 still applies; failure only means the preference reverts on next launch — no unhandled
 rejection, no UI crash.
 
+**Re-review (iteration 2): VERIFIED FIXED** — see IN-06 for a residual
+effectively-unreachable edge on `changeLanguage` itself.
+
 ### WR-03: `main.tsx` has no failure containment — any pre-mount error leaves a permanently blank window
 
 **File:** `src/renderer/main.tsx:10-34`
@@ -311,6 +366,8 @@ missing), `document.body.textContent` shows a bilingual restart message instead 
 blank window. The `as HTMLElement` cast inside `main()` was also replaced with an
 explicit null check.
 
+**Re-review (iteration 2): VERIFIED FIXED.**
+
 ### WR-04: Country names are hardcoded to English and computed once at module load — Czech UI lists countries in English
 
 **File:** `src/renderer/auth/CountryPicker.tsx:27, 51-58`
@@ -335,6 +392,8 @@ const options = useMemo(() => buildCountryOptions(i18n.language), [i18n.language
 language. `COUNTRY_OPTIONS` remains the exported English baseline for module-level
 code/dialCode consumers (TargetInput locale guess, DEFAULT_COUNTRY).
 
+**Re-review (iteration 2): VERIFIED FIXED.**
+
 ### WR-05: Stale `t` captured in `useCallback` — validation errors render in the previously selected language
 
 **File:** `src/renderer/auth/PhoneStep.tsx:52-70` (deps `[country, national]`), `src/renderer/target/TargetInput.tsx:173-211` (deps `[mode, normalized, isResolving, isFlood, isNameSearchRunning, country]`)
@@ -349,6 +408,9 @@ unaffected (computed during render), which makes the inconsistency more visible.
 
 **Resolution (fixed, 780a5c0):** `t` added to both `useCallback` dependency arrays
 (PhoneStep `handleSubmit`, TargetInput `handleSubmit`).
+
+**Re-review (iteration 2): VERIFIED FIXED** — no re-render-loop risk; both callbacks
+are form handlers only, never effect dependencies.
 
 ### WR-06: `CandidateList.handleSelect` lacks try/finally — a failed candidate selection permanently disables every row
 
@@ -373,6 +435,8 @@ async function handleSelect(userId: string): Promise<void> {
 
 **Resolution (fixed, bd39fc3):** Applied exactly as suggested — `selectCandidate`
 wrapped in try/finally so `selectingId` is always cleared.
+
+**Re-review (iteration 2): VERIFIED FIXED.**
 
 ## Info
 
@@ -403,6 +467,8 @@ noun. Should read "Funguje křestní jméno i příjmení." (first name or surna
 **Resolution (fixed, 0401d2e):** Replaced with "Funguje křestní jméno i příjmení."
 (matches the en source "First or last name works.").
 
+**Re-review (iteration 2): VERIFIED FIXED.**
+
 ### IN-04: `floodCountdownAria` receives raw seconds in the step components but mm:ss in FloodCountdown
 
 **File:** `src/renderer/auth/PhoneStep.tsx:129`, `src/renderer/auth/CodeStep.tsx:160`, `src/renderer/auth/PasswordStep.tsx:120`
@@ -425,8 +491,18 @@ type parameters (`Store<{ language: … }>`) misrepresent the actual file conten
 extract one `prefsStore` module used by all three channel files (which would also serve
 CR-02's launch-time theme read).
 
+### IN-06: `i18n.changeLanguage` awaited outside the try/catch in SettingsMenu (new, re-review iteration 2)
+
+**File:** `src/renderer/shell/SettingsMenu.tsx:32`
+**Issue:** The WR-02 fix guards the persistence IPC call, but `await i18n.changeLanguage(lang)`
+sits before the try block; a rejection there would still surface as an unhandled rejection
+via the `void handleLanguageSelect(...)` call sites and skip persistence. With statically
+bundled resources this is effectively unreachable today — recorded for completeness.
+**Fix:** Move the `changeLanguage` await inside the try, or extend the catch to cover it.
+
 ---
 
 _Reviewed: 2026-06-13_
+_Re-reviewed: 2026-06-13 (iteration 2, fix commits 069b682..0401d2e)_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
