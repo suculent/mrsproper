@@ -17,6 +17,23 @@ export type TargetErrorCode =
   | 'UNKNOWN'
 
 /**
+ * Structured last-seen status from the Telegram User object.
+ * Main process classifies the raw UserStatus into this discriminated union;
+ * the renderer is responsible for localizing it (renderer-only i18n principle).
+ *
+ * Kinds:
+ *   online    — UserStatusOnline
+ *   date      — UserStatusOffline (iso: UTC ISO-8601 string of wasOnline timestamp)
+ *   recently  — UserStatusRecently
+ *   longAgo   — UserStatusLastWeek or UserStatusLastMonth
+ */
+export type LastSeenDTO =
+  | { kind: 'online' }
+  | { kind: 'date'; iso: string }
+  | { kind: 'recently' }
+  | { kind: 'longAgo' }
+
+/**
  * Renderer-safe representation of a resolved Telegram user.
  *
  * Security boundary (T-03-01, RESEARCH Pitfall 4, Pattern 5):
@@ -43,8 +60,11 @@ export interface ResolvedTargetDTO {
   bot: boolean
   /** True if the account has Telegram Premium. */
   premium: boolean
-  /** Last-seen hint from the User object, or null if hidden (D-13). */
-  lastSeen: string | null
+  /**
+   * Structured last-seen classification from the User object, or null if hidden (D-13).
+   * Renderer localizes this value — main never produces English strings.
+   */
+  lastSeen: LastSeenDTO | null
 }
 
 /**

@@ -29,7 +29,7 @@
 import { Api } from 'telegram'
 import bigInt from 'big-integer'
 import type { BigInteger } from 'big-integer'
-import type { TargetState, ResolvedTargetDTO, TargetErrorCode } from '@shared/targetTypes'
+import type { TargetState, ResolvedTargetDTO, TargetErrorCode, LastSeenDTO } from '@shared/targetTypes'
 import type { GovernorEvent } from '@shared/opTypes'
 import { RateLimitGovernor } from './governor'
 import { classifyRpcError } from './operationErrors'
@@ -484,7 +484,7 @@ export class TargetResolver {
       deleted: user.deleted ?? false,   // D-18: renderer badge
       bot: user.bot ?? false,           // D-18: renderer badge
       premium: user.premium ?? false,
-      lastSeen: humanizeLastSeen(user.status),
+      lastSeen: classifyLastSeen(user.status),
     }
   }
 }
@@ -558,30 +558,30 @@ function stripLeadingAt(s: string): string {
   return s.startsWith('@') ? s.slice(1) : s
 }
 
-// ── UserStatus humanization ────────────────────────────────────────────────────
+// ── UserStatus classification ─────────────────────────────────────────────────
 
 /**
- * Convert a UserStatus to a human-readable last-seen string.
- * Pattern 6 from RESEARCH.md — UI-SPEC wording.
+ * Classify a UserStatus into a structured LastSeenDTO.
+ * Main process emits typed values only — renderer is responsible for localization
+ * (renderer-only i18n principle, locked decision from Phase 8).
  *
  * Maps:
- *   UserStatusOnline       → 'Online'
- *   UserStatusOffline      → 'Last seen {humanized date}'
- *   UserStatusRecently     → 'Last seen recently'
- *   UserStatusLastWeek     → 'Last seen a long time ago'
- *   UserStatusLastMonth    → 'Last seen a long time ago'
+ *   UserStatusOnline       → { kind: 'online' }
+ *   UserStatusOffline      → { kind: 'date', iso: ISO-8601 UTC string }
+ *   UserStatusRecently     → { kind: 'recently' }
+ *   UserStatusLastWeek     → { kind: 'longAgo' }
+ *   UserStatusLastMonth    → { kind: 'longAgo' }
  *   null/undefined/Empty   → null
  */
-function humanizeLastSeen(status: Api.TypeUserStatus | undefined | null): string | null {
+function classifyLastSeen(status: Api.TypeUserStatus | undefined | null): LastSeenDTO | null {
   if (!status) return null
-  if (status instanceof Api.UserStatusOnline) return 'Online'
+  if (status instanceof Api.UserStatusOnline) return { kind: 'online' }
   if (status instanceof Api.UserStatusOffline) {
-    const date = new Date(status.wasOnline * 1000)
-    return `Last seen ${date.toLocaleDateString()}`
+    return { kind: 'date', iso: new Date(status.wasOnline * 1000).toISOString() }
   }
-  if (status instanceof Api.UserStatusRecently) return 'Last seen recently'
-  if (status instanceof Api.UserStatusLastWeek) return 'Last seen a long time ago'
-  if (status instanceof Api.UserStatusLastMonth) return 'Last seen a long time ago'
+  if (status instanceof Api.UserStatusRecently) return { kind: 'recently' }
+  if (status instanceof Api.UserStatusLastWeek) return { kind: 'longAgo' }
+  if (status instanceof Api.UserStatusLastMonth) return { kind: 'longAgo' }
   if (status instanceof Api.UserStatusEmpty) return null
   return null
 }
