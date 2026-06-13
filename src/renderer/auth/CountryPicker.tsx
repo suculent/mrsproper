@@ -23,17 +23,6 @@ import {
 } from '@renderer/components/ui/popover'
 import { Button } from '@renderer/components/ui/button'
 
-// Country display name using built-in Intl.DisplayNames (no extra dependency)
-const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
-
-function getCountryName(code: CountryCode): string {
-  try {
-    return regionNames.of(code) ?? code
-  } catch {
-    return code
-  }
-}
-
 // Flag emoji from country code (Unicode regional indicator symbols)
 function getFlagEmoji(code: CountryCode): string {
   const codePoints = [...code].map((c) => 0x1f1e6 - 65 + c.charCodeAt(0))
@@ -47,15 +36,37 @@ interface CountryOption {
   flag: string
 }
 
-// Build sorted country list once
-const COUNTRY_OPTIONS: CountryOption[] = getCountries()
-  .map((code) => ({
-    code,
-    name: getCountryName(code),
-    dialCode: `+${getCountryCallingCode(code)}`,
-    flag: getFlagEmoji(code),
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name))
+// WR-04 (Phase 8 review): country display names follow the active UI language.
+// Built per language (not once at module load) so a language switch re-localizes
+// both the visible names and the search filter ("Německo" must match in Czech).
+function buildCountryOptions(lang: string): CountryOption[] {
+  let regionNames: Intl.DisplayNames
+  try {
+    regionNames = new Intl.DisplayNames([lang], { type: 'region' })
+  } catch {
+    // Unknown/invalid locale tag — fall back to English names
+    regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+  }
+  const getCountryName = (code: CountryCode): string => {
+    try {
+      return regionNames.of(code) ?? code
+    } catch {
+      return code
+    }
+  }
+  return getCountries()
+    .map((code) => ({
+      code,
+      name: getCountryName(code),
+      dialCode: `+${getCountryCallingCode(code)}`,
+      flag: getFlagEmoji(code),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, lang))
+}
+
+// English baseline list — exported for module-level consumers that only use
+// code/dialCode lookups (TargetInput locale guess, DEFAULT_COUNTRY).
+const COUNTRY_OPTIONS: CountryOption[] = buildCountryOptions('en')
 
 // Default to CZ (Czech Republic, +420)
 const DEFAULT_COUNTRY = COUNTRY_OPTIONS.find((c) => c.code === 'CZ') ?? COUNTRY_OPTIONS[0]
@@ -69,20 +80,26 @@ interface CountryPickerProps {
 export { type CountryOption, DEFAULT_COUNTRY, COUNTRY_OPTIONS }
 
 export default function CountryPicker({ value, onChange, disabled }: CountryPickerProps): React.JSX.Element {
-  const { t } = useTranslation('auth')
+  const { t, i18n } = useTranslation('auth')
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
+  // WR-04: rebuild (and re-sort) the option list when the UI language changes
+  const options = useMemo(
+    () => (i18n.language === 'en' ? COUNTRY_OPTIONS : buildCountryOptions(i18n.language)),
+    [i18n.language]
+  )
+
   const filtered = useMemo(() => {
-    if (!search) return COUNTRY_OPTIONS
+    if (!search) return options
     const q = search.toLowerCase()
-    return COUNTRY_OPTIONS.filter(
+    return options.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.dialCode.includes(q) ||
         c.code.toLowerCase().includes(q)
     )
-  }, [search])
+  }, [search, options])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
