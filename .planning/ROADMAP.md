@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Removal Execution Engine** - Throttled, type-branched, per-group-isolated kick/ban executor with live progress and report (completed 2026-06-12)
 - [x] **Phase 6: UI Integration — Wizard, Safety Gates & Progress** - End-to-end wizard with dry-run, final review, explicit confirm, and live execution view (completed 2026-06-12)
 - [x] **Phase 7: Packaging, Signing & Release** - Code-signed, notarized portable builds verified launching on clean macOS and Windows machines (completed 2026-06-12)
-- [ ] **Phase 8: Localization — i18n & Czech Translation (v1.5)** - Language switcher (English/Česky), i18n string externalization, full Czech translation — after v1 feature-freeze + UAT
+- [x] **Phase 8: Localization — i18n & Czech Translation (v1.5)** - Language switcher (English/Česky), i18n string externalization, full Czech translation — after v1 feature-freeze + UAT (completed 2026-06-13)
 
 ## Phase Details
 
@@ -344,7 +344,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Removal Execution Engine | 7/7 | Complete   | 2026-06-12 |
 | 6. UI Integration — Wizard, Safety Gates & Progress | 5/5 | Complete   | 2026-06-12 |
 | 7. Packaging, Signing & Release | 5/5 | Complete   | 2026-06-12 |
-| 8. Localization — i18n & Czech Translation (v1.5) | 8/9 | In Progress|  |
+| 8. Localization — i18n & Czech Translation (v1.5) | 9/9 | Complete   | 2026-06-13 |
 
 ### Phase 8: Localization — i18n & Czech Translation (v1.5)
 
@@ -389,4 +389,4 @@ Plans:
 
 **Wave 5 (human UAT checkpoint)** *(blocked on Wave 4 completion)*
 
-- [ ] 08-09-PLAN.md — Full end-to-end UAT: Czech usability sweep, language/theme persistence, no-flash relaunch, OS theme interplay
+- [x] 08-09-PLAN.md — Full end-to-end UAT: Czech usability sweep, language/theme persistence, no-flash relaunch, OS theme interplay
