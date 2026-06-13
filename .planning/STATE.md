@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: milestone_complete
-stopped_at: Milestone complete (Phase 08 was final phase)
-last_updated: 2026-06-13T01:00:46.193Z
-last_activity: 2026-06-13
+status: Awaiting next milestone
+stopped_at: Completed 08-06-PLAN.md
+last_updated: "2026-06-13T09:49:41.031Z"
+last_activity: 2026-06-13 — Milestone v1.0 completed and archived
 progress:
   total_phases: 9
   completed_phases: 9
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 ## Current Position
 
-Phase: 08
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-13
-
-Progress: [██████████] 100%
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-13 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
@@ -191,14 +189,28 @@ Recent decisions affecting current work:
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and deferred at milestone close on 2026-06-13:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| quick_task | 260611-t1h-rename-mrproper-to-mrsproper | missing summary | v1.0 close |
+| todo | country-picker-rows-clickable (ui) | pending | v1.0 close |
+| todo | default-country-czechia (ui) | pending | v1.0 close |
+| uat_gap | 01-HUMAN-UAT.md | partial (2 open: Windows launch, real-2FA) | v1.0 close |
+| uat_gap | 06-HUMAN-UAT.md | partial (2 open: resume-after-restart) | v1.0 close |
+| uat_gap | 07-HUMAN-UAT.md | partial (Big Sur smoke test deferred) | v1.0 close |
+| uat_gap | 08-HUMAN-UAT.md | partial (4 open: re-confirm after fix cycle) | v1.0 close |
+| verification_gap | phase 01 | human_needed | v1.0 close |
+| verification_gap | phase 06 | human_needed | v1.0 close |
+| verification_gap | phase 07 | human_needed | v1.0 close |
+| verification_gap | phase 08 | human_needed | v1.0 close |
 
 ## Session Continuity
 
 Last session: 2026-06-13T00:18:26.443Z
 Stopped at: Completed 08-06-PLAN.md
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
