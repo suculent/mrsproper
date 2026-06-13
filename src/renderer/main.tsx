@@ -24,11 +24,32 @@ async function main(): Promise<void> {
   const theme = storedTheme ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   document.documentElement.classList.toggle('dark', theme === 'dark')
 
-  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  const rootEl = document.getElementById('root')
+  if (!rootEl) throw new Error('Root element #root not found')
+  ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
       <App />
     </React.StrictMode>
   )
 }
 
-void main()
+// WR-03: failure containment — any pre-mount rejection (initI18n, missing #root)
+// must not leave a permanently blank window for a non-technical user.
+main().catch((err) => {
+  console.error('Renderer bootstrap failed', err)
+  try {
+    // Last-resort mount with defaults (English / OS theme) so the app is usable.
+    const rootEl = document.getElementById('root')
+    if (!rootEl) throw new Error('Root element #root not found')
+    ReactDOM.createRoot(rootEl).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    )
+  } catch (fallbackErr) {
+    console.error('Fallback mount failed', fallbackErr)
+    // Absolute last resort: plain-text message instead of a blank window.
+    document.body.textContent =
+      'Mrs. Proper failed to start. Please restart the application. / Aplikaci Mrs. Proper se nepodařilo spustit. Restartujte ji prosím.'
+  }
+})
