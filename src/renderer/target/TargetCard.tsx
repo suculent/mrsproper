@@ -20,6 +20,9 @@ import { useTargetStore, targetActions } from '@renderer/store/targetStore'
 import { useRemovalStore } from '@renderer/store/removalStore'
 import { cn } from '@renderer/lib/utils'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import type { LastSeenDTO } from '@shared/targetTypes'
+import i18n from '@renderer/i18n'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette (RESEARCH Pattern, UI-SPEC — 7 hues for deterministic color)
@@ -63,6 +66,27 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
+
+// ---------------------------------------------------------------------------
+// renderLastSeen — localize a structured LastSeenDTO into a display string
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderLastSeen(dto: LastSeenDTO, tTr: TFunction<any, any>): string {
+  switch (dto.kind) {
+    case 'online':
+      return tTr('statusOnline')
+    case 'date': {
+      const locale = i18n.language === 'cs' ? 'cs-CZ' : 'en-US'
+      const date = new Date(dto.iso).toLocaleDateString(locale)
+      return tTr('lastSeenDate', { date })
+    }
+    case 'recently':
+      return tTr('lastSeenRecently')
+    case 'longAgo':
+      return tTr('lastSeenLongAgo')
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +138,7 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
             )}
           >
             {avatarUrl ? (
-              <AvatarImage src={avatarUrl} alt={`${t.name}'s avatar`} />
+              <AvatarImage src={avatarUrl} alt={tTr('avatarAlt', { name: t.name })} />
             ) : null}
             <AvatarFallback
               style={{ backgroundColor: avatarBg }}
@@ -134,11 +158,11 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
             {isConfirmed ? (
               <span className="flex items-center gap-1 text-label font-semibold text-[#16A34A]">
                 <CheckCircle2 className="h-4 w-4 text-[#16A34A] shrink-0" aria-hidden="true" />
-                Target confirmed
+                {tTr('targetConfirmed')}
               </span>
             ) : (
               <span className="text-label text-muted-foreground">
-                Is this the right person?
+                {tTr('isThisRightPerson')}
               </span>
             )}
 
@@ -149,17 +173,17 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
               </span>
               {/* Deleted badge (D-18) */}
               {t.deleted && (
-                <Badge variant="destructive">Deleted account</Badge>
+                <Badge variant="destructive">{tTr('deletedBadge')}</Badge>
               )}
               {/* Bot badge (D-18) */}
               {t.bot && (
-                <Badge variant="secondary">Bot</Badge>
+                <Badge variant="secondary">{tTr('botBadge')}</Badge>
               )}
               {/* Premium badge */}
               {t.premium && (
                 <Badge variant="secondary">
                   <Star className="h-3 w-3 mr-1" aria-hidden="true" />
-                  Premium
+                  {tTr('premiumBadge')}
                 </Badge>
               )}
             </div>
@@ -167,7 +191,7 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
             {/* Deleted account supporting line (D-18) */}
             {t.deleted && (
               <p className="text-body text-muted-foreground">
-                This account was deleted. You can still remove what&rsquo;s left of it from your groups.
+                {tTr('deletedNote')}
               </p>
             )}
 
@@ -182,11 +206,11 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-label font-mono text-muted-foreground cursor-default w-fit">
-                  ID {t.id}
+                  {tTr('idLine', { id: t.id })}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                Telegram&rsquo;s permanent ID for this account — this is what Mrs. Proper acts on
+                {tTr('idTooltip')}
               </TooltipContent>
             </Tooltip>
 
@@ -197,10 +221,10 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
               </p>
             )}
 
-            {/* Last-seen (D-13) */}
+            {/* Last-seen (D-13) — render structured DTO via i18n */}
             {t.lastSeen && (
               <span className="text-label text-muted-foreground">
-                {t.lastSeen}
+                {renderLastSeen(t.lastSeen, tTr)}
               </span>
             )}
           </div>
@@ -211,10 +235,9 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
           <Alert variant="default">
             <ImageOff className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>
-              <span className="text-label font-semibold block mb-1">No profile photo</span>
+              <span className="text-label font-semibold block mb-1">{tTr('noPhotoTitle')}</span>
               <span className="text-body">
-                Their photo is hidden by privacy settings or was never set. Verify this person
-                using the details below before confirming.
+                {tTr('noPhotoBody')}
               </span>
             </AlertDescription>
           </Alert>
@@ -240,7 +263,7 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
                 disabled={isRemovalRunning}
                 aria-disabled={isRemovalRunning}
               >
-                Change target
+                {tTr('changeTarget')}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -256,7 +279,7 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
               type="button"
               onClick={async () => { await targetActions.confirmTarget(); props.onTargetConfirmed?.() }}
             >
-              Yes, this is the person
+              {tTr('confirmPerson')}
             </Button>
           )}
         </div>
