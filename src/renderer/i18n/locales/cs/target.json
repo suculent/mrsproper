@@ -39,7 +39,7 @@
     "emptyHeading": "Nikdo se jménem '{{query}}' nebyl nalezen ve vašich {{n}} skupinách",
     "emptyBody": "Zkontrolujte pravopis nebo zkuste jejich @uživatelské jméno či telefonní číslo.",
     "floodSubline": "Telegram nás požádal, abychom zpomalili — automaticky pokračujeme.",
-    "nameHint": "Prohledává členy skupin, které spravujete. Funguje první nebo příjmení.",
+    "nameHint": "Prohledává členy skupin, které spravujete. Funguje křestní jméno i příjmení.",
     "minLengthError": "Napište alespoň 2 písmena jejich jména.",
     "noGroupsError": "Nespravujete žádné skupiny pro vyhledávání.",
     "stopAria": "Zastavit vyhledávání jmen",
