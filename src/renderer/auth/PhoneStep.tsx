@@ -67,7 +67,9 @@ export default function PhoneStep({ authState, floodRemaining }: PhoneStepProps)
     } finally {
       setIsSubmitting(false)
     }
-  }, [country, national])
+    // WR-05: t must be a dep — react-i18next mints a new t on language change,
+    // otherwise the memoized closure renders validation errors in the old language.
+  }, [country, national, t])
 
   const disabled = isProcessing || isFlood
   const hasError = Boolean(displayError)

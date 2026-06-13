@@ -207,7 +207,9 @@ export function TargetInput(): React.JSX.Element {
       const dispatchVal = buildDispatchValue(normalized, mode, country)
       await targetActions.resolveTarget(dispatchVal)
     },
-    [mode, normalized, isResolving, isFlood, isNameSearchRunning, country]
+    // WR-05: t must be a dep — react-i18next mints a new t on language change,
+    // otherwise the memoized closure renders validation errors in the old language.
+    [mode, normalized, isResolving, isFlood, isNameSearchRunning, country, t]
   )
 
   const isFindDisabled = mode === 'none' || isResolving || isFlood || isNameSearchRunning
