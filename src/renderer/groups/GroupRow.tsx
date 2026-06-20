@@ -16,6 +16,7 @@ import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { RmvErrorCode } from '@shared/removalTypes'
+import type { TagErrorCode } from '@shared/tagTypes'
 import { formatMemberCount } from '@renderer/lib/format'
 
 // ---------------------------------------------------------------------------
@@ -79,6 +80,11 @@ export interface GroupRowProps {
   errorCode?: RmvErrorCode | null
   /** Removal severity — affects done copy ("Banned" vs "Removed") */
   severity?: 'kick' | 'ban'
+  /** Tag status for this group. null/undefined = not in a tag run. */
+  tagStatus?: 'queued' | 'tagging' | 'done' | 'skipped' | 'failed' | null
+  /** Typed tag failure/skip code — present when tagStatus === 'failed' or 'skipped'. */
+  tagErrorCode?: TagErrorCode | null
+  // NOTE: no onRetryTag, no tagNote — tag has no per-group retry, no basic-group-fallback note
 }
 
 // ---------------------------------------------------------------------------
@@ -96,9 +102,12 @@ export function GroupRow({
   onRetryRemoval,
   errorCode,
   severity = 'ban',
+  tagStatus,
+  tagErrorCode,
 }: GroupRowProps): React.JSX.Element {
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
+  const { t: tT } = useTranslation('tag')
 
   const isActionable = dialog.canAct && membershipStatus === 'member'
   const isPending = membershipStatus === null || membershipStatus === 'pending'
@@ -108,8 +117,8 @@ export function GroupRow({
   const initial = getInitials(dialog.title)
   const avatarBg = getAvatarColor(dialog.id)
 
-  // When a removal is active for this row, disable toggle interactions
-  const isRemovalActive = removalStatus != null
+  // When a removal or tag run is active for this row, disable toggle interactions
+  const isRemovalActive = removalStatus != null || tagStatus != null
 
   // ---------------------------------------------------------------------------
   // Checkbox slot — Phase 5 removal status branch is FIRST
@@ -150,6 +159,48 @@ export function GroupRow({
           )
         case 'queued':
           // queued: checked + disabled checkbox (non-interactive, visually filled)
+          return (
+            <Checkbox
+              checked={true}
+              disabled={true}
+              aria-label={tG('includeInRemovalAria', { title: dialog.title })}
+            />
+          )
+      }
+    }
+
+    // 1b. tagStatus branch — parallel to removalStatus, never overlap
+    if (tagStatus != null) {
+      switch (tagStatus) {
+        case 'tagging':
+          return (
+            <Loader2
+              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'done':
+          return (
+            <Check
+              className="h-4 w-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+          )
+        case 'skipped':
+          return (
+            <Minus
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'failed':
+          return (
+            <AlertCircle
+              className="h-4 w-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
+          )
+        case 'queued':
           return (
             <Checkbox
               checked={true}
@@ -249,6 +300,49 @@ export function GroupRow({
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Tag-status subline — parallel to renderRemovalSubline; tag has no per-group retry
+  // ---------------------------------------------------------------------------
+
+  function renderTagSubline(): React.JSX.Element | null {
+    if (tagStatus == null) return null
+
+    switch (tagStatus) {
+      case 'tagging':
+        return (
+          <span className="text-label text-muted-foreground">{tT('rowStatus.tagging')}</span>
+        )
+      case 'done':
+        return (
+          <span className="text-label text-muted-foreground">{tT('rowStatus.done')}</span>
+        )
+      case 'skipped': {
+        const sublineCopy =
+          tagErrorCode === 'TAG_TARGET_IS_ADMIN'
+            ? tT('rowStatus.skippedAdmin')
+            : tagErrorCode === 'TAG_UNSUPPORTED_BASIC_GROUP'
+              ? tT('rowStatus.skippedBasicGroup')
+              : tT('rowStatus.skipped')
+        return (
+          <span className="text-label text-muted-foreground">{sublineCopy}</span>
+        )
+      }
+      case 'failed': {
+        // Cast to string to satisfy i18n union-type constraint (same approach as tR in removal)
+        const errorCopy = tagErrorCode
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? tT(`rowError.${tagErrorCode}` as any)
+          : tT('rowError.UNKNOWN')
+        // NOTE: no retry button — tag has no per-group retry
+        return (
+          <span className="text-label text-destructive">{String(errorCopy)}</span>
+        )
+      }
+      case 'queued':
+        return null
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -274,6 +368,9 @@ export function GroupRow({
 
         {/* Removal status subline — Phase 5 addition; renders before the grey-reason subline */}
         {renderRemovalSubline()}
+
+        {/* Tag status subline — Phase 12 addition; renders only when tagStatus != null */}
+        {renderTagSubline()}
 
         {/* Grey reason — canAct=false, not failed-verify (D-03) — only when no removal active */}
         {!isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
