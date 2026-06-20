@@ -51,6 +51,7 @@ Detected from globals.css comment + existing usage. 8-point grid strictly observ
 Exceptions:
 - Tag input counter badge: `gap-1` (4px) between input and counter line — matches existing subline pattern
 - Dialog max-width: `sm:max-w-[400px]` — matches ResumeJobDialog exactly
+- Tag string chip vertical padding: `py-0.5` (2px) — inline pill; 4px would add excessive height on a 14px `.text-label` (line-height 1.5). Matches shadcn's shipped `Badge` convention (`py-0.5`).
 
 ---
 
