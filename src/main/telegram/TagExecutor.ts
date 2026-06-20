@@ -40,6 +40,32 @@ import type { GovernorEvent } from '@shared/opTypes'
 import { makeEditChatParticipantRankRequest } from './tagApi'
 import type { TagClient } from './tagClient'
 
+// ── [TAG-DEBUG] temporary diagnostic helper ──────────────────────────────────
+// Dumps everything we might need to classify a tag failure: constructor name,
+// message, the RPCError canonical .errorMessage field, GramJS TypeNotFoundError
+// .invalidConstructorId, all own-enumerable props, and a short stack. Remove once
+// the live tag-failure root cause is confirmed.
+function describeTagError(err: unknown): string {
+  const e = err as Record<string, unknown> & { message?: string; stack?: string }
+  const info: Record<string, unknown> = {
+    ctor: (err as { constructor?: { name?: string } })?.constructor?.name,
+    message: e?.message,
+    errorMessage: (e as { errorMessage?: unknown })?.errorMessage,
+    invalidConstructorId: (e as { invalidConstructorId?: unknown })?.invalidConstructorId,
+    code: (e as { code?: unknown })?.code,
+    seconds: (e as { seconds?: unknown })?.seconds,
+    ownKeys: err && typeof err === 'object' ? Object.keys(err) : undefined,
+  }
+  let out: string
+  try {
+    out = JSON.stringify(info, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))
+  } catch {
+    out = String(info)
+  }
+  const stack = typeof e?.stack === 'string' ? e.stack.split('\n').slice(0, 4).join(' | ') : ''
+  return `${out} :: stack=${stack}`
+}
+
 // ── Constructor options ─────────────────────────────────────────────────────
 
 export interface TagExecutorOptions {
@@ -292,6 +318,10 @@ export class TagExecutor {
         try {
           outcome = await this._tagGroup(dialog, resolved, params.tag, tagClient)
         } catch (err) {
+          // [TAG-DEBUG] temporary instrumentation — capture the RAW error that reaches the
+          // executor so we can see what is actually being classified as NETWORK.
+          // eslint-disable-next-line no-console
+          console.error(`[TAG-DEBUG] _tagGroup threw for dialog ${dialog.id}:`, describeTagError(err))
           // PEER_FLOOD check MUST come first (Pitfall 1)
           const classified = classifyRpcError(err)
           if (classified.disposition === 'hard-stop') {
@@ -492,12 +522,25 @@ export class TagExecutor {
       accessHash: bigInt(resolved.accessHash.toString()),
     })
 
+    // [TAG-DEBUG] temporary instrumentation
+    // eslint-disable-next-line no-console
+    console.error(`[TAG-DEBUG] dialog ${dialog.id}: channelId=${channelId.toString()} channelAccessHash=${channelAccessHash.toString()} userId=${resolved.id.toString()} (hasChannelEntity=${channelEntity != null})`)
+
     // Step 4: already-admin pre-flight check via main client + governor (NOT tagClient — write-only)
-    const participantResult = await this._governor.run(() =>
-      this._mainClient.invoke(
-        new Api.channels.GetParticipant({ channel: inputChannel, participant: inputUser })
-      )
-    ) as { participant?: { className?: string } }
+    let participantResult: { participant?: { className?: string } }
+    try {
+      participantResult = await this._governor.run(() =>
+        this._mainClient.invoke(
+          new Api.channels.GetParticipant({ channel: inputChannel, participant: inputUser })
+        )
+      ) as { participant?: { className?: string } }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[TAG-DEBUG] dialog ${dialog.id}: GetParticipant (step 4, MAIN client) threw:`, describeTagError(err))
+      throw err
+    }
+    // eslint-disable-next-line no-console
+    console.error(`[TAG-DEBUG] dialog ${dialog.id}: GetParticipant OK, className=${participantResult?.participant?.className ?? '(none)'}`)
 
     if (participantResult?.participant?.className === 'ChannelParticipantAdmin') {
       return {
@@ -510,9 +553,17 @@ export class TagExecutor {
 
     // Step 5: issue editChatParticipantRank — tagClient.invoke() is already governor-wrapped
     // DO NOT wrap in governor.run() again (Pitfall 3)
-    await tagClient.invoke(
-      makeEditChatParticipantRankRequest(inputPeer, inputUser, tag)
-    )
+    try {
+      const writeResult = await tagClient.invoke(
+        makeEditChatParticipantRankRequest(inputPeer, inputUser, tag)
+      )
+      // eslint-disable-next-line no-console
+      console.error(`[TAG-DEBUG] dialog ${dialog.id}: editChatParticipantRank (step 5, TAG client) resolved OK:`, JSON.stringify(writeResult))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[TAG-DEBUG] dialog ${dialog.id}: editChatParticipantRank (step 5, TAG client) threw:`, describeTagError(err))
+      throw err
+    }
 
     return { dialogId: dialog.id, status: 'done', timestamp }
   }

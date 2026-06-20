@@ -144,6 +144,15 @@ export class TagClient {
       try {
         return await this._inner.invoke(request)
       } catch (err) {
+        // [TAG-DEBUG] temporary instrumentation
+        // eslint-disable-next-line no-console
+        console.error('[TAG-DEBUG] TagClient inner.invoke threw:', {
+          ctor: (err as { constructor?: { name?: string } })?.constructor?.name,
+          message: (err as { message?: string })?.message,
+          errorMessage: (err as { errorMessage?: string })?.errorMessage,
+          invalidConstructorId: (err as { invalidConstructorId?: unknown })?.invalidConstructorId,
+          matchedUnparseable: isUnparseableUpdatesResponse(err),
+        })
         // editChatParticipantRank returns an `Updates` that carries layer-224 constructors.
         // After connect(), AllTLObjects.LAYER is restored to 198, so the layer-198 deserializer
         // cannot parse the response and GramJS throws TypeNotFoundError (.invalidConstructorId
