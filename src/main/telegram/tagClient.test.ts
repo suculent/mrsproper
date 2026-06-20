@@ -135,6 +135,51 @@ describe('TagClient', () => {
     })
   })
 
+  describe('invoke() — layer-224 unparseable response = write accepted', () => {
+    // editChatParticipantRank returns an Updates carrying layer-224 constructors that the
+    // layer-198 deserializer cannot parse. GramJS throws TypeNotFoundError (.invalidConstructorId
+    // set, message "...Constructor ID..."), but the WRITE already succeeded server-side (proven by
+    // the Phase 0 spike). TagClient must treat this specific parse failure as success so the
+    // governor does not retry it and the executor records 'done', not a NETWORK failure.
+
+    it('resolves (treats as success) when inner.invoke throws a TypeNotFoundError-shaped error', async () => {
+      const mockInner = makeMockInner()
+      // Persistent rejection: if TagClient did NOT catch this, the governor would retry
+      // (NETWORK/retry disposition) and eventually throw — so a passing test proves the catch.
+      mockInner.invoke.mockRejectedValue(
+        Object.assign(new Error('Could not find a matching Constructor ID for the TLObject ... read with ID 0xdeadbeef'), {
+          invalidConstructorId: 0xdeadbeef,
+        })
+      )
+      const governor = makeGovernor(mockInner)
+      const tagClient = new TagClient({ inner: mockInner, governor })
+
+      await expect(tagClient.invoke({ className: 'messages.EditChatParticipantRank' })).resolves.toBeDefined()
+      // The catch must short-circuit BEFORE the governor's retry path — inner.invoke called once.
+      expect(mockInner.invoke).toHaveBeenCalledOnce()
+    })
+
+    it('resolves when the error message contains "Constructor ID" even without invalidConstructorId', async () => {
+      const mockInner = makeMockInner()
+      mockInner.invoke.mockRejectedValue(new Error('Could not find a matching Constructor ID for the TLObject'))
+      const governor = makeGovernor(mockInner)
+      const tagClient = new TagClient({ inner: mockInner, governor })
+
+      await expect(tagClient.invoke({ className: 'messages.EditChatParticipantRank' })).resolves.toBeDefined()
+    })
+
+    it('still rejects on a genuine RPC error (errorMessage present)', async () => {
+      const mockInner = makeMockInner()
+      mockInner.invoke.mockRejectedValueOnce(
+        Object.assign(new Error('CHAT_ADMIN_REQUIRED'), { errorMessage: 'CHAT_ADMIN_REQUIRED' })
+      )
+      const governor = makeGovernor(mockInner)
+      const tagClient = new TagClient({ inner: mockInner, governor })
+
+      await expect(tagClient.invoke({ className: 'messages.EditChatParticipantRank' })).rejects.toThrow('CHAT_ADMIN_REQUIRED')
+    })
+  })
+
   describe('disconnect()', () => {
     it('calls innerClient.disconnect() exactly once', async () => {
       const mockInner = makeMockInner()

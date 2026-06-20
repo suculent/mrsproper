@@ -31,6 +31,25 @@
 
 import type { RateLimitGovernor } from './governor'
 
+// ── Unparseable-response detection ─────────────────────────────────────────────
+
+/**
+ * True when `err` is GramJS's TypeNotFoundError for an unparseable response — i.e. the
+ * layer-224 `Updates` returned by editChatParticipantRank could not be deserialized at
+ * layer 198. This is the EXPECTED, harmless outcome of a successful write (Phase 0 spike):
+ * the server applied the tag, only the response is unreadable here. Detection mirrors the
+ * spike exactly: `.invalidConstructorId` (set by TypeNotFoundError) or a message naming the
+ * Constructor ID. A real RPCError has `.errorMessage` instead and must NOT match this.
+ */
+function isUnparseableUpdatesResponse(err: unknown): boolean {
+  if ((err as { invalidConstructorId?: unknown })?.invalidConstructorId != null) return true
+  const msg =
+    (err as { errorMessage?: string })?.errorMessage ??
+    (err as { message?: string })?.message ??
+    ''
+  return /Constructor ID/i.test(msg)
+}
+
 // ── Injectable inner client interface ─────────────────────────────────────────
 
 /**
@@ -121,7 +140,25 @@ export class TagClient {
    * Write-only: do NOT pass getDialogs/getParticipants requests here.
    */
   async invoke(request: unknown): Promise<unknown> {
-    return this._governor.run(() => this._inner.invoke(request))
+    return this._governor.run(async () => {
+      try {
+        return await this._inner.invoke(request)
+      } catch (err) {
+        // editChatParticipantRank returns an `Updates` that carries layer-224 constructors.
+        // After connect(), AllTLObjects.LAYER is restored to 198, so the layer-198 deserializer
+        // cannot parse the response and GramJS throws TypeNotFoundError (.invalidConstructorId
+        // set; message contains "Constructor ID"). The WRITE was already accepted server-side —
+        // this is the EXPECTED success path, proven by the Phase 0 spike
+        // (scripts/spike-member-tag.mjs). We must swallow it HERE, inside the governor callback,
+        // so the governor does not classify it as NETWORK and retry the (already-applied) write.
+        // Genuine RPC errors (CHAT_ADMIN_REQUIRED, USER_NOT_PARTICIPANT, FLOOD_WAIT, PEER_FLOOD)
+        // carry an `errorMessage` and are re-thrown for the governor / executor to handle.
+        if (isUnparseableUpdatesResponse(err)) {
+          return { _tagWriteAccepted: true }
+        }
+        throw err
+      }
+    })
   }
 
   /**
