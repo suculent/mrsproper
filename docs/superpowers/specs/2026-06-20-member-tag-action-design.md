@@ -70,41 +70,61 @@ The script:
 
 ### Branch on the result
 
-- **Q1 = YES →** proceed to Phase 1 (write-only `TagExecutor`) on stock GramJS 2.26.22.
-- **Q1 = NO →** **stop and reassess.** The feature would require regenerating GramJS's TL
-  schema against the newer member-tag protocol layer (bump `LAYER`, regenerate `api.ts` from
-  the new `telegram_api.tl`, re-verify every other call still deserializes). That is a separate
-  spec and a real maintenance burden — not undertaken without the user's explicit go-ahead.
+> **⚠️ SUPERSEDED:** The spike disproved this section's framing. The premise — that
+> `editAdmin + rank` is the member-tag setter — was **wrong**. The real setter is
+> **`messages.editChatParticipantRank`**, and the feature **is buildable on stock GramJS
+> 2.26.22** via the technique the spike proved. See "Spike findings — FINAL" below; §4 and §7
+> need revision accordingly.
 
-**Deliverable:** the findings table below, filled in after running the spike.
+**Deliverable:** the findings below.
 
-### Spike findings (fill in after running `scripts/spike-member-tag.mjs`)
+### Spike findings — FINAL (2026-06-20)
 
-**Run date:** 2026-06-20
-**GramJS version under test:** 2.26.22 (runtime banner reports 2.26.21), **negotiated LAYER 198**
-**Test group:** "Testovací 🌹" — `Channel` (megagroup), id `3906767609`, caller is creator (full admin rights)
-**Non-admin target:** "Simple SIM" `@testovaci42`, id `8471834904` — a plain member that **already had a member tag `"tag"`** (set previously via the official client's Edit Tag UI)
+**GramJS under test:** 2.26.22 (npm latest; runtime banner says 2.26.21), default LAYER 198.
+**Test group:** "Testovací 🌹" — `Channel`/megagroup, id `3906767609`, caller is creator.
+**Non-admin target:** "Simple SIM" `@testovaci42`, id `8471834904` — plain member, pre-existing tag `"tag"`.
 
-| # | Question | Finding | Outcome |
-|---|----------|---------|---------|
-| Q1 | Does layer-198 `editAdmin + rank` (all-false rights) set a member tag on a **non-admin**? | `editAdmin(rank:"testtag")` **succeeded** (returned `Updates`, no error), but the member tag in the client **stayed `"tag"`** — unchanged. The call is **inert** on member tags at layer 198. | ☑ **NO** |
-| Q2 | Promotion / rights side-effects on the non-admin? | **None.** Participant stayed a plain `ChannelParticipant` (not `ChannelParticipantAdmin`). All-false rights did not promote. (Already-admin case not separately tested — moot given Q1=NO.) | untouched / no promotion |
-| Q3 | Acting-account rights / permission errors? | Caller was group **creator** (full rights incl. `addAdmins`). **No permission error** — the call was accepted, just inert. | error code: _none_ |
-| Q4 | Max tag length / charset? | **Not reached** — tag never changed at this layer, so length/charset is untestable via this path. | n/a at layer 198 |
-| Q5 | Basic groups (`Chat`) unsupported? | Not exercised (used a `Channel`). Script's `Chat`-detection guard is in place; `editAdmin` is channels-only regardless. | guard present |
+**THE KEY FINDING — the setter is NOT `editAdmin`:**
 
-**Additional confirmed fact — read-back is also blind at layer 198:** `getParticipants` returned the
-participant **without any `rank` field** both before and after (GramJS 2.26.22's `ChannelParticipant`
-constructor has no `rank` field). So stock GramJS 198 can neither **read** nor **write** member tags.
-The pre-existing `"tag"` was visible only in the official client, never in the script's participant dump.
+```
+messages.editChatParticipantRank#a00f32b0 peer:InputPeer participant:InputPeer rank:string = Updates
+```
 
-**Decision (from Q1):**
-- ☑ **Q1 = NO** → **stop & reassess.** The member-tag feature requires a newer protocol layer than
-  GramJS 2.26.22 negotiates (198). `editAdmin + rank` is ignored for non-admins at this layer.
-  Building the feature requires GramJS TL-schema/layer work (see §7) — a separate effort, not the
-  stock-GramJS write-only path originally hoped for.
+This `messages`-namespace method (NOT `channels.editAdmin`) is the member-tag setter. Proven
+end-to-end: hand-crafting this request and sending it at **layer 224** changed the target's tag
+`"tag"` → `"testtag"` on a **non-admin, with no promotion**, confirmed by reading
+`channelParticipant.rank` back from the raw response bytes. Tag was then restored to `"tag"`.
 
-**Already-admin decision (from Q2) — resolves §5:** deferred — moot until the layer question is resolved.
+| Q | Finding |
+|---|---------|
+| **Setter** | `messages.editChatParticipantRank(peer, participant, rank)`. `channels.editAdmin + rank` is **inert** on member tags (tried at layers 198 *and* 224 — tag stayed `"tag"`; that confirmed the original design premise was wrong). |
+| **Non-admins** | ✅ Tag set on a plain member; participant stays `channelParticipant#1bd54456` (flags=4, rank bit only). **No promotion.** Resolves §5 in part: tagging does not touch admin status. |
+| **Layer** | The method + reading require **layer 224**. Per-call `InvokeWithLayer` is rejected (`CONNECTION_LAYER_INVALID`); the whole connection must negotiate 224 (patch `AllTLObjects.LAYER` before connect — GramJS reads it at connect-time). |
+| **Permissions** | Schema shows `chatAdminRights.manage_ranks` (flags.18 — admin sets *others'* tags) and `chatBannedRights.edit_rank` (flags.26 — the "Edit Own Tags" member self-serve permission). |
+| **Reading** | `channelParticipant` gained `rank:flags.2?string` at the new layer. Readable at 224. |
+| **Max length / charset** | Not yet measured (deferred to implementation — try over-long strings via the proven path). |
+| **Basic groups** | `editChatParticipantRank` takes `InputPeer`, so it may work on basic `Chat` too (not yet tested). The earlier channels-only assumption may not hold — verify in Phase 1. |
+
+**GramJS reality:** npm's latest `telegram` is still **2.26.22** (Feb 2025) — it has neither
+`editChatParticipantRank` nor layer-224 constructors. **No dependency-upgrade shortcut exists.**
+
+**DECISION: FEASIBLE — build it.** Confirmed buildable on stock GramJS 2.26.22 using the spike's
+proven technique:
+1. Resolve target + groups with the existing layer-198 client (unchanged).
+2. For tag writes, use a **layer-224 connection** (patch `LAYER` before connect) and a
+   **hand-defined `editChatParticipantRank` request** (id `a00f32b0`; serialize
+   `InputPeer` + `InputPeer` + TL-string rank — see `scripts/spike-member-tag.mjs`).
+3. **Write-only** fits perfectly: `editChatParticipantRank` returns an *empty* `Updates` that
+   parses fine even at 198 — so the tag client never has to parse layer-224 dialog/participant
+   responses (those are done by the 198 client; ids+accessHashes are passed across).
+
+The open design problem is the **global `LAYER` coordination** (it's a module-level constant, so a
+naive patch would force the *main* 198 client to 224 and break its dialog/participant parsing).
+§4 and §7 must be revised around a dedicated, isolated layer-224 tag connection.
+
+**§5 already-admin:** partly resolved — tagging a non-admin does not promote. The
+read-modify-write concern for *existing admins* still needs a Phase-1 decision (does
+`editChatParticipantRank` on an admin disturb their `editAdmin` rank/rights?). One more probe.
 
 **Raw notes / surprises:**
 
