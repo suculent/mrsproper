@@ -9,23 +9,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Mock tagClient BEFORE importing tagStore (module-level mock, top-level hoisting).
-// All methods are vi.fn() so we can assert call arguments.
+// vi.mock is hoisted by Vitest; factory functions run before any const declarations.
+// All methods are vi.fn() directly inside the factory — no external variable refs.
+// We retrieve the mocks via vi.mocked() after the import below.
 // ---------------------------------------------------------------------------
-const mockOnTagState = vi.fn((_cb: (s: unknown) => void) => vi.fn())
-const mockStartTag = vi.fn()
-const mockAbortTag = vi.fn()
-const mockGetTagState = vi.fn()
-const mockGetTagJob = vi.fn()
-const mockDiscardTagJob = vi.fn()
-
 vi.mock('../ipc/tagClient', () => ({
   tagClient: {
-    onTagState: mockOnTagState,
-    startTag: mockStartTag,
-    abortTag: mockAbortTag,
-    getTagState: mockGetTagState,
-    getTagJob: mockGetTagJob,
-    discardTagJob: mockDiscardTagJob,
+    onTagState: vi.fn((_cb: (s: unknown) => void) => vi.fn()),
+    startTag: vi.fn(),
+    abortTag: vi.fn(),
+    getTagState: vi.fn(),
+    getTagJob: vi.fn(),
+    discardTagJob: vi.fn(),
   },
 }))
 
@@ -34,8 +29,19 @@ vi.mock('../ipc/tagClient', () => ({
 // tagStore is a singleton — we import its exports and verify behaviors.
 // ---------------------------------------------------------------------------
 import { tagActions } from './tagStore'
+import { tagClient } from '../ipc/tagClient'
 // getSnapshot is not exported from the public API — we test stability via two
 // consecutive calls to the internal mechanism exposed through tagActions.
+
+// Typed mock references — retrieved after imports resolve
+const mockTagClient = tagClient as {
+  onTagState: ReturnType<typeof vi.fn>
+  startTag: ReturnType<typeof vi.fn>
+  abortTag: ReturnType<typeof vi.fn>
+  getTagState: ReturnType<typeof vi.fn>
+  getTagJob: ReturnType<typeof vi.fn>
+  discardTagJob: ReturnType<typeof vi.fn>
+}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -68,19 +74,19 @@ function makeCompletedTagState() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  mockStartTag.mockReset()
-  mockAbortTag.mockReset()
-  mockGetTagState.mockReset()
-  mockGetTagJob.mockReset()
-  mockDiscardTagJob.mockReset()
-  mockOnTagState.mockReset()
+  mockTagClient.startTag.mockReset()
+  mockTagClient.abortTag.mockReset()
+  mockTagClient.getTagState.mockReset()
+  mockTagClient.getTagJob.mockReset()
+  mockTagClient.discardTagJob.mockReset()
+  mockTagClient.onTagState.mockReset()
 
   // Default implementations so async paths don't throw
-  mockGetTagState.mockResolvedValue(makeIdleTagState())
-  mockGetTagJob.mockResolvedValue(null)
-  mockStartTag.mockResolvedValue(makeCompletedTagState())
-  mockDiscardTagJob.mockResolvedValue(null)
-  mockOnTagState.mockImplementation(() => vi.fn())
+  mockTagClient.getTagState.mockResolvedValue(makeIdleTagState())
+  mockTagClient.getTagJob.mockResolvedValue(null)
+  mockTagClient.startTag.mockResolvedValue(makeCompletedTagState())
+  mockTagClient.discardTagJob.mockResolvedValue(null)
+  mockTagClient.onTagState.mockImplementation(() => vi.fn())
 })
 
 // ---------------------------------------------------------------------------
@@ -93,9 +99,9 @@ describe('tagActions.startTag — argument order flip (T-12-04 / Pitfall 6)', ()
   it('calls tagClient.startTag with (dialogIds, tag) order — not (tag, dialogIds)', async () => {
     await tagActions.startTag('ModeratorTitle', ['100', '200'])
 
-    expect(mockStartTag).toHaveBeenCalledTimes(1)
+    expect(mockTagClient.startTag).toHaveBeenCalledTimes(1)
     // First arg must be the dialogIds array, second must be the tag string
-    const [firstArg, secondArg] = mockStartTag.mock.calls[0]
+    const [firstArg, secondArg] = mockTagClient.startTag.mock.calls[0]
     expect(firstArg).toEqual(['100', '200'])  // dialogIds first
     expect(secondArg).toBe('ModeratorTitle')   // tag second
   })
@@ -103,7 +109,7 @@ describe('tagActions.startTag — argument order flip (T-12-04 / Pitfall 6)', ()
   it('does NOT call tagClient.startTag with (tag, dialogIds) order', async () => {
     await tagActions.startTag('ModeratorTitle', ['100', '200'])
 
-    const [firstArg] = mockStartTag.mock.calls[0]
+    const [firstArg] = mockTagClient.startTag.mock.calls[0]
     // If arg-order is wrong, firstArg would be the string 'ModeratorTitle'
     expect(typeof firstArg).toBe('object') // must be the array, not a string
   })
@@ -116,14 +122,14 @@ describe('tagActions.startTag — argument order flip (T-12-04 / Pitfall 6)', ()
 describe('tagActions.startTag — clears pendingJob on success', () => {
   it('snapshot.pendingJob is null after successful startTag', async () => {
     // startTag resolves successfully
-    mockStartTag.mockResolvedValue(makeCompletedTagState())
+    mockTagClient.startTag.mockResolvedValue(makeCompletedTagState())
     await tagActions.startTag('Moderator', ['1', '2'])
 
     // We verify this indirectly: no error thrown, and if we had access to
     // getSnapshot the pendingJob field would be null. The behavior is tested
     // via the discardJob test which also asserts pendingJob clears.
     // Here we simply assert startTag resolved without throwing.
-    expect(mockStartTag).toHaveBeenCalledTimes(1)
+    expect(mockTagClient.startTag).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -133,9 +139,9 @@ describe('tagActions.startTag — clears pendingJob on success', () => {
 
 describe('tagActions.discardJob — clears pendingJob', () => {
   it('calls tagClient.discardTagJob()', async () => {
-    mockDiscardTagJob.mockResolvedValue(null)
+    mockTagClient.discardTagJob.mockResolvedValue(null)
     await tagActions.discardJob()
-    expect(mockDiscardTagJob).toHaveBeenCalledTimes(1)
+    expect(mockTagClient.discardTagJob).toHaveBeenCalledTimes(1)
   })
 })
 
