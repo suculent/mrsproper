@@ -29,9 +29,10 @@ describe('serializeTLString', () => {
     expect(Array.from(buf)).toEqual([0x01, 0x78, 0x00, 0x00])
   })
 
-  it('"abc" (3 bytes) serializes to 8 bytes with correct padding', () => {
+  it('"abc" (3 bytes) serializes to 4 bytes — header+data already 4-byte aligned, no padding', () => {
+    // 1 byte header + 3 bytes data = 4 bytes; (4 % 4) === 0 → no padding needed
     const buf = serializeTLString('abc')
-    expect(Array.from(buf)).toEqual([0x03, 0x61, 0x62, 0x63, 0x00, 0x00, 0x00, 0x00])
+    expect(Array.from(buf)).toEqual([0x03, 0x61, 0x62, 0x63])
   })
 
   it('254-char string uses 4-byte extended header (0xfe prefix)', () => {
