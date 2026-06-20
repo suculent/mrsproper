@@ -11,7 +11,7 @@
  *   7. Second connect() while one is in progress throws without calling innerClient.connect() twice
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { TagClient } from './tagClient'
 import { RateLimitGovernor } from './governor'
 
