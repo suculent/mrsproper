@@ -23,7 +23,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import bigInt from 'big-integer'
 import { RateLimitGovernor } from './governor'
 import { TagExecutor } from './TagExecutor'
 import type { TagState, TagGroupOutcome } from '@shared/tagTypes'
@@ -103,14 +102,14 @@ function makeTagExecutor(config: {
 }) {
   // mockTagClient — layer-224 write path; invoke records editChatParticipantRank calls
   const mockTagClient = {
-    connect: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
-    disconnect: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
-    invoke: vi.fn<[unknown], Promise<unknown>>().mockResolvedValue({}),
+    connect: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    disconnect: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    invoke: vi.fn<(arg: unknown) => Promise<unknown>>().mockResolvedValue({}),
   }
 
   // mockMainClient — main layer-198 client; used for GetParticipant pre-flight only
   const mockMainClient = {
-    invoke: vi.fn<[unknown], Promise<unknown>>().mockImplementation(async (request: unknown) => {
+    invoke: vi.fn<(arg: unknown) => Promise<unknown>>().mockImplementation(async (request: unknown) => {
       const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
       const className = (request as { className?: string })?.className ?? ''
       if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
