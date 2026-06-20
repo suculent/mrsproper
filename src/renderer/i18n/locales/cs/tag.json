@@ -47,11 +47,11 @@
     "skipped": "Přeskočeno — označování zastaveno"
   },
   "rowError": {
-    "TAG_NO_RIGHTS": "Nemáte práva k označování v této skupině —",
-    "TAG_USER_INVALID": "Spojení bylo přerušeno — zkontrolujte síť, pak",
-    "TAG_CHANNEL_INVALID": "Telegram toto označení zamítl —",
-    "NETWORK": "Spojení bylo přerušeno — zkontrolujte síť, pak",
-    "UNKNOWN": "Telegram toto označení zamítl —"
+    "TAG_NO_RIGHTS": "Nemáte oprávnění označovat členy v této skupině.",
+    "TAG_USER_INVALID": "Tato osoba není členem této skupiny.",
+    "TAG_CHANNEL_INVALID": "Tato skupina je soukromá nebo již není dostupná.",
+    "NETWORK": "Spojení bylo přerušeno — zkontrolujte síť a spusťte označování znovu.",
+    "UNKNOWN": "Telegram toto označení zamítl."
   },
   "summaryPart": {
     "tagged": "Označeno",

@@ -41,11 +41,11 @@
     "skipped": "Skipped — tagging stopped"
   },
   "rowError": {
-    "TAG_NO_RIGHTS": "You don't have tagging rights in this group —",
-    "TAG_USER_INVALID": "Connection dropped — check your network, then",
-    "TAG_CHANNEL_INVALID": "Telegram refused this tag —",
-    "NETWORK": "Connection dropped — check your network, then",
-    "UNKNOWN": "Telegram refused this tag —"
+    "TAG_NO_RIGHTS": "You don't have permission to tag members in this group.",
+    "TAG_USER_INVALID": "This person isn't a member of this group.",
+    "TAG_CHANNEL_INVALID": "This group is private or no longer accessible.",
+    "NETWORK": "Connection dropped — check your network and run the tag again.",
+    "UNKNOWN": "Telegram refused this tag."
   },
   "summaryPart": {
     "tagged": "Tagged",
