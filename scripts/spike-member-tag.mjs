@@ -94,6 +94,7 @@ function parseArgs(argv) {
     tag: null,
     session: null,
     confirm: false,
+    listGroups: false,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -113,6 +114,9 @@ function parseArgs(argv) {
         break
       case '--confirm':
         result.confirm = true
+        break
+      case '--list-groups':
+        result.listGroups = true
         break
       default:
         // Unknown flag — ignore silently
@@ -135,6 +139,8 @@ Required:
 Optional:
   --session <StringSession> Saved session string from a prior run (skips login)
   --confirm                 Skip the "yes" confirmation prompt
+  --list-groups             List your groups/channels with their numeric ids, then exit
+                            (use to find a private group's id; --group/--user/--tag not needed)
 
 Environment (from .env):
   MRSPROPER_API_ID          Your Telegram api_id (integer)
@@ -182,8 +188,8 @@ function bigIntReplacer(_, value) {
 async function main() {
   const args = parseArgs(process.argv)
 
-  // Validate required args
-  if (args.group === null || args.user === null || args.tag === null) {
+  // Validate required args (skipped in --list-groups discovery mode)
+  if (!args.listGroups && (args.group === null || args.user === null || args.tag === null)) {
     console.error('ERROR: --group, --user, and --tag are all required.')
     printUsageAndExit()
   }
@@ -242,6 +248,27 @@ async function main() {
   console.log('[SESSION] KEEP THIS SECRET — it grants full account access.')
   console.log('[SESSION] NEVER commit it to git or write it to a file.')
   console.log()
+
+  // ── --list-groups discovery mode: dump dialogs (id + title + type) and exit ──
+  if (args.listGroups) {
+    console.log('[LIST] Fetching your groups/channels (find the private group id here)...')
+    console.log()
+    const dialogs = await client.getDialogs({})
+    for (const d of dialogs) {
+      if (d.isUser) continue
+      const ent = d.entity
+      const cls = (ent?.className ?? '?').padEnd(16)
+      const idStr = (ent?.id?.toString() ?? d.id?.toString() ?? '?').padEnd(16)
+      const title = d.title ?? d.name ?? '(no title)'
+      const creator = ent?.creator ? ' [creator]' : ''
+      const adminFlag = ent?.adminRights ? ' [admin]' : ''
+      console.log(`  ${cls} id=${idStr} ${title}${creator}${adminFlag}`)
+    }
+    console.log()
+    console.log('[LIST] Re-run with --group <id> (the numeric id above) to run the tag probe.')
+    await client.disconnect()
+    process.exit(0)
+  }
 
   // ── Q5: Resolve group entity and detect basic-group ──────────────────────────
 
