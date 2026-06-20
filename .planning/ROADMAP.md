@@ -46,7 +46,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
   4. The main layer-198 `client` continues to enumerate groups and resolve targets correctly after `tagClient` has connected (no layer bleed-through)
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md — tagApi.ts: vendored editChatParticipantRank factory + TL-string encoder with golden-byte tests
+- [x] 09-01-PLAN.md — tagApi.ts: vendored editChatParticipantRank factory + TL-string encoder with golden-byte tests
 - [ ] 09-02-PLAN.md — tagClient.ts: patch-connect-restore wrapper with governor routing and lifecycle tests
 **UI hint**: no
 
@@ -101,7 +101,7 @@ Plans:
 | 6. UI Integration | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 7. Packaging & Release | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
-| 9. Tag API & Layer-224 Connection | v1.6 | 0/2 | Not started | - |
+| 9. Tag API & Layer-224 Connection | v1.6 | 1/2 | In Progress|  |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 0/TBD | Not started | - |
 | 11. TagExecutor | v1.6 | 0/TBD | Not started | - |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |

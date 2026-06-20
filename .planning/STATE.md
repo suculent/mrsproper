@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Member Tag Action
-status: planning
-last_updated: "2026-06-20T00:00:00.000Z"
+status: executing
+stopped_at: Roadmap created — Phases 9–12 defined, REQUIREMENTS.md traceability filled
+last_updated: "2026-06-20T13:13:40.481Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 9 — Tag API & Layer-224 Connection (ready to plan)
+**Current focus:** Phase 09 — tag-api-layer-224-connection
 
 ## Current Position
 
-Phase: 9 of 12 (Tag API & Layer-224 Connection)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-06-20 — Roadmap created for v1.6; Phases 9–12 defined; spike complete
+Phase: 09 (tag-api-layer-224-connection) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-06-20
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -54,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 09-tag-api-layer-224-connection P01 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -69,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 0 spike]: Basic groups: call accepted by server but round-trip unconfirmed cleanly; v1 decision: skip (`TAG_UNSUPPORTED_BASIC_GROUP`)
 - [Design spec §4.3]: Main `client` must not reconnect during the brief layer-patch window; guard with a mutex or by only opening `tagClient` when no removal/enumeration is in flight
 - [Design spec §4]: `TagExecutor` is a parallel class to `RemovalExecutor` (not a refactor) — avoids destabilizing shipped v1.0 removal path
+- [Phase ?]: 09-01 completed
+- [Phase ?]: 09-01 tagApi.ts
+- [Phase ?]: 09-01 tagApi.ts
 
 ### Pending Todos
 
@@ -98,6 +103,6 @@ Items carried forward from v1.0 milestone close (2026-06-13):
 
 ## Session Continuity
 
-Last session: 2026-06-20
+Last session: 2026-06-20T13:12:39.850Z
 Stopped at: Roadmap created — Phases 9–12 defined, REQUIREMENTS.md traceability filled
 Resume file: None
