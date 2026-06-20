@@ -247,7 +247,7 @@ describe('tagChannels — security gates', () => {
 
     // execute() must have been called with dialogIds + tag only — no identity fields
     expect(executor.execute).toHaveBeenCalledOnce()
-    const callArg = executor.execute.mock.calls[0][0] as Record<string, unknown>
+    const callArg = (executor.execute.mock.calls as unknown as Array<[Record<string, unknown>]>)[0][0]
     expect(callArg).toHaveProperty('dialogIds', ['111'])
     expect(callArg).toHaveProperty('tag', 'TestTag')
     // T-05-04-B: identity must NOT be passed from renderer payload
