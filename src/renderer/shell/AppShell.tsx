@@ -162,7 +162,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           open={tagResumeOpen}
           onOpenChange={() => {}}
           job={pendingTagJob}
-          onResume={() => setStage('run')}
+          onResume={() => { setAction('tag'); setStage('run') }}
         />
       )}
     </div>
