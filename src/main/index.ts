@@ -15,6 +15,8 @@ import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
 import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
+import { registerTagChannels } from './ipc/tagChannels'
+import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
 import { registerLanguageChannels } from './ipc/languageChannels'
 import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
@@ -22,6 +24,7 @@ import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
+import type { TagState } from '../shared/tagTypes'
 
 // ── API credentials (injected at build time via electron.vite.config.ts define) ──
 // Loaded here lazily — safeStorage and electron ready must fire first (Pitfall 3).
@@ -305,6 +308,28 @@ app.whenReady().then(async () => {
 
   registerRemovalChannels(currentWin, executor, enumerator, auditStore, () => sm.getState())
 
+  // ── Wire TagAuditStore ────────────────────────────────────────────────────────
+  // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
+  const tagAuditStore = createTagAuditStore()
+
+  // ── Register Tag IPC handlers (Phase 10) ─────────────────────────────────────
+  // Note: TagExecutor (Phase 11) will replace the stub executor below and wire onStateChange → emitTagState
+  const IDLE_TAG_STATE: TagState = {
+    step: 'idle',
+    tag: '',
+    targetId: '',
+    targetName: '',
+    progress: { processed: 0, total: 0 },
+    outcomes: [],
+  }
+  registerTagChannels(
+    currentWin,
+    { getState: () => IDLE_TAG_STATE, abortExecution: () => {}, execute: async () => {} },
+    enumerator,
+    tagAuditStore,
+    () => sm.getState()
+  )
+
   // Phase 6: assign executorRef so governor.onEvent can call _handleGovernorEvent
   executorRef = executor
 
@@ -326,6 +351,13 @@ app.whenReady().then(async () => {
     // Job file exists and is incomplete — renderer will detect this via removal:getJob.
     // Log for diagnostics; no other action needed at this point.
     console.log('[main] Incomplete removal job detected on launch — resumable via renderer')
+  }
+
+  // ── On-launch tag-job detection (Resume/Discard) ──────────────────────────
+  // Independent of removal-job detection; both can fire simultaneously (RESEARCH.md Pitfall 6).
+  const _pendingTagJob = tagAuditStore.readJob()
+  if (_pendingTagJob && _pendingTagJob.status !== 'complete') {
+    console.log('[main] Incomplete tag job detected on launch — resumable via renderer')
   }
 
   // CR-01-MAIN: registerTargetChannels receives executor so TARGET_RESET aborts removal first (Phase 5).
