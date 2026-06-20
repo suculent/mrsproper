@@ -75,6 +75,13 @@ function makeMockEnumerator(dialogIds: string[] = ['111', '222', '333']) {
   }
 }
 
+/** Create a mock GroupEnumerator in a non-loaded state (idle | loading | error). */
+function makeMockEnumeratorNotLoaded(step: 'idle' | 'loading' | 'error' = 'idle') {
+  return {
+    getState: vi.fn(() => ({ step })),
+  }
+}
+
 /** Create a mock TagAuditStore with a controllable job. */
 function makeMockTagAuditStore(jobDialogIds: string[] | null = null) {
   return {
@@ -232,6 +239,24 @@ describe('tagChannels — security gates', () => {
       capturedHandlers['tag:start']({}, { dialogIds: ['111', '999'], tag: 'TestTag' })
     ).rejects.toThrow()
     expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('tag:start — dialog-map gate: rejects (no execute) when enumerator step is not loaded (CR-02)', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    // Enumerator is idle — dialog map not available; gate must block without throwing
+    const enumerator = makeMockEnumeratorNotLoaded('idle')
+    const auditStore = makeMockTagAuditStore()
+    const getAuthState = makeGetAuthState('authorized')
+
+    registerTagChannels(win as never, executor as never, enumerator as never, auditStore as never, getAuthState)
+
+    const result = await capturedHandlers['tag:start']({}, { dialogIds: ['111'], tag: 'TestTag' })
+
+    // execute() must NOT have been called — security gate must reject early
+    expect(executor.execute).not.toHaveBeenCalled()
+    // Returns executor.getState() (idle) — mirrors auth-gate rejection path
+    expect((result as TagState).step).toBe('idle')
   })
 
   it('tag:start — dispatches execute with { dialogIds, tag } — no identity fields', async () => {

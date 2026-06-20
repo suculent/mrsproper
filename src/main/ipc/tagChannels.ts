@@ -110,15 +110,20 @@ export function registerTagChannels(
 
     // Layer 4: Dialog security gate — each dialogId must be in enumerator's known dialog map
     // Prevents renderer from injecting groups not in the current enumeration (T-10-07).
+    // If enumerator is not 'loaded', the dialog map is not available — reject rather than
+    // silently skipping the set-containment check (CR-02: gate must not be bypassed).
     const groupsState = enumerator.getState()
-    if (groupsState.step === 'loaded') {
-      const knownIds = new Set(groupsState.dialogs.map((d) => d.id))
-      const unknownIds = parsed.dialogIds.filter((id) => !knownIds.has(id))
-      if (unknownIds.length > 0) {
-        throw new Error(
-          `Payload contains unknown dialogId(s) — not in current enumeration: ${unknownIds.join(', ')}`
-        )
-      }
+    if (groupsState.step !== 'loaded') {
+      // Enumerator not ready: return current state without dispatching (mirrors auth-gate
+      // and double-start-guard rejection paths — no execute(), no throw).
+      return executor.getState()
+    }
+    const knownIds = new Set(groupsState.dialogs.map((d) => d.id))
+    const unknownIds = parsed.dialogIds.filter((id) => !knownIds.has(id))
+    if (unknownIds.length > 0) {
+      throw new Error(
+        `Payload contains unknown dialogId(s) — not in current enumeration: ${unknownIds.join(', ')}`
+      )
     }
 
     // Fire-and-forget — identity sourced from resolver.getResolvedUser() inside execute() (Phase 11)
