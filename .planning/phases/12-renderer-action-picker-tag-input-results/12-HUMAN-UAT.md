@@ -18,7 +18,7 @@ result: [pending]
 
 ### 2. Live progress bar real-time update during a real tag run
 expected: With a real logged-in Telegram account, starting a tag run shows the per-group progress bar advancing, the current group highlighted, and a FLOOD_WAIT countdown appearing when the governor is waiting. The per-group results report then renders done/skipped(already admin / basic group)/failed(code) and distinguishes a hard-stopped (PEER_FLOOD) run from a completed one.
-result: [pending]
+result: PASS — confirmed live (2026-06-20). Tag writes succeed per group after the layer-224 two-phase fix; and Phase C confirmed (the main client remains healthy after a run — next operation works).
 
 ### 3. Visual fidelity of tag chip + UI layout (Day/Night + en/cs)
 expected: The tag string chip, 3-way action picker, tag input, confirmation, progress, and results render with correct spacing/typography/color in both Day and Night themes and in both English and Czech (formal vykání, correct plurals incl. the new run-trigger button label). Tag confirm/resume buttons use the non-destructive (primary, not red) style.
@@ -31,10 +31,14 @@ result: [pending]
 ## Summary
 
 total: 4
-passed: 0
+passed: 1
 issues: 0
-pending: 4
+pending: 3
 skipped: 0
 blocked: 0
+
+Note: Item 2 (live run + Phase C main-client restore) PASSED live 2026-06-20. Remaining pending
+items are low-risk: TagInput focus (1), Day/Night × en/cs visual sweep (3), and confirming the
+provisional 16-char TAG_MAX_LENGTH against Telegram's real limit (4).
 
 ## Gaps
