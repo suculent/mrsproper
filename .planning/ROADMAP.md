@@ -80,7 +80,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 11-01-PLAN.md — tagExecutor.test.ts: failing RED tests for TagExecutor (all behaviors)
-- [ ] 11-02-PLAN.md — TagExecutor.ts: GREEN implementation — throttled, generation-guarded, tag-write state machine
+- [x] 11-02-PLAN.md — TagExecutor.ts: GREEN implementation — throttled, generation-guarded, tag-write state machine
 - [ ] 11-03-PLAN.md — index.ts wiring: replace stub, tagExecutorRef, onStateChange→emitTagState
 **UI hint**: no
 
@@ -112,5 +112,5 @@ Plans:
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
-| 11. TagExecutor | v1.6 | 1/3 | In Progress|  |
+| 11. TagExecutor | v1.6 | 2/3 | In Progress|  |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
