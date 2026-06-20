@@ -101,6 +101,8 @@ function parseArgs(argv) {
     userHash: null,
     readTag: false,
     setRank: false,
+    listParticipants: false,
+    chat: false,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -145,6 +147,12 @@ function parseArgs(argv) {
         break
       case '--set-rank':
         result.setRank = true
+        break
+      case '--list-participants':
+        result.listParticipants = true
+        break
+      case '--chat':
+        result.chat = true
         break
       default:
         // Unknown flag — ignore silently
@@ -281,11 +289,10 @@ function makeEditChatParticipantRankRequest(peer, participant, rank) {
 // Set a member tag via the real method. Response (Updates) is unparseable at layer 198 and
 // throws TypeNotFoundError — but the write lands server-side, exactly like editAdmin did.
 async function rawSetRank(client, args) {
-  console.log(`[SET-RANK] messages.editChatParticipantRank — force-layer=${args.forceLayer}, rank="${args.tag}"`)
-  const peer = new Api.InputPeerChannel({
-    channelId: bigInt(args.group),
-    accessHash: bigInt(args.groupHash),
-  })
+  console.log(`[SET-RANK] messages.editChatParticipantRank — force-layer=${args.forceLayer}, rank="${args.tag}", peer=${args.chat ? 'chat' : 'channel'}`)
+  const peer = args.chat
+    ? new Api.InputPeerChat({ chatId: bigInt(args.group) })
+    : new Api.InputPeerChannel({ channelId: bigInt(args.group), accessHash: bigInt(args.groupHash) })
   const participant = new Api.InputPeerUser({
     userId: bigInt(args.user),
     accessHash: bigInt(args.userHash),
@@ -380,14 +387,37 @@ async function rawLayerProbe(client, args) {
 // raw participant bytes (including the rank string). We scan those bytes for the expected tag,
 // which confirms the tag server-side WITHOUT needing the mobile client or a layer-aligned GramJS.
 async function rawReadParticipantTag(client, args) {
-  console.log('[READ] channels.getParticipant — reading raw participant bytes to detect the tag...')
-  const inputChannel = new Api.InputChannel({
-    channelId: bigInt(args.group),
-    accessHash: bigInt(args.groupHash),
-  })
+  console.log(`[READ] reading raw participant bytes to detect the tag (peer=${args.chat ? 'chat' : 'channel'})...`)
   const inputUser = new Api.InputPeerUser({
     userId: bigInt(args.user),
     accessHash: bigInt(args.userHash),
+  })
+  if (args.chat) {
+    // Basic groups have no channels.getParticipant — read the full chat and scan it instead.
+    try {
+      const res = await client.invoke(new Api.messages.GetFullChat({ chatId: bigInt(args.group) }))
+      console.log('[READ] messages.getFullChat parsed OK. Result:')
+      console.log(JSON.stringify(res, bigIntReplacer, 2))
+    } catch (err) {
+      const remaining = err.remaining
+      if (remaining && remaining.length) {
+        const buf = Buffer.from(remaining)
+        console.log('[READ] getFullChat unparseable at 198. Raw bytes (hex):', buf.toString('hex'))
+        console.log('[READ] ascii:', buf.toString('latin1').replace(/[^\x20-\x7e]/g, '.'))
+        for (const candidate of [args.tag, 'testtag', 'tag'].filter(Boolean)) {
+          const needle = Buffer.from(candidate, 'utf8').toString('hex')
+          console.log(`[READ] tag "${candidate}" (hex ${needle}): ${buf.toString('hex').includes(needle) ? '>>> FOUND <<<' : 'not found'}`)
+        }
+      } else {
+        console.log('[READ] getFullChat error:', err.errorMessage ?? err.message)
+        console.error(err)
+      }
+    }
+    return
+  }
+  const inputChannel = new Api.InputChannel({
+    channelId: bigInt(args.group),
+    accessHash: bigInt(args.groupHash),
   })
   try {
     const res = await client.invoke(
@@ -421,8 +451,8 @@ async function rawReadParticipantTag(client, args) {
 async function main() {
   const args = parseArgs(process.argv)
 
-  // Validate required args (skipped in --list-groups discovery mode)
-  if (!args.listGroups) {
+  // Validate required args (skipped in discovery modes)
+  if (!args.listGroups && !args.listParticipants) {
     if (args.group === null || args.user === null) {
       console.error('ERROR: --group and --user are required.')
       printUsageAndExit()
@@ -431,6 +461,9 @@ async function main() {
       console.error('ERROR: --tag is required (unless using --read-tag).')
       printUsageAndExit()
     }
+  } else if (args.listParticipants && args.group === null) {
+    console.error('ERROR: --group is required for --list-participants.')
+    printUsageAndExit()
   }
 
   // Read credentials from environment
@@ -497,8 +530,31 @@ async function main() {
   console.log('[SESSION] NEVER commit it to git or write it to a file.')
   console.log()
 
-  // ── Raw layer probe: bypass resolution, exercise only editAdmin (or read) at patched layer ──
-  if (args.forceLayer && args.groupHash && args.userHash) {
+  // ── --list-participants: dump members of a group (id, accessHash, type, rank) at layer 198 ──
+  if (args.listParticipants) {
+    console.log(`[PARTS] resolving group ${args.group} and listing participants...`)
+    const groupEntity = await resolveGroupEntity(client, args.group)
+    if (!groupEntity) {
+      console.error(`[ERROR] No group found matching "${args.group}".`)
+      await client.disconnect()
+      process.exit(1)
+    }
+    const participants = await client.getParticipants(groupEntity, {})
+    participants.forEach((p, i) => {
+      const pt = p.participant?.className ?? '?'
+      const rank = p.participant?.rank ?? ''
+      const name = [p.firstName, p.lastName].filter(Boolean).join(' ') || p.username || String(p.id)
+      console.log(`  [${i}] id=${p.id?.toString()} hash=${p.accessHash?.toString()} type=${pt} rank="${rank}" — ${name}`)
+    })
+    console.log()
+    console.log('[PARTS] Use id + hash as --user / --user-hash for the tag probes.')
+    await client.disconnect()
+    process.exit(0)
+  }
+
+  // ── Raw layer probe: bypass resolution, exercise only the method (or read) at patched layer ──
+  // --chat builds InputPeerChat (no group-hash needed); channels need --group-hash.
+  if (args.forceLayer && args.userHash && (args.groupHash || args.chat)) {
     if (args.readTag) {
       await rawReadParticipantTag(client, args)
     } else if (args.setRank) {

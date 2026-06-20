@@ -194,10 +194,14 @@ layer-198 client** (GroupEnumerator entity map + `resolver.getResolvedUser()`), 
 `governor.run()` for account-wide throttling.
 
 - **supergroup / broadcast-channel** → `InputPeerChannel` + the tag write.
-- **basic-group (`Chat`)** → the method takes `InputPeer`, so `InputPeerChat` *may* be supported.
-  This is **unverified** — the earlier "channels-only" assumption came from `editAdmin`, which no
-  longer applies. **Phase 1 must probe a basic group**; until then, treat basic groups as
-  `skipped` with `TAG_UNSUPPORTED_BASIC_GROUP` and revisit.
+- **basic-group (`Chat`)** → **probed (2026-06-20):** `editChatParticipantRank` with `InputPeerChat`
+  was **accepted by the server** (no RPC error; the response was an unparseable layer-224 `Updates`,
+  i.e. processed), and `chatParticipant` carries `rank:flags.0?string` per schema. However the
+  round-trip was **not cleanly confirmed** (the only safe self-target was the chat *creator* — a
+  confound — and layer-198 reads can't surface basic-chat rank; real third-party members were not
+  tagged to avoid a visible side effect). Basic groups are a **legacy, low-value** case. **v1
+  decision: skip** basic groups (`TAG_UNSUPPORTED_BASIC_GROUP`); support is plausible and can be
+  added later if a real need appears.
 - Target/group identity always comes from the **main process**, never the renderer payload
   (preserves the T-05-04-B invariant). The IPC payload carries only `dialogIds` + the `tag` string.
 
@@ -208,6 +212,8 @@ layer-198 client** (GroupEnumerator entity map + `resolver.getResolvedUser()`), 
   Phase 1, candidates from the schema/observed behavior):
   - `TAG_NO_RIGHTS` — caller lacks the `manage_ranks` admin right (likely `CHAT_ADMIN_REQUIRED`
     or a `RIGHT_FORBIDDEN`-style error).
+  - `TAG_TARGET_IS_ADMIN` — target is already an admin; skipped to avoid clobbering their custom
+    title (§5). Detected from participant data before the call (not an RPC error).
   - `TAG_RANK_INVALID` — rank rejected (length/charset).
   - `TAG_USER_NOT_PARTICIPANT` — target not a member of this group.
   - `TAG_UNSUPPORTED_BASIC_GROUP` — basic group, pending §4.1 verification.
@@ -241,18 +247,23 @@ connect-time, so the two connections cannot both rely on the constant simultaneo
 GramJS patch making `LAYER` an instance option rather than a global; (b) run the tag client in a
 separate Node worker/process. Prefer the patch-connect-restore until it demonstrably fails.
 
-## 5. Already-admin targets (partly resolved by the spike)
+## 5. Already-admin targets — RESOLVED (probed 2026-06-20)
 
-The spike resolved the non-admin case: `editChatParticipantRank` tags a plain member and
-**does not promote** them (participant stays `channelParticipant`, rank-only). The original §5
-fear — that tagging would overwrite an admin's rights/title — was specific to `editAdmin` and no
-longer applies directly.
+Both questions are now answered empirically:
 
-**Remaining Phase-1 probe:** does `editChatParticipantRank` on a target who is *already an admin*
-(and may carry an `editAdmin`-set custom rank) disturb their admin rank/rights? The `rank` field is
-shared between admin custom titles and member tags, so an existing admin's title could be
-overwritten. Run one probe (tag an admin test user, diff their `channelParticipantAdmin` before/
-after) before finalizing. Until confirmed, default to **skip & flag** for already-admin targets.
+- **Non-admin:** `editChatParticipantRank` tags a plain member and **does not promote** them
+  (participant stays `channelParticipant`, rank-only).
+- **Existing admin:** probed by tagging an admin (`ChannelParticipantAdmin`, rank `""`) with
+  `"PROBEADMIN"`, then restoring. Result: the admin **stayed `ChannelParticipantAdmin` — not
+  demoted, rights untouched** (the method has no `admin_rights` parameter, so it is *structurally
+  incapable* of changing rights), **but their custom title `rank` was overwritten** (`""` →
+  `"PROBEADMIN"`), since admin title and member tag are the **same `rank` field**.
+
+**Decision: skip & flag already-admin targets.** Rights are never at risk, but tagging an admin
+would silently clobber their custom admin title — undesirable. The `TagExecutor` detects admin
+status (the group's participant data is already available from `GroupEnumerator`/`getParticipants`)
+and marks those groups `skipped` with `TAG_TARGET_IS_ADMIN` so the operator handles them manually.
+(A future "preserve title" mode could read the admin's current rank first, but that's out of v1 scope.)
 
 ## 6. Safety & security
 
