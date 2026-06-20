@@ -1,7 +1,7 @@
 # Member Tag Action — Design Spec
 
 **Date:** 2026-06-20
-**Status:** Draft — gated on Phase 0 empirical spike
+**Status:** Spike complete (§3) — design revised; ready for Phase 1 planning
 **Author:** brainstormed with Claude
 
 ## 1. Summary
@@ -13,11 +13,15 @@ every selected supergroup/channel — using the existing throttled, resumable, a
 execution machinery.
 
 The feature targets Telegram's **Member Tags** feature (shipped March 2026): a short label
-displayed next to a member's name. Crucially, a member tag does **not** require the member
-to be an admin — it is the `rank` string extended to ordinary members. In the MTProto
-schema this surfaces as a `rank:flags.2?string` field on the plain `channelParticipant`
-constructor, and is set via the existing `channels.editAdmin(channel, user, adminRights, rank)`
-method.
+displayed next to a member's name. A member tag does **not** require the member to be an admin —
+it is the `rank` string extended to ordinary members (`rank:flags.2?string` on the plain
+`channelParticipant` constructor).
+
+**Setter (confirmed by the §3 spike):** the tag is written via
+**`messages.editChatParticipantRank(peer, participant, rank)`** (constructor `a00f32b0`), issued at
+**protocol layer 224** — *not* `channels.editAdmin`, which the spike proved inert on member tags.
+Stock GramJS 2.26.22 lacks both the method and layer-224 support, so the design vendors a single
+hand-serialized request and issues it over an isolated layer-224 connection (see §4, §7).
 
 ## 2. Scope
 
@@ -141,134 +145,174 @@ read-modify-write concern for *existing admins* still needs a Phase-1 decision (
 >   reinforced: there is no per-request shortcut; honoring the member-tag layer requires the
 >   whole connection to negotiate it, i.e. a GramJS client whose TL schema + LAYER match.
 
-## 4. Architecture
+## 4. Architecture (revised after the spike)
 
-Reuse-first, mirroring the removal pipeline. New `TagExecutor` is built as a **parallel class**
-to `RemovalExecutor` (not a refactor of it) to avoid destabilizing the shipped v1.0 removal path.
-Low-risk shared helpers (generation guard, inter-group pacing) may be extracted only where safe.
+> This section was rewritten once the spike (§3) proved the setter is
+> `messages.editChatParticipantRank` at layer 224 — **not** `channels.editAdmin`.
+
+Reuse-first, mirroring the removal pipeline. `TagExecutor` is a **parallel class** to
+`RemovalExecutor` (not a refactor) to avoid destabilizing the shipped v1.0 removal path. It reuses
+the existing patterns verbatim: generation-token guard (D-15), abort → mark-remaining-skipped,
+per-group checkpoint before advancing, inter-group pacing (2s + jitter), PEER_FLOOD hard-stop,
+FLOOD_WAIT handling via the shared `RateLimitGovernor`, and resume via an audit job file. The two
+substantive differences from `RemovalExecutor` are (a) the per-group call and (b) that the call is
+issued over a **separate layer-224 connection** (see §4.3).
 
 | Concern | Removal (existing) | Tag (new) |
 |---------|--------------------|-----------|
-| Executor | `RemovalExecutor` | `TagExecutor` (sibling; same state-machine shape) |
+| Executor | `RemovalExecutor` | `TagExecutor` (sibling) |
 | Shared types | `src/shared/removalTypes.ts` | `src/shared/tagTypes.ts` |
 | IPC channels | `src/main/ipc/removalChannels.ts` | `src/main/ipc/tagChannels.ts` |
 | Audit job file | `removal-job.json` (0o600) | `tag-job.json` (0o600) |
-| Per-group API call | `EditBanned` / `DeleteChatUser` | `editAdmin(rank)` |
+| Telegram client | shared layer-198 `client` | **dedicated layer-224 `tagClient`** (§4.3) |
+| Per-group call | `EditBanned` / `DeleteChatUser` | hand-defined `messages.editChatParticipantRank` |
 
-`TagExecutor` reuses the existing patterns verbatim: generation-token guard (D-15), abort →
-mark-remaining-skipped, per-group checkpoint before advancing, inter-group pacing (2s + jitter),
-PEER_FLOOD hard-stop, FLOOD_WAIT auto-sleep via the shared governor, and resume via the audit
-job file. The **only** substantive difference from `RemovalExecutor` is the body of the
-per-group dispatch method.
+### New component: `src/main/telegram/tagApi.ts`
 
-### Shared types (`tagTypes.ts`, modeled on `removalTypes.ts`)
+GramJS 2.26.22 has no `editChatParticipantRank` class, so we vendor exactly one TL request,
+modeled on the proven `scripts/spike-member-tag.mjs` serializer:
 
-- `TagState` — like `RemovalState`, but the `severity: 'kick' | 'ban'` field is replaced by
-  `tag: string`.
-- `TagGroupOutcome` — `{ dialogId, status, errorCode?, timestamp }`.
-- `TagJobFile` — like `RemovalJobFile`: `schemaVersion`, `jobId`, `tag`, `targetId`,
-  `targetName`, `targetAccessHash`, `dialogIds`, `outcomes`, `startedAt`, `completedAt?`, `status`.
-- `TagErrorCode` — see §4.2.
+```
+messages.editChatParticipantRank#a00f32b0 peer:InputPeer participant:InputPeer rank:string = Updates
+```
+
+A factory returns a minimal GramJS-compatible request object — `{ classType: 'request',
+CONSTRUCTOR_ID: 0xa00f32b0, SUBCLASS_OF_ID: 2331323052, async resolve(){}, getBytes(),
+readResult(reader) }` — where `getBytes()` concatenates the constructor id (LE) +
+`InputPeerChannel.getBytes()` + `InputPeerUser.getBytes()` + a TL-string-encoded rank. (Reuse
+GramJS's `Api.InputPeerChannel` / `Api.InputPeerUser` for the two peers; implement the TL-string
+encoder per the spike.) `readResult` reads the response generically; the response is an **empty
+`Updates`** that parses fine even at layer 198 (verified), so the tag client never has to parse
+layer-224 dialog/participant constructors.
 
 ### 4.1 Per-group dispatch
 
-- **basic-group** → outcome `skipped` (or `failed`) with `TAG_UNSUPPORTED_BASIC_GROUP`.
-  `editAdmin` is channels-only. (Confirm in spike Q5.)
-- **supergroup | broadcast-channel** → `channels.EditAdmin({ channel, userId,
-  adminRights: ChatAdminRights{} (all false), rank: tag })`.
-  - Already-admin handling per the **spike Q2** decision (§5).
-  - Channel entity id + accessHash extracted via the same duck-typed `getDialogEntity()` path
-    used by `RemovalExecutor` for `EditBanned`.
-  - Target identity (id + accessHash) read from the **main-process resolver only**
-    (`resolver.getResolvedUser()`), never from the renderer payload — preserves the existing
-    T-05-04-B invariant.
+For each selected group, `TagExecutor` builds `InputPeerChannel{ channelId, accessHash }` (group)
+and `InputPeerUser{ userId, accessHash }` (target) from ids+accessHashes **resolved by the main
+layer-198 client** (GroupEnumerator entity map + `resolver.getResolvedUser()`), then issues the
+`editChatParticipantRank` request through the **`tagClient`** (§4.3), wrapped in the shared
+`governor.run()` for account-wide throttling.
+
+- **supergroup / broadcast-channel** → `InputPeerChannel` + the tag write.
+- **basic-group (`Chat`)** → the method takes `InputPeer`, so `InputPeerChat` *may* be supported.
+  This is **unverified** — the earlier "channels-only" assumption came from `editAdmin`, which no
+  longer applies. **Phase 1 must probe a basic group**; until then, treat basic groups as
+  `skipped` with `TAG_UNSUPPORTED_BASIC_GROUP` and revisit.
+- Target/group identity always comes from the **main process**, never the renderer payload
+  (preserves the T-05-04-B invariant). The IPC payload carries only `dialogIds` + the `tag` string.
 
 ### 4.2 Outcome model
 
 - Outcome statuses: `done | skipped | failed`.
-- `TagErrorCode`:
-  - `TAG_NO_RIGHTS` — acting admin lacks the needed right (mapped from `CHAT_ADMIN_REQUIRED`).
-  - `TAG_TARGET_IS_ADMIN` — target is already admin and policy says skip (mapped from
-    `USER_ADMIN_INVALID`, or pre-checked; depends on §5 decision).
-  - `TAG_UNSUPPORTED_BASIC_GROUP` — basic group, not supported.
-  - `TAG_USER_INVALID` — target no longer resolvable (`USER_ID_INVALID`).
-  - `TAG_CHANNEL_PRIVATE` — channel inaccessible (`CHANNEL_PRIVATE`).
-  - `NETWORK` — transient.
-  - `UNKNOWN` — fallthrough.
-- PEER_FLOOD continues to map to the shared `hard-stop` disposition (resumable), exactly as in removal.
+- `TagErrorCode` (mapped from `editChatParticipantRank` RPC errors — exact strings confirmed in
+  Phase 1, candidates from the schema/observed behavior):
+  - `TAG_NO_RIGHTS` — caller lacks the `manage_ranks` admin right (likely `CHAT_ADMIN_REQUIRED`
+    or a `RIGHT_FORBIDDEN`-style error).
+  - `TAG_RANK_INVALID` — rank rejected (length/charset).
+  - `TAG_USER_NOT_PARTICIPANT` — target not a member of this group.
+  - `TAG_UNSUPPORTED_BASIC_GROUP` — basic group, pending §4.1 verification.
+  - `TAG_CHANNEL_PRIVATE` / `TAG_USER_INVALID` — inaccessible / unresolvable.
+  - `NETWORK`, `UNKNOWN`.
+- PEER_FLOOD continues to map to the shared `hard-stop` disposition (resumable), as in removal.
 
-## 5. Deferred decision: already-admin targets
+### 4.3 The layer-224 connection (the core new problem)
 
-**Status: deferred to spike Q2.** Setting a tag via `editAdmin` risks overwriting an existing
-admin's rights or custom title. The spike observes the actual server behavior, then one of:
+`editChatParticipantRank` and the layer-224 handshake are required; the main shared `client`
+(`src/main/index.ts:145`) runs at **layer 198** and must stay there (its dialog/participant/removal
+parsing depends on 198 constructors). `AllTLObjects.LAYER` is a **module-global** read at
+connect-time, so the two connections cannot both rely on the constant simultaneously.
 
-- **Skip & flag** — skip groups where the target is already an admin; mark them in results so
-  the operator handles them manually. (Safest; never touches existing admins' powers.)
-- **Preserve rights, set tag** — read current `admin_rights` first, re-send those exact rights
-  plus the new tag (read-modify-write; more calls per group).
+**Recommended approach — patch-connect-restore around an isolated `tagClient`:**
 
-This is the safety crux of the feature — the mirror of "don't remove the wrong person." The
-choice is made once the spike shows what `editAdmin` actually does to an existing admin.
+1. A second `TelegramClient` (`tagClient`) is created from the **same `StringSession`** as the main
+   client (no re-auth — the session string is shared in-process).
+2. Just before `tagClient.connect()`: set `AllTLObjects.LAYER = 224`; immediately after connect
+   resolves, restore `AllTLObjects.LAYER = 198`. Because `LAYER` is read only at connect-time, the
+   `tagClient`'s connection stays pinned at 224 while the constant is back to 198 for everyone else.
+3. The **main client must not (re)connect during that brief window.** Mitigations: only open the
+   `tagClient` at the start of a tag run (when no removal/enumeration is in flight), and serialize
+   via the shared governor. GramJS auto-reconnect on the main client during the window is the one
+   real risk — Phase 1 must guard it (e.g. a short mutex / "no main reconnect" assertion).
+4. All `tagClient` invokes route through the **shared `governor`** so account-wide rate limiting
+   still holds across both connections ("no feature can flood the account").
+5. `tagClient` is **write-only** and torn down at the end of the run.
+
+**Alternatives if the reconnect race proves fragile** (note, don't pre-build): (a) vendor a tiny
+GramJS patch making `LAYER` an instance option rather than a global; (b) run the tag client in a
+separate Node worker/process. Prefer the patch-connect-restore until it demonstrably fails.
+
+## 5. Already-admin targets (partly resolved by the spike)
+
+The spike resolved the non-admin case: `editChatParticipantRank` tags a plain member and
+**does not promote** them (participant stays `channelParticipant`, rank-only). The original §5
+fear — that tagging would overwrite an admin's rights/title — was specific to `editAdmin` and no
+longer applies directly.
+
+**Remaining Phase-1 probe:** does `editChatParticipantRank` on a target who is *already an admin*
+(and may carry an `editAdmin`-set custom rank) disturb their admin rank/rights? The `rank` field is
+shared between admin custom titles and member tags, so an existing admin's title could be
+overwritten. Run one probe (tag an admin test user, diff their `channelParticipantAdmin` before/
+after) before finalizing. Until confirmed, default to **skip & flag** for already-admin targets.
 
 ## 6. Safety & security
 
-All existing invariants are preserved:
+- **Explicit confirmation gate** showing the tag string + selected group count + group list.
+- **Target/group identity from the main process only** (T-05-04-B); IPC payload carries only
+  `dialogIds` + `tag`.
+- **Already-admin protection** per §5 (default skip & flag pending the probe).
+- **Account-wide throttling** preserved: `tagClient` invokes go through the **shared governor**,
+  so tag writes can't flood the account any more than removals can.
+- **Main-client integrity:** the layer-224 window is tightly scoped and restored (§4.3); the main
+  198 client's behavior is otherwise untouched.
+- `tag-job.json` written `0o600`, like the session and removal job files.
 
-- **Explicit confirmation gate** showing the tag string + selected group count + group list
-  before any write.
-- **Target identity from the main-process resolver only** — never the renderer payload
-  (T-05-04-B). The IPC payload carries only `dialogIds` and the `tag` string.
-- **Already-admin protection** per the §5 spike decision.
-- **Throttling** via the shared `RateLimitGovernor`; FLOOD_WAIT auto-sleep; PEER_FLOOD
-  hard-stop; resume from `tag-job.json` — all unchanged from the removal engine.
-- `tag-job.json` written with mode `0o600`, same as the session and removal job files.
+## 7. GramJS reality (revised — confirmed by the spike)
 
-## 7. GramJS reality (the constraint that shaped this design)
-
-Installed GramJS **2.26.22** pins protocol **LAYER 198**. Findings:
-
-- **Issuing** `editAdmin` with a `rank` string **works today** — the `EditAdmin` class already
-  carries a `rank: string` field (it has backed admin custom titles for years). No new library
-  capability is needed to *send* the call.
-- **Reading** a member's tag back does **not** work: the installed `ChannelParticipant`
-  constructor has only `userId / date / subscriptionUntilDate` — **no `rank` field**. The new
-  schema's `channelParticipant` (with `rank:flags.2?string`) is a different constructor hash.
-  Bumping the announced layer to obtain it would make the server send other new constructors
-  that 2.26.22 cannot deserialize.
-
-This is exactly why v1 is **write-only**: we issue the tag and trust the `Updates` response,
-and we do **not** read tags back through `getParticipants`. This keeps the feature on stock
-GramJS — *provided* spike Q1 confirms the server honors a layer-198 `editAdmin + rank` as a
-member-tag set. If it does not, see the Phase 0 "stop and reassess" branch (§3).
+- **Setter:** `messages.editChatParticipantRank#a00f32b0`. **Proven** to set a non-admin's tag
+  (`"tag"` → `"testtag"`, then restored) when sent at layer 224. `channels.editAdmin + rank` is
+  **inert** on member tags (tested at layers 198 and 224).
+- **Layer:** required = **224**. Per-call `InvokeWithLayer` is rejected
+  (`CONNECTION_LAYER_INVALID`); the whole connection must negotiate 224 via the patched `LAYER`
+  constant at connect-time (verified — handshake at 224 succeeds with stock GramJS).
+- **Write-only is the enabler:** `editChatParticipantRank` returns an **empty `Updates`** that
+  parses fine at layer 198, so the tag client needs no layer-224 deserialization. (Reading tags
+  back *would* require the layer-224 `channelParticipant` constructor — out of scope for v1.)
+- **No upstream shortcut:** npm's latest `telegram` is still **2.26.22** (Feb 2025); it has neither
+  the method nor layer-224 constructors. Hence the vendored one-method request (§4) + the
+  isolated layer-224 connection (§4.3).
+- **Permissions (from schema):** `chatAdminRights.manage_ranks` (admin tags others) and
+  `chatBannedRights.edit_rank` (member self-tags). Phase 1 may pre-check `manage_ranks` to grey
+  out groups where the caller can't tag.
 
 ## 8. Renderer / UX
 
 - **Action picker**: Kick / Ban / **Tag** (chosen before the confirmation screen).
-- **Tag input**: single text field with live length + charset validation (limits from spike Q4).
-- **Confirmation screen**: shows the tag string, the target identity, and the selected group
-  list/count.
-- **Progress + results screens**: reused from the removal flow (processed/total, per-group
-  outcome rows, FLOOD_WAIT countdown, summary band). Result rows surface the `TagErrorCode`
-  values from §4.2.
+- **Tag input**: single text field with live length/charset validation (exact limits measured in
+  Phase 1 via the proven path).
+- **Confirmation screen**: shows the tag string, target identity, and the selected group list/count.
+- **Progress + results**: reused from the removal flow; result rows surface the §4.2 `TagErrorCode`
+  values (including already-admin skips and any basic-group skips).
 
 ## 9. Testing
 
-Unit tests mirroring `removalExecutor.test.ts`:
-
-- Asserts the exact `editAdmin` payload (all-false `ChatAdminRights` + the `rank` string).
-- Basic-group → `TAG_UNSUPPORTED_BASIC_GROUP` skip.
-- Already-admin handling per the §5 decision.
-- Generation-guard invalidation of stale in-flight work.
-- Checkpoint after each group; resume from `tag-job.json`.
-- PEER_FLOOD hard-stop (resumable); FLOOD_WAIT auto-sleep.
-
-Spike Q1–Q5 findings are recorded in §3's deliverable before Phase 1 code is written.
+- **`tagApi.ts` unit test** — assert the exact serialized bytes of `editChatParticipantRank`
+  (constructor id `b0320fa0` LE + `InputPeerChannel` + `InputPeerUser` + TL-string rank), using the
+  spike's verified hex as the golden fixture.
+- **`TagExecutor` tests** mirroring `removalExecutor.test.ts`: per-group dispatch with a mock
+  `tagClient`, already-admin skip, generation-guard invalidation, checkpoint + resume from
+  `tag-job.json`, PEER_FLOOD hard-stop, FLOOD_WAIT via the governor.
+- **Layer-224 connection lifecycle test** — patch-connect-restore leaves `AllTLObjects.LAYER` at
+  198 afterward; `tagClient` invokes route through the shared governor.
 
 ## 10. Implementation phasing
 
-0. **Empirical spike** (throwaway script) — answer Q1–Q5; branch.
-1. **Shared types + IPC** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring.
-2. **`TagExecutor`** — write-only state machine; per-group `editAdmin` dispatch; tests.
-3. **Renderer** — action picker, tag input + validation, confirmation, wire to progress/results.
+0. **Empirical spike — DONE** (§3). Setter, layer, permissions, no-promotion all confirmed; the
+   `scripts/spike-member-tag.mjs` serializer is the reference for `tagApi.ts`.
+1. **`tagApi.ts` + layer-224 `tagClient`** — vendored `editChatParticipantRank` request and the
+   patch-connect-restore connection (§4.3); plus the one already-admin probe (§5) and the basic-
+   group probe (§4.1).
+2. **Shared types + IPC + audit** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` wiring.
+3. **`TagExecutor`** — write-only state machine over `tagClient`; per-group dispatch; tests.
+4. **Renderer** — action picker, tag input + validation, confirmation, wire to progress/results.
 
-Implementation (Phases 0–3) routes through the project's GSD workflow per CLAUDE.md.
+Implementation routes through the project's GSD workflow per CLAUDE.md.
