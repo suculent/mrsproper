@@ -96,6 +96,9 @@ function parseArgs(argv) {
     confirm: false,
     listGroups: false,
     layer: null,
+    forceLayer: null,
+    groupHash: null,
+    userHash: null,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -124,6 +127,17 @@ function parseArgs(argv) {
         result.layer = Number.isNaN(n) ? null : n
         break
       }
+      case '--force-layer': {
+        const n = parseInt(args[++i] ?? '', 10)
+        result.forceLayer = Number.isNaN(n) ? null : n
+        break
+      }
+      case '--group-hash':
+        result.groupHash = args[++i] ?? null
+        break
+      case '--user-hash':
+        result.userHash = args[++i] ?? null
+        break
       default:
         // Unknown flag — ignore silently
         break
@@ -149,6 +163,13 @@ Optional:
                             (use to find a private group's id; --group/--user/--tag not needed)
   --layer <N>               EXPERIMENT: wrap the editAdmin call in InvokeWithLayer(N) to test
                             whether member-tag behavior is gated behind a newer protocol layer
+                            (NOTE: rejected mid-session with CONNECTION_LAYER_INVALID — use
+                            --force-layer instead)
+  --force-layer <N>         EXPERIMENT: patch GramJS's global LAYER to N before connect, so the
+                            handshake negotiates layer N. Use together with --group-hash and
+                            --user-hash (numeric --group/--user ids) to bypass entity resolution.
+  --group-hash <hash>       Group accessHash (with numeric --group id) — skips group resolution
+  --user-hash <hash>        User accessHash (with numeric --user id) — skips user resolution
 
 Environment (from .env):
   MRSPROPER_API_ID          Your Telegram api_id (integer)
@@ -211,6 +232,58 @@ async function resolveGroupEntity(client, groupArg) {
   return null
 }
 
+// ── Raw layer probe (--force-layer + --group-hash + --user-hash) ──────────────
+// Bypasses ALL entity resolution (getDialogs/getEntity/getParticipants) by building
+// InputChannel/InputPeerUser directly from caller-supplied id+accessHash. This keeps the
+// probe alive even when the patched LAYER makes dialog/participant responses unparseable —
+// the only call exercised is editAdmin itself. Ground truth = check the mobile client after.
+async function rawLayerProbe(client, args) {
+  console.log(`[RAW PROBE] force-layer=${args.forceLayer} — bypassing entity resolution.`)
+  const inputChannel = new Api.InputChannel({
+    channelId: bigInt(args.group),
+    accessHash: bigInt(args.groupHash),
+  })
+  const inputUser = new Api.InputPeerUser({
+    userId: bigInt(args.user),
+    accessHash: bigInt(args.userHash),
+  })
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log('ABOUT TO CALL: channels.EditAdmin (raw, no resolution)')
+  console.log(`  channel : id=${args.group} accessHash=${args.groupHash}`)
+  console.log(`  user    : id=${args.user} accessHash=${args.userHash}`)
+  console.log(`  rank    : "${args.tag}"`)
+  console.log('  adminRights : ChatAdminRights{} (all flags false/omitted)')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+  try {
+    const result = await client.invoke(
+      new Api.channels.EditAdmin({
+        channel: inputChannel,
+        userId: inputUser,
+        adminRights: new Api.ChatAdminRights({}),
+        rank: args.tag,
+      })
+    )
+    console.log('[RAW PROBE] editAdmin SUCCEEDED. Raw result:')
+    try {
+      console.log(JSON.stringify(result, bigIntReplacer, 2))
+    } catch {
+      console.log('(result could not be JSON-serialized — likely a constructor newer than GramJS 198 knows)')
+    }
+    console.log()
+    console.log(`[RAW PROBE] >>> NOW CHECK MOBILE CLIENT: did the tag change to "${args.tag}"? <<<`)
+    console.log('[RAW PROBE] If YES → member tags ARE editAdmin+rank at a newer layer (confirms hypothesis A).')
+  } catch (err) {
+    console.log('[RAW PROBE] editAdmin ERROR — errorMessage:', err.errorMessage ?? err.message ?? '(none)')
+    console.error(err)
+    console.log()
+    console.log('[RAW PROBE] CONNECTION_LAYER_INVALID at connect → handshake rejected the patched layer:')
+    console.log('[RAW PROBE]   the old (198) constructors are incompatible with the announced layer →')
+    console.log('[RAW PROBE]   full TL-schema regeneration is required (no layer-bump-only shortcut).')
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -245,6 +318,15 @@ async function main() {
 
   // ── Client setup ─────────────────────────────────────────────────────────────
 
+  // EXPERIMENT (--force-layer N): patch GramJS's LAYER constant BEFORE connect so the
+  // connection handshake (invokeWithLayer + initConnection) negotiates layer N. GramJS reads
+  // AllTLObjects.LAYER as a property at connect-time, so this mutation takes effect.
+  if (args.forceLayer) {
+    const allTl = require('telegram/tl/AllTLObjects')
+    console.log(`[FORCE-LAYER] Patching GramJS LAYER ${allTl.LAYER} → ${args.forceLayer} before connect.`)
+    allTl.LAYER = args.forceLayer
+  }
+
   const session = new StringSession(args.session ?? '')
   const client = new TelegramClient(session, apiId, apiHash, {
     connectionRetries: 3,
@@ -276,6 +358,15 @@ async function main() {
   console.log('[SESSION] KEEP THIS SECRET — it grants full account access.')
   console.log('[SESSION] NEVER commit it to git or write it to a file.')
   console.log()
+
+  // ── Raw layer probe: bypass resolution, exercise only editAdmin at the patched layer ──
+  if (args.forceLayer && args.groupHash && args.userHash) {
+    await rawLayerProbe(client, args)
+    console.log()
+    console.log('[SPIKE] Done. Disconnecting...')
+    await client.disconnect()
+    process.exit(0)
+  }
 
   // ── --list-groups discovery mode: dump dialogs (id + title + type) and exit ──
   if (args.listGroups) {
