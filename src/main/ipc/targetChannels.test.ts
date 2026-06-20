@@ -104,6 +104,13 @@ function makeMockSearcher() {
   }
 }
 
+/** Create a mock tag executor stub — only abortExecution() is needed by TARGET_RESET (CR-03). */
+function makeMockTagExecutor() {
+  return {
+    abortExecution: vi.fn(),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // VRF-03 — confirm gate
 // ---------------------------------------------------------------------------
@@ -274,6 +281,66 @@ describe('registerTargetChannels — TARGET_RESET abort ordering (TGT-05g)', () 
 
     // After reset, resolver returns idle state
     expect(result.step).toBe('idle')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CR-03 — TARGET_RESET aborts active tag run
+// ---------------------------------------------------------------------------
+
+describe('registerTargetChannels — TARGET_RESET aborts tag executor (CR-03)', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('TARGET_RESET calls tagExecutor.abortExecution() before resolver.reset()', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+    const scanner = makeMockScanner()
+    const searcher = makeMockSearcher()
+    const tagExecutor = makeMockTagExecutor()
+
+    const callOrder: string[] = []
+    tagExecutor.abortExecution.mockImplementation(() => { callOrder.push('tagExecutorAbort') })
+    resolver.reset.mockImplementation(() => { callOrder.push('reset') })
+
+    registerTargetChannels(
+      win as never,
+      resolver as never,
+      scanner as never,
+      searcher as never,
+      undefined,
+      tagExecutor as never
+    )
+
+    await capturedHandlers['target:reset']({}, undefined)
+
+    expect(tagExecutor.abortExecution).toHaveBeenCalled()
+    // tag executor abort must precede resolver.reset() so the run doesn't tag the cleared target
+    const tagIdx = callOrder.indexOf('tagExecutorAbort')
+    const resetIdx = callOrder.indexOf('reset')
+    expect(tagIdx).toBeGreaterThanOrEqual(0)
+    expect(tagIdx).toBeLessThan(resetIdx)
+  })
+
+  it('TARGET_RESET does not throw when tagExecutor is not provided (optional param)', async () => {
+    const win = makeMockWin()
+    const resolver = makeMockResolver()
+    const scanner = makeMockScanner()
+    const searcher = makeMockSearcher()
+
+    // No tagExecutor passed — handler must still work (tagExecutor is optional)
+    registerTargetChannels(win as never, resolver as never, scanner as never, searcher as never)
+
+    // Handler is synchronous — just invoke it and verify no throw + resolver.reset() called
+    let threw = false
+    try {
+      await capturedHandlers['target:reset']({}, undefined)
+    } catch {
+      threw = true
+    }
+    expect(threw).toBe(false)
+    expect(resolver.reset).toHaveBeenCalled()
   })
 })
 
