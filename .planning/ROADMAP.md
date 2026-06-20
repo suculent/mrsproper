@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1–8 (shipped 2026-06-13) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- 🚧 **v1.6 Member Tag Action** — Phases 9–12 (in progress)
+- ✅ **v1.6 Member Tag Action** — Phases 9–12 (shipped 2026-06-20) — see [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 
 ## Phases
 
@@ -24,14 +24,17 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 </details>
 
-### 🚧 v1.6 Member Tag Action (In Progress)
+<details>
+<summary>✅ v1.6 Member Tag Action (Phases 9–12) — SHIPPED 2026-06-20</summary>
 
-**Milestone Goal:** Add a "Tag" action alongside Kick/Ban that sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` (layer 224), reusing the throttled, resumable, audited execution pipeline. Phase 0 spike is complete — setter confirmed, layer-224 technique proven.
+Full detail archived in [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md).
 
-- [x] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore (completed 2026-06-20)
-- [x] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary (completed 2026-06-20)
-- [x] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume (completed 2026-06-20)
-- [x] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report (completed 2026-06-20)
+- [x] **Phase 9: Tag API & Layer-224 Connection** (2/2 plans) — completed 2026-06-20
+- [x] **Phase 10: Shared Types, IPC & Audit Wiring** (4/4 plans) — completed 2026-06-20
+- [x] **Phase 11: TagExecutor** (3/3 plans) — completed 2026-06-20
+- [x] **Phase 12: Renderer — Action Picker, Tag Input & Results** (4/4 plans) — completed 2026-06-20
+
+</details>
 
 ## Phase Details
 

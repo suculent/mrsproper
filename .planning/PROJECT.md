@@ -10,17 +10,23 @@ It exists for the recurring "serial bad actor" problem: a spammer, troll, or ban
 
 A group admin can confidently remove the right person from every relevant community in one safe, verified pass — without tripping Telegram's rate limits or hitting the wrong account.
 
-## Current Milestone: v1.6 Member Tag Action
+## Current State
 
-**Goal:** Add a "Tag" action alongside Kick/Ban that sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` (protocol layer 224), reusing the throttled, resumable, audited execution pipeline.
+**Shipped:** v1.6 Member Tag Action (2026-06-20) — a third action (Tag) alongside Kick/Ban that
+sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` over an
+isolated layer-224 connection, reusing the throttled, resumable, audited execution pipeline.
+Confirmed working end-to-end against a real account. Built on v1.0 (core removal app) + v1.5
+(localization/theme).
 
-**Target features:**
-- A third action — Tag — applying one tag string across all selected supergroups/channels
-- A vendored `editChatParticipantRank` request over an isolated layer-224 connection (the main layer-198 client is untouched)
-- Already-admin targets skipped & flagged (no admin-title clobbering); basic groups skipped
-- Confirmation gate, governor throttling, resume, and live progress reused from the removal flow
+**Key v1.6 outcome:** the layer-224 tag write required a two-phase isolation fix — a concurrent
+224 connection upgrades the shared session to layer 224, corrupting the main layer-198 client's
+response parsing. Resolved by separating layer-198 reads (admin pre-checks) from layer-224 writes
+in time and restoring the main client to 198 afterward.
 
-**Design + spike complete:** `docs/superpowers/specs/2026-06-20-member-tag-action-design.md` (setter confirmed, layer-224 technique proven, admin/basic-group probes done).
+**Next milestone:** TBD — run `/gsd:new-milestone`. Candidate follow-ups: confirm the real tag
+max-length (currently a provisional 16-char cap), read-back/clear-tag actions, per-group tags.
+
+**Design reference:** `docs/superpowers/specs/2026-06-20-member-tag-action-design.md`.
 
 ## Requirements
 
@@ -46,17 +52,18 @@ A group admin can confidently remove the right person from every relevant commun
 - ✓ Show live progress during execution and a per-group success/failure report afterward — Phase 6 (live wizard run stage + structured report band; known defects in resume-after-restart path tracked in 06-HUMAN-UAT.md / 06-REVIEW.md)
 - ✓ Code-signed, notarized portable builds verified launching on clean macOS and Windows machines — Phase 7 (0.9.1 RC; 3/4 machines passed, Big Sur smoke test deferred — 07-HUMAN-UAT.md)
 - ✓ Language switcher (English/Česky) with persisted preference, all UI strings externalized via i18next, complete Czech translation (formal vykání, 3-form plurals), plus Day/Night theme toggle — Phase 8 (v1.5; UAT approved after one TargetCard fix cycle; re-confirmation items in 08-HUMAN-UAT.md)
+- ✓ Choose a "Tag" action (alongside Kick/Ban) and enter one tag string applied to all selected groups — v1.6 (TAG-01)
+- ✓ Set the member tag across selected supergroups/channels via `editChatParticipantRank` over an isolated layer-224 connection, leaving the main layer-198 client undisturbed — v1.6 (TAG-02; live-confirmed end-to-end after the two-phase layer-isolation fix)
+- ✓ Tag writes throttled through the shared governor (FLOOD_WAIT/PEER_FLOOD honored) and resumable via a `tag-job` audit file — v1.6 (TAG-03)
+- ✓ Skip & flag already-admin targets (no title clobbering) and basic groups; report per-group outcomes — v1.6 (TAG-04)
+- ✓ Explicit confirmation gate (tag + identity + group list) before any write; target identity sourced from the main process only — v1.6 (TAG-05)
+- ✓ Live progress and per-group success/failure report, reusing the removal flow UI — v1.6 (TAG-06)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- Choose a "Tag" action (alongside Kick/Ban) and enter one tag string applied to all selected groups — v1.6 (TAG-01)
-- Set the member tag across selected supergroups/channels via `editChatParticipantRank` over an isolated layer-224 connection, leaving the main layer-198 client undisturbed — v1.6 (TAG-02)
-- Tag writes throttled through the shared governor (FLOOD_WAIT/PEER_FLOOD honored) and resumable via a `tag-job` audit file — v1.6 (TAG-03)
-- Skip & flag already-admin targets (no title clobbering) and basic groups; report per-group outcomes — v1.6 (TAG-04)
-- Explicit confirmation gate (tag + identity + group list) before any write; target identity sourced from the main process only — v1.6 (TAG-05)
-- Live progress and per-group success/failure report, reusing the removal flow UI — v1.6 (TAG-06)
+(None — v1.6 shipped. Run `/gsd:new-milestone` to define the next milestone.)
 
 ### Out of Scope
 
@@ -121,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 — started milestone v1.6 (Member Tag Action). Design + Phase 0 spike complete (member-tag setter = messages.editChatParticipantRank at layer 224, proven). Requirements TAG-01..06 defined.*
+*Last updated: 2026-06-20 after v1.6 milestone — Member Tag Action shipped (TAG-01..06 validated, live-confirmed end-to-end). Two-phase layer-224/198 isolation was the key fix.*

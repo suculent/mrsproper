@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Member Tag Action
-status: milestone_complete
-stopped_at: Milestone complete (Phase 12 was final phase)
-last_updated: 2026-06-20T17:40:13.465Z
-last_activity: 2026-06-20
+status: Awaiting next milestone
+stopped_at: Completed 11-tagexecutor-11-02-PLAN.md
+last_updated: "2026-06-20T21:18:11.621Z"
+last_activity: 2026-06-20 — Milestone v1.6 completed and archived
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 13
   completed_plans: 13
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-20
-
-Progress: [██████████] 100%
+Phase: Milestone v1.6 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-20 — Milestone v1.6 completed and archived
 
 ## Performance Metrics
 
@@ -119,8 +117,22 @@ Items carried forward from v1.0 milestone close (2026-06-13):
 | uat_gap | 07-HUMAN-UAT.md | partial (Big Sur smoke test deferred) | v1.0 close |
 | uat_gap | 08-HUMAN-UAT.md | partial (4 open: re-confirm after fix cycle) | v1.0 close |
 
+Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| uat_gap | 12-HUMAN-UAT.md | partial (3 open: TagInput focus, Day/Night×en/cs visual, provisional 16-char TAG_MAX_LENGTH) | v1.6 close |
+| quick_task | 260611-t1h-rename-mrproper-to-mrsproper | done (no status frontmatter) | v1.6 close |
+| quick_task | 260620-f8a-phase-0-empirical-spike | done (no status frontmatter) | v1.6 close |
+| todo | country-picker-rows-clickable (ui) | pending | v1.6 close (carried from v1.0) |
+| todo | default-country-czechia (ui) | pending | v1.6 close (carried from v1.0) |
+
 ## Session Continuity
 
 Last session: 2026-06-20T17:18:32.051Z
 Stopped at: Completed 11-tagexecutor-11-02-PLAN.md
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

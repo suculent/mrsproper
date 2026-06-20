@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.6 Member Tag Action (Shipped: 2026-06-20)
+
+**Phases completed:** 4 phases (9–12), 13 plans
+
+**Delivered:** A third action — Tag — alongside Kick/Ban that sets a Telegram member tag across all
+selected supergroups/channels via `messages.editChatParticipantRank` over an isolated layer-224
+connection, reusing the throttled, resumable, audited execution pipeline. Confirmed working
+end-to-end against a real account.
+
+**Key accomplishments:**
+
+- **Phase 9** — Vendored the GramJS-absent `editChatParticipantRank#a00f32b0` TL request (golden-byte verified) and a write-only layer-224 `TagClient` (patch-connect-restore of `AllTLObjects.LAYER`, governor-routed).
+- **Phase 10** — Shared `tagTypes`, Zod-validated IPC (`tagChannels`) carrying only `{dialogIds, tag}` (identity from main process only), and durable `tag-job.json` audit/checkpoint with launch-time resume detection.
+- **Phase 11** — `TagExecutor`: throttled, generation-guarded, resumable state machine; already-admin + basic-group skip; PEER_FLOOD hard-stop; FLOOD_WAIT via governor.
+- **Phase 12** — Renderer: 3-way Kick/Ban/Tag picker, tag input with live validation, confirmation gate, live per-group progress + FLOOD_WAIT countdown, results report; new `tag` i18n namespace (en + cs).
+- **Post-ship fix (live-verified):** two-phase layer isolation — a concurrent layer-224 connection upgrades the shared session to 224 and corrupts the main layer-198 client's response parsing; resolved by separating 198 reads from 224 writes and restoring the main client to 198 afterward.
+
+**Known deferred items at close:** 5 (see STATE.md Deferred Items) — Phase 12 residual UAT
+(TagInput focus, Day/Night×en/cs visual), provisional 16-char `TAG_MAX_LENGTH`, and 2 inherited UI todos.
+
+---
+
 ## v1.0 MVP (Shipped: 2026-06-13)
 
 **Phases completed:** 9 phases, 57 plans, 80 tasks
