@@ -352,7 +352,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                 {tT('peerFloodBanner')}
                 <div className="mt-2">
                   <Button
-                    variant="destructive"
+                    variant="default"
                     size="sm"
                     onClick={() => void tagActions.resumeJobFromDisk()}
                   >
@@ -413,7 +413,6 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       }
 
       // Tag is idle — fall through to scan progress slot (d)
-      return null
     }
 
     // EXISTING REMOVAL BRANCHES (unchanged) — placed after tag block
@@ -550,8 +549,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       )
     }
 
-    // d. Scan progress (existing render — when scan is scanning and removal is idle)
-    if (scan.step === 'scanning' && removal.step === 'idle') {
+    // d. Scan progress — when scan is scanning and no run is active (removal or tag)
+    if (scan.step === 'scanning' && removal.step === 'idle' && tag.step === 'idle') {
       return (
         <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
           <div className="flex items-center justify-between mb-1">
@@ -634,16 +633,22 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <RefreshCw className="h-4 w-4" />
         </Button>
 
-        {/* Run-trigger button — checklist mode, scan complete, ≥1 checked, removal idle */}
+        {/* Run-trigger button — checklist mode, scan complete, ≥1 checked, removal+tag idle */}
         {mode === 'checklist' && scan.step === 'complete' && checkedCount > 0 && (
-          removal.step === 'idle' ? (
+          removal.step === 'idle' && tag.step === 'idle' ? (
             <Button
               variant="default"
               size="sm"
               onClick={() => onNavigateToReview()}
-              aria-label={tW('runTriggerAria', { count: checkedCount })}
+              aria-label={
+                activeAction === 'tag'
+                  ? tT('runTriggerAriaTag', { count: checkedCount })
+                  : tW('runTriggerAria', { count: checkedCount })
+              }
             >
-              {tW('runTriggerLabel', { count: checkedCount })}
+              {activeAction === 'tag'
+                ? tT('runTriggerLabelTag', { count: checkedCount })
+                : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : removal.step === 'stopping' ? (
             // Disabled (not hidden) while stopping — UI-SPEC
@@ -653,7 +658,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               aria-disabled="true"
               disabled={true}
             >
-              {tW('runTriggerLabel', { count: checkedCount })}
+              {activeAction === 'tag'
+                ? tT('runTriggerLabelTag', { count: checkedCount })
+                : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : null
         )}
