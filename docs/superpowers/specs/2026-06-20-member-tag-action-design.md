@@ -80,28 +80,40 @@ The script:
 
 ### Spike findings (fill in after running `scripts/spike-member-tag.mjs`)
 
-**Run date:** _TBD_
-**GramJS version under test:** 2.26.22 (layer 198)
-**Test group:** _TBD_ &nbsp;|&nbsp; **Non-admin target:** _TBD_ &nbsp;|&nbsp; **Already-admin target:** _TBD_
+**Run date:** 2026-06-20
+**GramJS version under test:** 2.26.22 (runtime banner reports 2.26.21), **negotiated LAYER 198**
+**Test group:** "Testovací 🌹" — `Channel` (megagroup), id `3906767609`, caller is creator (full admin rights)
+**Non-admin target:** "Simple SIM" `@testovaci42`, id `8471834904` — a plain member that **already had a member tag `"tag"`** (set previously via the official client's Edit Tag UI)
 
 | # | Question | Finding | Outcome |
 |---|----------|---------|---------|
-| Q1 | Does layer-198 `editAdmin + rank` (all-false rights) set a member tag on a **non-admin** — badge appears, no promotion? | _TBD_ | ☐ YES ☐ NO |
-| Q2 | What happens to an **already-admin** target's type / rights / title? (pre→post participant diff) | _TBD_ | ☐ untouched ☐ rights changed ☐ title overwritten |
-| Q3 | Which right must the **acting** account hold? What RPC error if it lacks rights? Interaction with the group "Edit Own Tags" setting? | _TBD_ | error code: _____ |
-| Q4 | Max tag length / allowed charset? Does empty string clear vs error? | _TBD_ | max len: ___, empty: ☐ clears ☐ errors |
-| Q5 | Confirmed basic groups (`Chat`) unsupported by `channels.EditAdmin`? | _TBD_ | ☐ confirmed unsupported |
+| Q1 | Does layer-198 `editAdmin + rank` (all-false rights) set a member tag on a **non-admin**? | `editAdmin(rank:"testtag")` **succeeded** (returned `Updates`, no error), but the member tag in the client **stayed `"tag"`** — unchanged. The call is **inert** on member tags at layer 198. | ☑ **NO** |
+| Q2 | Promotion / rights side-effects on the non-admin? | **None.** Participant stayed a plain `ChannelParticipant` (not `ChannelParticipantAdmin`). All-false rights did not promote. (Already-admin case not separately tested — moot given Q1=NO.) | untouched / no promotion |
+| Q3 | Acting-account rights / permission errors? | Caller was group **creator** (full rights incl. `addAdmins`). **No permission error** — the call was accepted, just inert. | error code: _none_ |
+| Q4 | Max tag length / charset? | **Not reached** — tag never changed at this layer, so length/charset is untestable via this path. | n/a at layer 198 |
+| Q5 | Basic groups (`Chat`) unsupported? | Not exercised (used a `Channel`). Script's `Chat`-detection guard is in place; `editAdmin` is channels-only regardless. | guard present |
+
+**Additional confirmed fact — read-back is also blind at layer 198:** `getParticipants` returned the
+participant **without any `rank` field** both before and after (GramJS 2.26.22's `ChannelParticipant`
+constructor has no `rank` field). So stock GramJS 198 can neither **read** nor **write** member tags.
+The pre-existing `"tag"` was visible only in the official client, never in the script's participant dump.
 
 **Decision (from Q1):**
-- ☐ **Q1 = YES** → proceed to Phase 1 (write-only `TagExecutor`).
-- ☐ **Q1 = NO** → stop & reassess (GramJS TL-schema regeneration — separate spec).
+- ☑ **Q1 = NO** → **stop & reassess.** The member-tag feature requires a newer protocol layer than
+  GramJS 2.26.22 negotiates (198). `editAdmin + rank` is ignored for non-admins at this layer.
+  Building the feature requires GramJS TL-schema/layer work (see §7) — a separate effort, not the
+  stock-GramJS write-only path originally hoped for.
 
-**Already-admin decision (from Q2) — resolves §5:**
-- ☐ Skip & flag &nbsp; ☐ Preserve rights, set tag
+**Already-admin decision (from Q2) — resolves §5:** deferred — moot until the layer question is resolved.
 
 **Raw notes / surprises:**
 
-> _paste relevant script output or observations here_
+> - The non-admin target carried a pre-existing member tag `"tag"`, which made the negative result
+>   unambiguous: a successful `editAdmin(rank:"testtag")` left it as `"tag"`.
+> - `editAdmin` with all-false `ChatAdminRights` does NOT promote a non-admin (useful to know).
+> - `client.getEntity(<bare numeric id>)` resolves as `PeerUser` and fails for groups — the script
+>   now resolves numeric group ids via the dialog list instead.
+> - `StringSession` is exported from `telegram/sessions`, not the package root.
 
 ## 4. Architecture
 
