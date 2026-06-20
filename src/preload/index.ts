@@ -4,6 +4,7 @@ import type { TargetState } from '../shared/targetTypes'
 import type { GroupsState, ScanState } from '../shared/groupTypes'
 import type { SearchState } from '../shared/searchTypes'
 import type { RemovalState, RemovalJobFile } from '../shared/removalTypes'
+import type { TagState, TagJobFile } from '../shared/tagTypes'
 import type { GovernorEvent } from '../shared/opTypes'
 import {
   TARGET_RESOLVE,
@@ -32,6 +33,12 @@ import {
   REMOVAL_STATE,
   REMOVAL_GET_JOB,
   REMOVAL_DISCARD_JOB,
+  TAG_START,
+  TAG_ABORT,
+  TAG_GET_STATE,
+  TAG_STATE,
+  TAG_GET_JOB,
+  TAG_DISCARD_JOB,
   SEVERITY_GET,
   SEVERITY_SET,
   LANGUAGE_GET,
@@ -160,6 +167,25 @@ contextBridge.exposeInMainWorld('mrsproper', {
   // removal:discardJob — clears the job file; called when user clicks Discard in ResumeJobDialog.
   discardRemovalJob: (): Promise<null> =>
     ipcRenderer.invoke(REMOVAL_DISCARD_JOB) as Promise<null>,
+
+  // ── Tag execution bridge (Phase 10, TAG-03/TAG-05) ───────────────────────
+  // tag:start carries { dialogIds, tag }; Zod-validated + auth-gated + dialog-map-gated
+  // in tagChannels.ts. Target identity is read from main process only (T-05-04-B).
+  startTag: (dialogIds: string[], tag: string): Promise<TagState> =>
+    ipcRenderer.invoke(TAG_START, { dialogIds, tag }) as Promise<TagState>,
+  abortTag: (): Promise<TagState> =>
+    ipcRenderer.invoke(TAG_ABORT) as Promise<TagState>,
+  getTagState: (): Promise<TagState> =>
+    ipcRenderer.invoke(TAG_GET_STATE) as Promise<TagState>,
+  onTagState: (cb: (s: TagState) => void): (() => void) => {
+    const h = (_: unknown, s: TagState): void => cb(s)
+    ipcRenderer.on(TAG_STATE, h)
+    return () => ipcRenderer.removeListener(TAG_STATE, h)
+  },
+  getTagJob: (): Promise<TagJobFile | null> =>
+    ipcRenderer.invoke(TAG_GET_JOB) as Promise<TagJobFile | null>,
+  discardTagJob: (): Promise<null> =>
+    ipcRenderer.invoke(TAG_DISCARD_JOB) as Promise<null>,
 
   // ── Severity preference bridge (Phase 6, SAF-01/02/03) ───────────────────
   // Non-secret pref channels; Zod-validated (z.enum(['kick','ban'])) in severityChannels.ts.
