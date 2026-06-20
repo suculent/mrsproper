@@ -188,43 +188,51 @@ export class TagExecutor {
       return
     }
 
-    // Connect the layer-224 tagClient (brief mutex around the connect window)
+    // Connect the layer-224 tagClient (brief mutex around the connect window).
+    // CR-01: _connectingTagClient is set true BEFORE the try so the finally block can
+    // always clear it — even if connect() throws before we get to the post-await reset.
+    // The entire connect + run is inside a single try/finally so disconnect() is called
+    // on ALL terminal paths (connect throw, hard-stop, abort, complete) with no wedge.
     this._connectingTagClient = true
-    await this._tagClient.connect()
-    this._connectingTagClient = false
 
-    // Initialize job in TagAuditStore
-    const jobId = new Date().toISOString()
-    const job: TagJobFile = {
-      schemaVersion: 1,
-      jobId,
-      tag: params.tag,
-      targetId,
-      targetName,
-      targetAccessHash: resolved.accessHash.toString(),
-      dialogIds: params.dialogIds,
-      outcomes: [],
-      startedAt: jobId,
-      status: 'running',
-    }
-    this._auditStore.initJob(job)
-
-    // Track outcomes accumulated so far (for state emission)
-    const outcomes: TagGroupOutcome[] = []
-
-    // Emit initial running state
-    this._emit({
-      step: 'running',
-      tag: params.tag,
-      targetId,
-      targetName,
-      progress: { processed: 0, total },
-      outcomes: [],
-      floodWaitRemaining: null,
-    })
-
-    // Wrap entire loop in try/finally so tagClient.disconnect() runs on ALL terminal paths
+    // Wrap connect + entire run in try/finally so:
+    //   (a) tagClient.disconnect() runs on ALL terminal paths (complete, stopped, hard-stopped, error)
+    //   (b) _connectingTagClient and _runActive are always cleared on exit — no permanent wedge
+    //       if connect() throws (CR-01).
     try {
+      await this._tagClient.connect()
+      this._connectingTagClient = false
+
+      // Initialize job in TagAuditStore
+      const jobId = new Date().toISOString()
+      const job: TagJobFile = {
+        schemaVersion: 1,
+        jobId,
+        tag: params.tag,
+        targetId,
+        targetName,
+        targetAccessHash: resolved.accessHash.toString(),
+        dialogIds: params.dialogIds,
+        outcomes: [],
+        startedAt: jobId,
+        status: 'running',
+      }
+      this._auditStore.initJob(job)
+
+      // Track outcomes accumulated so far (for state emission)
+      const outcomes: TagGroupOutcome[] = []
+
+      // Emit initial running state
+      this._emit({
+        step: 'running',
+        tag: params.tag,
+        targetId,
+        targetName,
+        progress: { processed: 0, total },
+        outcomes: [],
+        floodWaitRemaining: null,
+      })
+
       for (const dialog of selectedDialogs) {
         // Generation guard #1: top of loop
         if (gen !== this._generation || signal.aborted) {
@@ -376,7 +384,11 @@ export class TagExecutor {
         floodWaitRemaining: null,
       })
     } finally {
-      // Disconnect on ALL terminal paths (complete, stopped, hard-stopped, error)
+      // CR-01: always clear mutex and run-active flag so future runs are never wedged —
+      // this handles the connect() throw path where the normal post-await resets are skipped.
+      this._connectingTagClient = false
+      this._runActive = false
+      // Disconnect on ALL terminal paths (complete, stopped, hard-stopped, error, connect throw)
       await this._tagClient.disconnect()
     }
   }
