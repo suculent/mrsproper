@@ -29,7 +29,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 **Milestone Goal:** Add a "Tag" action alongside Kick/Ban that sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` (layer 224), reusing the throttled, resumable, audited execution pipeline. Phase 0 spike is complete — setter confirmed, layer-224 technique proven.
 
 - [x] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore (completed 2026-06-20)
-- [ ] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary
+- [x] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary (completed 2026-06-20)
 - [ ] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume
 - [ ] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report
 
@@ -64,7 +64,7 @@ Plans:
 - [x] 10-01-PLAN.md — tagTypes.ts + channels.ts: shared type module and TAG_* IPC channel constants
 - [x] 10-02-PLAN.md — tagAuditStore.ts + test: tag-job.json persistence with TDD (atomic write, 0o600, checkpoint, readJob, getRemaining)
 - [x] 10-03-PLAN.md — tagChannels.ts + test + tagClient.ts: IPC handlers with 4-layer security gates and renderer IPC client (TDD)
-- [ ] 10-04-PLAN.md — main/index.ts + preload/index.ts wiring: registerTagChannels, launch detection, contextBridge entries
+- [x] 10-04-PLAN.md — main/index.ts + preload/index.ts wiring: registerTagChannels, launch detection, contextBridge entries
 **UI hint**: no
 
 ### Phase 11: TagExecutor
@@ -107,6 +107,6 @@ Plans:
 | 7. Packaging & Release | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
-| 10. Shared Types, IPC & Audit Wiring | v1.6 | 3/4 | In Progress|  |
+| 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete   | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 0/TBD | Not started | - |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
