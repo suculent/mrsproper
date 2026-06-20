@@ -1,9 +1,9 @@
 ---
 phase: 11
 slug: tagexecutor
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-20
 ---
 
@@ -73,4 +73,13 @@ created: 2026-06-20
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-20 (via /gsd:validate-phase)
+
+## Validation Audit 2026-06-20
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+TAG-04 (+TAG-03 executor consumer) covered by 19 green automated tests (tagExecutor.test.ts: per-group dispatch, already-admin/basic-group skip, generation guard, checkpoint/resume, PEER_FLOOD hard-stop, FLOOD_WAIT via governor, connect-wedge regression). Live RPC error strings + reconnect-race remain documented manual-only. No MISSING gaps; flipped nyquist_compliant → true.

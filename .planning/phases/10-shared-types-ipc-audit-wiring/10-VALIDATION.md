@@ -1,9 +1,9 @@
 ---
 phase: 10
 slug: shared-types-ipc-audit-wiring
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-20
 ---
 
@@ -73,4 +73,13 @@ created: 2026-06-20
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-20 (via /gsd:validate-phase)
+
+## Validation Audit 2026-06-20
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+TAG-03 + TAG-05 covered by 24 green automated tests (tagAuditStore 12 + tagChannels 12) plus `tsc --build` for tagTypes. No MISSING gaps; flipped nyquist_compliant → true.

@@ -1,9 +1,9 @@
 ---
 phase: 12
 slug: renderer-action-picker-tag-input-results
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-20
 ---
 
@@ -78,4 +78,13 @@ created: 2026-06-20
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-20 (via /gsd:validate-phase)
+
+## Validation Audit 2026-06-20
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+TAG-01 + TAG-06 covered by 62 green automated tests (tagValidation 15 + tagStore 10 + reviewScreen 16 + i18n 8 + wizardStage 13). The 4 human-UAT items (focus management, real-time progress, visual fidelity, provisional 16-char cap) remain documented manual-only in 12-HUMAN-UAT.md — they require a running app + real Telegram account and are correctly classified as manual, not automated gaps. No MISSING automated gaps; flipped nyquist_compliant → true.
