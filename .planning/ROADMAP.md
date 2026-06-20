@@ -77,7 +77,11 @@ Plans:
   3. PEER_FLOOD hard-stops the run immediately (no remaining groups skipped); FLOOD_WAIT is absorbed by the governor with a countdown event forwarded to the renderer; the run is resumable via `tag-job.json`
   4. A generation-token guard (D-15 pattern) invalidates any stale in-flight run when `abortExecution()` is called or a new `execute()` starts; remaining groups are marked `skipped` and `tag-job.json` is checkpointed
   5. TDD tests mirror `removalExecutor.test.ts`: per-group dispatch with a mock `tagClient`, already-admin skip, generation-guard invalidation, checkpoint + resume, PEER_FLOOD hard-stop, FLOOD_WAIT via the governor
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 11-01-PLAN.md — tagExecutor.test.ts: failing RED tests for TagExecutor (all behaviors)
+- [ ] 11-02-PLAN.md — TagExecutor.ts: GREEN implementation — throttled, generation-guarded, tag-write state machine
+- [ ] 11-03-PLAN.md — index.ts wiring: replace stub, tagExecutorRef, onStateChange→emitTagState
 **UI hint**: no
 
 ### Phase 12: Renderer — Action Picker, Tag Input & Results
