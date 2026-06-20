@@ -63,7 +63,7 @@ Plans:
 Plans:
 - [x] 10-01-PLAN.md — tagTypes.ts + channels.ts: shared type module and TAG_* IPC channel constants
 - [x] 10-02-PLAN.md — tagAuditStore.ts + test: tag-job.json persistence with TDD (atomic write, 0o600, checkpoint, readJob, getRemaining)
-- [ ] 10-03-PLAN.md — tagChannels.ts + test + tagClient.ts: IPC handlers with 4-layer security gates and renderer IPC client (TDD)
+- [x] 10-03-PLAN.md — tagChannels.ts + test + tagClient.ts: IPC handlers with 4-layer security gates and renderer IPC client (TDD)
 - [ ] 10-04-PLAN.md — main/index.ts + preload/index.ts wiring: registerTagChannels, launch detection, contextBridge entries
 **UI hint**: no
 
@@ -107,6 +107,6 @@ Plans:
 | 7. Packaging & Release | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
-| 10. Shared Types, IPC & Audit Wiring | v1.6 | 2/4 | In Progress|  |
+| 10. Shared Types, IPC & Audit Wiring | v1.6 | 3/4 | In Progress|  |
 | 11. TagExecutor | v1.6 | 0/TBD | Not started | - |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
