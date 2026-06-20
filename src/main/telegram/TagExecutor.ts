@@ -379,7 +379,10 @@ export class TagExecutor {
         }
       }
 
-      // Generation guard #4: post-loop, before emitting complete
+      // Generation guard #4: post-loop, before emitting complete.
+      // WR-01 (accepted as-is): this early return does not reset _runActive or emit 'stopped' —
+      // matches RemovalExecutor.ts:343 (the shipped reference). The finally block will reset
+      // _connectingTagClient and _runActive unconditionally, so no wedge results.
       if (gen !== this._generation || signal.aborted) {
         return
       }
@@ -529,6 +532,9 @@ export class TagExecutor {
 
     // (1) HARD-STOP FIRST — re-throw so execute() catch block handles PEER_FLOOD.
     // Never return an outcome for PEER_FLOOD — it must bubble to the outer catch.
+    // WR-03 (accepted defensive depth): the outer catch in execute() pre-filters hard-stop errors
+    // before calling _classifyTagError, so this re-throw is normally unreachable. It is kept
+    // as defensive depth to satisfy the documented "hard-stop first" contract.
     const classified = classifyRpcError(err)
     if (classified.disposition === 'hard-stop') {
       throw err

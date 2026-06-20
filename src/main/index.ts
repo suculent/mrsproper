@@ -379,9 +379,10 @@ app.whenReady().then(async () => {
   }
 
   // CR-01-MAIN: registerTargetChannels receives executor so TARGET_RESET aborts removal first (Phase 5).
-  // Order: executor.abortExecution() → searcher.abortSearch() → scanner.abortScan() → resolver.reset()
-  // Removal abort precedes scan/resolver reset so a mid-run removal is safely checkpointed first.
-  registerTargetChannels(currentWin, resolver, scanner, searcher, executor)
+  // CR-03 (Phase 11): also receives tagExecutor so TARGET_RESET aborts any active tag run before
+  // the target is cleared — without this, a tag run continues tagging the old (now-cleared) target.
+  // Order: executor.abortExecution() → tagExecutor.abortExecution() → searcher → scanner → resolver.reset()
+  registerTargetChannels(currentWin, resolver, scanner, searcher, executor, tagExecutor)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.

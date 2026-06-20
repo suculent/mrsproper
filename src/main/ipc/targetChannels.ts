@@ -54,21 +54,24 @@ const ResolveTargetSchema = z.object({
  * State push (target:state) is wired in main/index.ts via the TargetResolver onStateChange
  * callback → emitTargetState(). Handlers do NOT push state themselves.
  *
- * @param win       The main BrowserWindow (used for webContents.send via emitTargetState)
- * @param resolver  The TargetResolver instance (constructed in main/index.ts)
- * @param scanner   Structural type — only abortScan() is needed; avoids importing
- *                  MembershipScanner and creating a circular dependency (CR-01-MAIN).
- * @param searcher  Structural type — only abortSearch() is needed; avoids importing
- *                  ParticipantSearcher and creating a circular dependency (CR-01 for name search).
- * @param executor  Structural type — only abortExecution() is needed; avoids importing
- *                  RemovalExecutor and creating a circular dependency (CR-01 for removal).
+ * @param win         The main BrowserWindow (used for webContents.send via emitTargetState)
+ * @param resolver    The TargetResolver instance (constructed in main/index.ts)
+ * @param scanner     Structural type — only abortScan() is needed; avoids importing
+ *                    MembershipScanner and creating a circular dependency (CR-01-MAIN).
+ * @param searcher    Structural type — only abortSearch() is needed; avoids importing
+ *                    ParticipantSearcher and creating a circular dependency (CR-01 for name search).
+ * @param executor    Structural type — only abortExecution() is needed; avoids importing
+ *                    RemovalExecutor and creating a circular dependency (CR-01 for removal).
+ * @param tagExecutor Structural type — only abortExecution() is needed; avoids importing
+ *                    TagExecutor and creating a circular dependency (CR-03 for tag run abort).
  */
 export function registerTargetChannels(
   win: BrowserWindow,
   resolver: TargetResolver,
   scanner: { abortScan(): void },
   searcher: { abortSearch(): void },
-  executor?: { abortExecution(): void }
+  executor?: { abortExecution(): void },
+  tagExecutor?: { abortExecution(): void }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
@@ -87,16 +90,18 @@ export function registerTargetChannels(
   })
 
   // ── Handle: target:reset ─────────────────────────────────────────────────
-  // CR-01: abort removal FIRST (Phase 5), then name search, then scan, then resolver.
+  // CR-01: abort removal FIRST (Phase 5), then tag run (CR-03), then name search, scan, resolver.
   // Order ensures:
   //   1. Any running removal is safely aborted-with-checkpoint before state is wiped (T-05-05-D).
-  //   2. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
-  //   3. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
-  //   4. resolver.reset() last so target state returns to idle after all downstream cleanup.
+  //   2. Any active tag run is aborted so it doesn't continue tagging the now-cleared target (CR-03).
+  //   3. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
+  //   4. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
+  //   5. resolver.reset() last so target state returns to idle after all downstream cleanup.
   ipcMain.handle(TARGET_RESET, () => {
-    executor?.abortExecution() // CR-01: abort removal first, then search, then scan, then resolver
-    searcher.abortSearch()     // CR-01 for name search: clears stale candidates (Phase 4.1)
-    scanner.abortScan()        // CR-01: scan → idle before resolver reset
+    executor?.abortExecution()    // CR-01: abort removal first (Phase 5)
+    tagExecutor?.abortExecution() // CR-03: abort tag run before target is cleared
+    searcher.abortSearch()        // CR-01 for name search: clears stale candidates (Phase 4.1)
+    scanner.abortScan()           // CR-01: scan → idle before resolver reset
     resolver.reset()
     return resolver.getState()
   })
