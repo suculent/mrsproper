@@ -15,7 +15,9 @@ import { registerTargetChannels, emitTargetState } from './ipc/targetChannels'
 import { registerGroupChannels, emitGroupsState, emitScanState } from './ipc/groupChannels'
 import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
-import { registerTagChannels } from './ipc/tagChannels'
+import { registerTagChannels, emitTagState } from './ipc/tagChannels'
+import { TagExecutor } from './telegram/TagExecutor'
+import { TagClient } from './telegram/tagClient'
 import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
 import { registerLanguageChannels } from './ipc/languageChannels'
@@ -24,7 +26,6 @@ import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
-import type { TagState } from '../shared/tagTypes'
 
 // ── API credentials (injected at build time via electron.vite.config.ts define) ──
 // Loaded here lazily — safeStorage and electron ready must fire first (Pitfall 3).
@@ -171,6 +172,7 @@ app.whenReady().then(async () => {
   // the governor, so a mutable reference initialized before governor construction
   // is the cleanest forward-reference pattern without restructuring the setup order.
   let executorRef: import('./telegram/RemovalExecutor').RemovalExecutor | null = null
+  let tagExecutorRef: TagExecutor | null = null
 
   const governor = new RateLimitGovernor({
     client: client as unknown as ConstructorParameters<typeof RateLimitGovernor>[0]['client'],
@@ -185,6 +187,7 @@ app.whenReady().then(async () => {
       // Phase 6: forward flood events to the executor when a removal run is active.
       // _handleGovernorEvent is a no-op when _runActive is false (T-06-02-04 isolation).
       executorRef?._handleGovernorEvent(event)
+      tagExecutorRef?._handleGovernorEvent(event)
     },
   })
 
@@ -312,23 +315,31 @@ app.whenReady().then(async () => {
   // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
   const tagAuditStore = createTagAuditStore()
 
-  // ── Register Tag IPC handlers (Phase 10) ─────────────────────────────────────
-  // Note: TagExecutor (Phase 11) will replace the stub executor below and wire onStateChange → emitTagState
-  const IDLE_TAG_STATE: TagState = {
-    step: 'idle',
-    tag: '',
-    targetId: '',
-    targetName: '',
-    progress: { processed: 0, total: 0 },
-    outcomes: [],
-  }
-  registerTagChannels(
-    currentWin,
-    { getState: () => IDLE_TAG_STATE, abortExecution: () => {}, execute: async () => {} },
-    enumerator,
-    tagAuditStore,
-    () => sm.getState()
+  // ── Wire TagExecutor (Phase 11) ───────────────────────────────────────────────
+  // tagInnerClient uses the same session string from the authenticated main client.
+  // API_ID and API_HASH are already in scope from the import at line 142.
+  // Do NOT call tagInnerClient.connect() here — TagExecutor.execute() calls tagClient.connect() per run.
+  const tagInnerClient = new TelegramClient(
+    new StringSession(client.session.save() as unknown as string),
+    API_ID,
+    API_HASH,
+    { connectionRetries: 5 }
   )
+  const tagClientInstance = new TagClient({
+    inner: tagInnerClient as unknown as import('./telegram/tagClient').TagClientInner,
+    governor,
+  })
+  const tagExecutor = new TagExecutor({
+    tagClient: tagClientInstance,
+    mainClient: client as unknown as import('./telegram/TagExecutor').TagExecutorOptions['mainClient'],
+    governor,
+    enumerator,
+    resolver,
+    auditStore: tagAuditStore,
+    onStateChange: (state) => emitTagState(currentWin, state),
+  })
+  tagExecutorRef = tagExecutor
+  registerTagChannels(currentWin, tagExecutor, enumerator, tagAuditStore, () => sm.getState())
 
   // Phase 6: assign executorRef so governor.onEvent can call _handleGovernorEvent
   executorRef = executor
