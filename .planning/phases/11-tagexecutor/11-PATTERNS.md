@@ -79,6 +79,7 @@ private _currentState: TagState = {
 private _generation = 0
 private _abortController: AbortController | null = null
 private _runActive = false
+private _connectingTagClient = false  // reconnect-race mutex (CONTEXT §4.3) — set true around tagClient.connect()
 ```
 
 **`_handleGovernorEvent()` pattern** (lines 113–118 of RemovalExecutor.ts):
@@ -694,10 +695,11 @@ The guard is a 3-line conditional `if (gen !== this._generation || signal.aborte
 **Source:** `src/main/telegram/operationErrors.ts` lines 74–146
 **Apply to:** `TagExecutor._classifyTagError()`
 
-Branch order (CRITICAL — Pitfall 1):
-1. Named RPC strings first (`CHAT_ADMIN_REQUIRED`, `USER_NOT_PARTICIPANT`, etc.)
-2. `classifyRpcError(err)` for hard-stop (re-throw) / NETWORK (retry disposition)
-3. Fall-through → `UNKNOWN`
+Branch order (CRITICAL — Pitfall 1) — hard-stop check MUST come first:
+1. `classifyRpcError(err)` → if `disposition === 'hard-stop'` re-throw IMMEDIATELY (PEER_FLOOD)
+2. Named RPC strings (`CHAT_ADMIN_REQUIRED`→`TAG_NO_RIGHTS`, `USER_NOT_PARTICIPANT`→`TAG_USER_INVALID`, etc.)
+3. NETWORK disposition → `NETWORK`
+4. Fall-through → `UNKNOWN`
 
 ### InputPeer Construction (64-bit safe)
 **Source:** `src/main/telegram/RemovalExecutor.ts` lines 495–498, 531–539
