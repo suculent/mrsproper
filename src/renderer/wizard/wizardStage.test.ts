@@ -42,6 +42,20 @@ describe('getNextStage — back navigation and reset', () => {
   })
 })
 
+describe('getNextStage — auto-advance on terminal tag step', () => {
+  it('run stage: auto-advances to report when tag.step is complete', () => {
+    expect(getNextStage('run', 'TAG_COMPLETE')).toBe('report')
+  })
+
+  it('run stage: auto-advances to report when tag.step is stopped', () => {
+    expect(getNextStage('run', 'TAG_STOPPED')).toBe('report')
+  })
+
+  it('TAG_COMPLETE from target stage → unchanged (invalid transition guard)', () => {
+    expect(getNextStage('target', 'TAG_COMPLETE')).toBe('target')
+  })
+})
+
 describe('getNextStage — invalid event guard (SAF-02)', () => {
   it('does NOT advance to review from target (skipping groups is not a valid event)', () => {
     // TARGET_CONFIRMED from target → groups (not review)
