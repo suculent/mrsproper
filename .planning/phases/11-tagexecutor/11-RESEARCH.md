@@ -675,22 +675,47 @@ The `mockTagClient` does NOT need `connect()`/`disconnect()` to actually patch L
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where does TagExecutor get the API_ID/API_HASH and StringSession to create the inner TelegramClient for tagClient?**
-   - What we know: `TagClient` wraps a `TagClientInner` (inner client). In production, the inner client is a `TelegramClient` constructed with `new StringSession(client.session.save())`.
-   - What's unclear: how to inject `API_ID`/`API_HASH` into TagExecutor without importing `config.ts` from the telegram module (it uses `import.meta.env`).
-   - Recommendation: Pass the inner `TelegramClient` as a pre-constructed dependency to `TagExecutorOptions` (already created externally in `main/index.ts`). Or pass a factory: `tagClientFactory: () => TagClient`. This mirrors how `RemovalExecutor` receives `client` rather than constructing it.
+**Q1 (RESOLVED) — Where does TagExecutor get API_ID/API_HASH and StringSession for the inner TelegramClient?**
 
-2. **Reconnect-race mutex scope: TagExecutor private field vs module-level singleton?**
-   - What we know: The CONTEXT.md says a boolean mutex around the connect window.
-   - What's unclear: should this mutex be a private `_connectingTagClient: boolean` field on TagExecutor, or a shared cross-executor flag?
-   - Recommendation: Private field on TagExecutor is sufficient. The "only open when idle" check (verifying `executor.getState().step !== 'running'` before calling tagClient.connect()) is the primary guard. The mutex is only needed for the brief LAYER-mutation window during TagClient.connect() itself — which TagClient already handles internally with `_connecting`. TagExecutor just needs to assert the executor is idle before entering the connect window.
+ANSWER: `TagExecutorOptions.tagClient` is a **pre-built `TagClient` instance**, constructed in `src/main/index.ts` at the stub-replacement site. At that point in `index.ts`, `API_ID` and `API_HASH` are already in scope as local variables from `const { API_ID, API_HASH } = await import('./telegram/config')` (line 142). The session string is obtained via `client.session.save()` on the already-authenticated main client. The exact construction in `index.ts` is:
 
-3. **Does `editChatParticipantRank` return `USER_NOT_PARTICIPANT` when the target is not a member (to be confirmed in Phase 11)?**
-   - What we know: spec §4.2 lists `TAG_USER_NOT_PARTICIPANT` as a candidate.
-   - What's unclear: whether this is the actual RPC error string from the server.
-   - Recommendation: Map `USER_NOT_PARTICIPANT` → `TAG_USER_INVALID` in the error classifier (existing code handles both cases with the same outcome). If Phase 11 confirms a distinct code is needed, `tagTypes.ts` can be extended.
+```typescript
+const tagInnerClient = new TelegramClient(
+  new StringSession(client.session.save()),
+  API_ID,
+  API_HASH,
+  { connectionRetries: 5 }
+)
+const tagClientInstance = new TagClient({
+  inner: tagInnerClient as unknown as import('./telegram/tagClient').TagClientInner,
+  governor,
+})
+const tagExecutor = new TagExecutor({
+  tagClient: tagClientInstance,   // PRE-BUILT instance — TagExecutor never creates TelegramClients
+  mainClient: client as ...,
+  governor,
+  enumerator,
+  resolver,
+  auditStore: tagAuditStore,
+  onStateChange: (state) => emitTagState(currentWin, state),
+})
+```
+
+`TelegramClient` and `StringSession` are already imported at the top of `index.ts` (lines 3–4). Do NOT use `require('./config')` inside TagExecutor or inside the stub-replacement block — `config.ts` uses `import.meta.env` which is Vite-resolved at build time and is not accessible via CJS `require()` in the bundled main process.
+
+**Q2 (RESOLVED) — Reconnect-race mutex scope: private field vs module-level singleton?**
+
+ANSWER: The mutex is a **private field on the `TagExecutor` instance** — not a module-level singleton. Specifically, add `private _connectingTagClient = false` as a private field. Before calling `tagClient.connect()` in `execute()`, assert:
+1. `this._currentState.step !== 'running'` (executor is idle — no tag run is in flight)
+2. `!this._connectingTagClient` (no concurrent connect attempt on this instance)
+
+Then set `this._connectingTagClient = true`, call `await this._tagClient.connect()`, and set `this._connectingTagClient = false` immediately after (connect completes synchronously from the caller's perspective once resolved). The `_connecting` flag inside `TagClient` covers double-connect within TagClient itself; this field covers the higher-level "TagExecutor is not mid-run" assertion (CONTEXT.md §4.3 locked decision).
+
+**Q3 (RESOLVED) — Does `editChatParticipantRank` return `USER_NOT_PARTICIPANT` when target is not a member?**
+
+ANSWER: Map `USER_NOT_PARTICIPANT` → `TAG_USER_INVALID` (the shipped `TagErrorCode`). This is the correct mapping: `TAG_USER_NOT_PARTICIPANT` does NOT exist in the shipped `tagTypes.ts` (verified: Phase 10 delivered `TAG_USER_INVALID` as the catch-all for user-identity failures). The error classifier in `_classifyTagError()` must handle `USER_NOT_PARTICIPANT` in the named-string branches mapping to `TAG_USER_INVALID`.
 
 ---
 

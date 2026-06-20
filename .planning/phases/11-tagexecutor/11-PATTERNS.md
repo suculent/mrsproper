@@ -350,9 +350,19 @@ private async _tagGroup(
 **`_classifyTagError()` method — error classifier pattern** (lines 613–649 of RemovalExecutor.ts):
 ```typescript
 // Mirror _classifyRemovalError() — adapt error codes to TagErrorCode
-// CRITICAL: re-throw on hard-stop FIRST (Pitfall 1 from RESEARCH.md)
+// CRITICAL branch order (Pitfall 1): hard-stop re-throw FIRST, named strings SECOND,
+// NETWORK disposition THIRD, UNKNOWN fallthrough LAST.
 private _classifyTagError(err: unknown, dialogId: string): TagGroupOutcome {
   const timestamp = new Date().toISOString()
+
+  // (1) HARD-STOP FIRST — re-throw so execute() catch block handles PEER_FLOOD.
+  // Never return an outcome for PEER_FLOOD — it must bubble to the outer catch.
+  const classified = classifyRpcError(err)
+  if (classified.disposition === 'hard-stop') {
+    throw err
+  }
+
+  // (2) Named RPC error strings → mapped TagErrorCode
   const msg: string = (err as { errorMessage?: string })?.errorMessage ?? ''
 
   if (msg === 'CHAT_ADMIN_REQUIRED' || msg === 'RIGHT_FORBIDDEN') {
@@ -367,16 +377,12 @@ private _classifyTagError(err: unknown, dialogId: string): TagGroupOutcome {
     return { dialogId, status: 'failed', errorCode: 'TAG_CHANNEL_INVALID', timestamp }
   }
 
-  // Fall through to classifyRpcError for PEER_FLOOD / FLOOD_WAIT / NETWORK
-  const classified = classifyRpcError(err)
-  if (classified.disposition === 'hard-stop') {
-    throw err  // Re-throw — execute() catch block handles PEER_FLOOD hard-stop
-  }
-
+  // (3) NETWORK disposition (no errorMessage → connection failure)
   if (classified.disposition === 'retry' || classified.code === 'NETWORK') {
     return { dialogId, status: 'failed', errorCode: 'NETWORK', timestamp }
   }
 
+  // (4) UNKNOWN fallthrough
   return { dialogId, status: 'failed', errorCode: 'UNKNOWN', timestamp }
 }
 ```
@@ -627,15 +633,22 @@ import { TagClient } from './telegram/tagClient'
 **TagExecutor construction pattern** (replacing lines 316–334 of index.ts):
 ```typescript
 // REPLACE the IDLE_TAG_STATE stub block (lines 316–334) with:
+// API_ID, API_HASH, client, TelegramClient, StringSession are all in scope here
+// (loaded at line 142 and lines 148–161 of index.ts).
+// Do NOT use require('./config') — config.ts uses import.meta.env (Vite only).
 
-// Import emitTagState if not already imported above
+const tagInnerClient = new TelegramClient(
+  new StringSession(client.session.save()),
+  API_ID,
+  API_HASH,
+  { connectionRetries: 5 }
+)
+const tagClientInstance = new TagClient({
+  inner: tagInnerClient as unknown as import('./telegram/tagClient').TagClientInner,
+  governor,
+})
 const tagExecutor = new TagExecutor({
-  // tagClient factory: TagExecutor constructs its own ephemeral TagClient per run
-  // OR receive a tagClientFactory. Simpler: pass the inner TelegramClient + governor
-  // so TagExecutor can call new TagClient({ inner: newTelegramClient(...), governor }) per run.
-  // See RESEARCH.md Open Question 1 — passing a factory avoids TagExecutor importing API_ID/API_HASH.
-  //
-  // Pattern from executor construction (lines 298–307 of index.ts):
+  tagClient: tagClientInstance,   // PRE-BUILT TagClient instance (RESOLVED Q1)
   mainClient: client as unknown as Parameters<typeof TagExecutor>[0]['mainClient'],
   governor,
   enumerator,
