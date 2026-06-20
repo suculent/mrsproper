@@ -633,7 +633,7 @@ const handleConfirm = useCallback(async () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`severityClient` persistence — should it be widened to 3-way?**
    - What we know: `severityClient.getSeverity()` / `setSeverity()` persists the 2-way kick/ban selection via electron-store. Phase 12 plans do not mention persisting the Tag selection.
