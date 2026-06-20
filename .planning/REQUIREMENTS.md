@@ -30,11 +30,11 @@ selected groups. Design + Phase 0 spike are complete; see
 
 ## Traceability
 
-| Requirement | Phase |
-|-------------|-------|
-| TAG-01 | (filled by roadmap) |
-| TAG-02 | (filled by roadmap) |
-| TAG-03 | (filled by roadmap) |
-| TAG-04 | (filled by roadmap) |
-| TAG-05 | (filled by roadmap) |
-| TAG-06 | (filled by roadmap) |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TAG-01 | Phase 12 | Pending |
+| TAG-02 | Phase 9 | Pending |
+| TAG-03 | Phase 10 | Pending |
+| TAG-04 | Phase 11 | Pending |
+| TAG-05 | Phase 10 | Pending |
+| TAG-06 | Phase 12 | Pending |
