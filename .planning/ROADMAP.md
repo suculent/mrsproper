@@ -59,7 +59,12 @@ Plans:
   2. `src/main/ipc/tagChannels.ts` registers IPC handlers; the Zod-validated handler payload carries only `dialogIds` (string array) and `tag` (string), never target identity — target identity is read exclusively from `resolver.getResolvedUser()` in the main process (T-05-04-B invariant preserved)
   3. A `tag-job.json` file is written to disk with `0o600` permissions when a tag run starts, updated per-group as outcomes are checkpointed, and readable on next launch to detect an incomplete run
   4. On launch, an incomplete `tag-job.json` is detected and surfaced to the renderer so the user can resume or discard (same pattern as removal job resume)
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 10-01-PLAN.md — tagTypes.ts + channels.ts: shared type module and TAG_* IPC channel constants
+- [ ] 10-02-PLAN.md — tagAuditStore.ts + test: tag-job.json persistence with TDD (atomic write, 0o600, checkpoint, readJob, getRemaining)
+- [ ] 10-03-PLAN.md — tagChannels.ts + test + tagClient.ts: IPC handlers with 4-layer security gates and renderer IPC client (TDD)
+- [ ] 10-04-PLAN.md — main/index.ts + preload/index.ts wiring: registerTagChannels, launch detection, contextBridge entries
 **UI hint**: no
 
 ### Phase 11: TagExecutor
@@ -102,6 +107,6 @@ Plans:
 | 7. Packaging & Release | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
-| 10. Shared Types, IPC & Audit Wiring | v1.6 | 0/TBD | Not started | - |
+| 10. Shared Types, IPC & Audit Wiring | v1.6 | 0/4 | Not started | - |
 | 11. TagExecutor | v1.6 | 0/TBD | Not started | - |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
