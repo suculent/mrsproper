@@ -99,6 +99,8 @@ function parseArgs(argv) {
     forceLayer: null,
     groupHash: null,
     userHash: null,
+    readTag: false,
+    setRank: false,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -137,6 +139,12 @@ function parseArgs(argv) {
         break
       case '--user-hash':
         result.userHash = args[++i] ?? null
+        break
+      case '--read-tag':
+        result.readTag = true
+        break
+      case '--set-rank':
+        result.setRank = true
         break
       default:
         // Unknown flag — ignore silently
@@ -232,6 +240,74 @@ async function resolveGroupEntity(client, groupArg) {
   return null
 }
 
+// ── Hand-crafted messages.editChatParticipantRank (the real member-tag setter) ──
+// GramJS 2.26.22 (layer 198) predates this method, so we serialize it by hand:
+//   messages.editChatParticipantRank#a00f32b0 peer:InputPeer participant:InputPeer rank:string = Updates
+// Reuses Api.InputPeer*.getBytes() for the two peers and a manual TL-string encoder for rank.
+const EDIT_CHAT_PARTICIPANT_RANK_ID = 0xa00f32b0
+const UPDATES_SUBCLASS_OF_ID = 2331323052 // shared by all Updates-returning methods
+
+function serializeTLString(str) {
+  const data = Buffer.from(str, 'utf8')
+  const len = data.length
+  const header = len <= 253
+    ? Buffer.from([len])
+    : Buffer.from([254, len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff])
+  const pad = (4 - ((header.length + data.length) % 4)) % 4
+  return Buffer.concat([header, data, Buffer.alloc(pad)])
+}
+
+function makeEditChatParticipantRankRequest(peer, participant, rank) {
+  const idLE = Buffer.alloc(4)
+  idLE.writeUInt32LE(EDIT_CHAT_PARTICIPANT_RANK_ID >>> 0, 0)
+  return {
+    className: 'messages.EditChatParticipantRank',
+    classType: 'request',
+    CONSTRUCTOR_ID: EDIT_CHAT_PARTICIPANT_RANK_ID >>> 0,
+    SUBCLASS_OF_ID: UPDATES_SUBCLASS_OF_ID,
+    async resolve() { return this },
+    getBytes() {
+      return Buffer.concat([
+        idLE,
+        Buffer.from(peer.getBytes()),
+        Buffer.from(participant.getBytes()),
+        serializeTLString(rank),
+      ])
+    },
+    readResult(reader) { return reader.tgReadObject() },
+  }
+}
+
+// Set a member tag via the real method. Response (Updates) is unparseable at layer 198 and
+// throws TypeNotFoundError — but the write lands server-side, exactly like editAdmin did.
+async function rawSetRank(client, args) {
+  console.log(`[SET-RANK] messages.editChatParticipantRank — force-layer=${args.forceLayer}, rank="${args.tag}"`)
+  const peer = new Api.InputPeerChannel({
+    channelId: bigInt(args.group),
+    accessHash: bigInt(args.groupHash),
+  })
+  const participant = new Api.InputPeerUser({
+    userId: bigInt(args.user),
+    accessHash: bigInt(args.userHash),
+  })
+  const req = makeEditChatParticipantRankRequest(peer, participant, args.tag)
+  console.log('[SET-RANK] request bytes:', Buffer.from(req.getBytes()).toString('hex'))
+  try {
+    const result = await client.invoke(req)
+    console.log('[SET-RANK] parsed OK. Result:')
+    console.log(JSON.stringify(result, bigIntReplacer, 2))
+  } catch (err) {
+    const msg = err.errorMessage ?? err.message ?? '(none)'
+    if (err.invalidConstructorId || /Constructor ID/.test(msg)) {
+      console.log('[SET-RANK] Response unparseable at 198 (expected) — the WRITE was accepted server-side.')
+      console.log('[SET-RANK] Re-run with --read-tag to confirm the new rank.')
+    } else {
+      console.log('[SET-RANK] editChatParticipantRank raised:', msg)
+      console.error(err)
+    }
+  }
+}
+
 // ── Raw layer probe (--force-layer + --group-hash + --user-hash) ──────────────
 // Bypasses ALL entity resolution (getDialogs/getEntity/getParticipants) by building
 // InputChannel/InputPeerUser directly from caller-supplied id+accessHash. This keeps the
@@ -275,12 +351,68 @@ async function rawLayerProbe(client, args) {
     console.log(`[RAW PROBE] >>> NOW CHECK MOBILE CLIENT: did the tag change to "${args.tag}"? <<<`)
     console.log('[RAW PROBE] If YES → member tags ARE editAdmin+rank at a newer layer (confirms hypothesis A).')
   } catch (err) {
-    console.log('[RAW PROBE] editAdmin ERROR — errorMessage:', err.errorMessage ?? err.message ?? '(none)')
+    const msg = err.errorMessage ?? err.message ?? '(none)'
+    console.log('[RAW PROBE] editAdmin raised:', msg)
     console.error(err)
     console.log()
-    console.log('[RAW PROBE] CONNECTION_LAYER_INVALID at connect → handshake rejected the patched layer:')
-    console.log('[RAW PROBE]   the old (198) constructors are incompatible with the announced layer →')
-    console.log('[RAW PROBE]   full TL-schema regeneration is required (no layer-bump-only shortcut).')
+    if (err.errorMessage === 'CONNECTION_LAYER_INVALID') {
+      console.log('[RAW PROBE] CONNECTION_LAYER_INVALID → the server rejected the announced layer.')
+      console.log('[RAW PROBE]   Try a lower --force-layer value.')
+    } else if (err.invalidConstructorId || /Constructor ID/.test(msg)) {
+      // The request reached the server and was PROCESSED; GramJS just can't deserialize the
+      // newer-layer RESPONSE. The write itself most likely landed server-side.
+      console.log('[RAW PROBE] >>> POSITIVE SIGNAL <<<')
+      console.log('[RAW PROBE] The handshake at the patched layer SUCCEEDED and editAdmin was ACCEPTED —')
+      console.log(`[RAW PROBE] the error is only GramJS 198 failing to PARSE the newer-layer response`)
+      console.log(`[RAW PROBE] (unknown constructor ${err.invalidConstructorId ?? '?'}). The write likely landed.`)
+      console.log('[RAW PROBE] CONFIRM via the mobile client (did the tag change?), or via a layer-aligned')
+      console.log('[RAW PROBE] GramJS that can read channels.getParticipant back. editAdmin does NOT echo')
+      console.log('[RAW PROBE] the rank in its own response, so the API cannot self-confirm at this layer.')
+    } else {
+      console.log('[RAW PROBE] Unexpected error — see stack above.')
+    }
+  }
+}
+
+// ── Raw participant read (--read-tag): confirm a tag by scanning raw response bytes ──
+// At a patched newer layer the server sends the rank field on channelParticipant, but GramJS 198
+// can't parse that constructor — it throws TypeNotFoundError whose `remaining` buffer holds the
+// raw participant bytes (including the rank string). We scan those bytes for the expected tag,
+// which confirms the tag server-side WITHOUT needing the mobile client or a layer-aligned GramJS.
+async function rawReadParticipantTag(client, args) {
+  console.log('[READ] channels.getParticipant — reading raw participant bytes to detect the tag...')
+  const inputChannel = new Api.InputChannel({
+    channelId: bigInt(args.group),
+    accessHash: bigInt(args.groupHash),
+  })
+  const inputUser = new Api.InputPeerUser({
+    userId: bigInt(args.user),
+    accessHash: bigInt(args.userHash),
+  })
+  try {
+    const res = await client.invoke(
+      new Api.channels.GetParticipant({ channel: inputChannel, participant: inputUser })
+    )
+    console.log('[READ] getParticipant parsed OK. Result:')
+    console.log(JSON.stringify(res, bigIntReplacer, 2))
+  } catch (err) {
+    const remaining = err.remaining
+    if (remaining && remaining.length) {
+      const buf = Buffer.from(remaining)
+      const hex = buf.toString('hex')
+      const ascii = buf.toString('latin1').replace(/[^\x20-\x7e]/g, '.')
+      console.log('[READ] Response unparseable at layer 198 (expected). Raw participant bytes:')
+      console.log('[READ] hex  :', hex)
+      console.log('[READ] ascii:', ascii)
+      for (const candidate of [args.tag, 'testtag', 'tag'].filter(Boolean)) {
+        const needle = Buffer.from(candidate, 'utf8').toString('hex')
+        const found = hex.includes(needle)
+        console.log(`[READ] tag "${candidate}" (hex ${needle}): ${found ? '>>> FOUND <<<' : 'not found'}`)
+      }
+    } else {
+      console.log('[READ] getParticipant error (no remaining buffer):', err.errorMessage ?? err.message)
+      console.error(err)
+    }
   }
 }
 
@@ -290,9 +422,15 @@ async function main() {
   const args = parseArgs(process.argv)
 
   // Validate required args (skipped in --list-groups discovery mode)
-  if (!args.listGroups && (args.group === null || args.user === null || args.tag === null)) {
-    console.error('ERROR: --group, --user, and --tag are all required.')
-    printUsageAndExit()
+  if (!args.listGroups) {
+    if (args.group === null || args.user === null) {
+      console.error('ERROR: --group and --user are required.')
+      printUsageAndExit()
+    }
+    if (!args.readTag && args.tag === null) {
+      console.error('ERROR: --tag is required (unless using --read-tag).')
+      printUsageAndExit()
+    }
   }
 
   // Read credentials from environment
@@ -359,9 +497,15 @@ async function main() {
   console.log('[SESSION] NEVER commit it to git or write it to a file.')
   console.log()
 
-  // ── Raw layer probe: bypass resolution, exercise only editAdmin at the patched layer ──
+  // ── Raw layer probe: bypass resolution, exercise only editAdmin (or read) at patched layer ──
   if (args.forceLayer && args.groupHash && args.userHash) {
-    await rawLayerProbe(client, args)
+    if (args.readTag) {
+      await rawReadParticipantTag(client, args)
+    } else if (args.setRank) {
+      await rawSetRank(client, args)
+    } else {
+      await rawLayerProbe(client, args)
+    }
     console.log()
     console.log('[SPIKE] Done. Disconnecting...')
     await client.disconnect()
