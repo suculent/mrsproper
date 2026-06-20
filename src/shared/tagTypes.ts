@@ -133,3 +133,13 @@ export interface TagJobFile {
   /** Current persistence status — 'running' means the job is incomplete and will prompt Resume/Discard. */
   status: 'running' | 'complete' | 'stopped' | 'hard-stopped'
 }
+
+/**
+ * Renderer-safe projection of TagJobFile with targetAccessHash stripped.
+ *
+ * Security boundary (T-10-01): targetAccessHash must NEVER cross the IPC boundary —
+ * it lives in the job file (mode 0o600) and in main-process memory only.
+ * This type is used as the return type of TAG_GET_JOB so TypeScript enforces the
+ * boundary at the call sites in both tagChannels.ts and tagClient.ts.
+ */
+export type TagJobFileSafe = Omit<TagJobFile, 'targetAccessHash'>

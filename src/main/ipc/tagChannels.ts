@@ -28,7 +28,7 @@ import {
   TAG_GET_JOB,
   TAG_DISCARD_JOB,
 } from '@shared/channels'
-import type { TagState, TagJobFile } from '@shared/tagTypes'
+import type { TagState, TagJobFile, TagJobFileSafe } from '@shared/tagTypes'
 import type { TagAuditStore } from '../storage/tagAuditStore'
 
 // ── TagExecutorLike stub interface ────────────────────────────────────────────
@@ -142,9 +142,18 @@ export function registerTagChannels(
   })
 
   // ── Handle: tag:getJob ───────────────────────────────────────────────────
-  // Returns TagJobFile | null — used by renderer on launch to detect pending jobs.
-  ipcMain.handle(TAG_GET_JOB, async () => {
-    return auditStore.readJob()
+  // Returns TagJobFileSafe | null — used by renderer on launch to detect pending jobs.
+  // Security boundary (T-10-01): targetAccessHash is stripped before crossing IPC.
+  // The field lives on disk (0o600) and in main-process memory only; the renderer
+  // receives every other job field for display but never the accessHash.
+  ipcMain.handle(TAG_GET_JOB, async (): Promise<TagJobFileSafe | null> => {
+    const job = auditStore.readJob()
+    if (!job) return null
+    // Destructure to exclude targetAccessHash — TypeScript verifies the remainder
+    // matches TagJobFileSafe (Omit<TagJobFile, 'targetAccessHash'>).
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { targetAccessHash: _stripped, ...safe } = job
+    return safe
   })
 
   // ── Handle: tag:discardJob ───────────────────────────────────────────────
@@ -167,5 +176,5 @@ export function emitTagState(win: BrowserWindow, state: TagState): void {
   }
 }
 
-// Re-export TagJobFile for consumers (avoids direct tagTypes import in main/index.ts)
-export type { TagJobFile }
+// Re-export TagJobFile and TagJobFileSafe for consumers (avoids direct tagTypes import in main/index.ts)
+export type { TagJobFile, TagJobFileSafe }

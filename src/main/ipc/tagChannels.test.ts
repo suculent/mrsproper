@@ -258,6 +258,54 @@ describe('tagChannels — security gates', () => {
 })
 
 // ---------------------------------------------------------------------------
+// TAG_GET_JOB — targetAccessHash must not appear in the returned value (T-10-01)
+// ---------------------------------------------------------------------------
+
+describe('tagChannels — tag:getJob security boundary', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('tag:getJob — strips targetAccessHash from returned job (T-10-01)', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    // Audit store returns a job that has targetAccessHash on it
+    const auditStore = makeMockTagAuditStore(['111'])
+    const getAuthState = makeGetAuthState('authorized')
+
+    registerTagChannels(win as never, executor as never, enumerator as never, auditStore as never, getAuthState)
+
+    const result = await capturedHandlers['tag:getJob']({}, undefined)
+
+    // Result must be non-null (a job was present)
+    expect(result).not.toBeNull()
+    // targetAccessHash must NOT appear in the returned object (security boundary T-10-01)
+    expect(result).not.toHaveProperty('targetAccessHash')
+    // Other fields must still be present
+    const job = result as Record<string, unknown>
+    expect(job).toHaveProperty('jobId')
+    expect(job).toHaveProperty('tag')
+    expect(job).toHaveProperty('targetId')
+    expect(job).toHaveProperty('targetName')
+    expect(job).toHaveProperty('dialogIds')
+  })
+
+  it('tag:getJob — returns null when no job exists', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockTagAuditStore(null) // no job
+    const getAuthState = makeGetAuthState('authorized')
+
+    registerTagChannels(win as never, executor as never, enumerator as never, auditStore as never, getAuthState)
+
+    const result = await capturedHandlers['tag:getJob']({}, undefined)
+    expect(result).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // emitTagState — win.isDestroyed() guard
 // ---------------------------------------------------------------------------
 

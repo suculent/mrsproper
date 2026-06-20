@@ -4,7 +4,7 @@ import type { TargetState } from '../shared/targetTypes'
 import type { GroupsState, ScanState } from '../shared/groupTypes'
 import type { SearchState } from '../shared/searchTypes'
 import type { RemovalState, RemovalJobFile } from '../shared/removalTypes'
-import type { TagState, TagJobFile } from '../shared/tagTypes'
+import type { TagState, TagJobFileSafe } from '../shared/tagTypes'
 import type { GovernorEvent } from '../shared/opTypes'
 import {
   TARGET_RESOLVE,
@@ -182,8 +182,8 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.on(TAG_STATE, h)
     return () => ipcRenderer.removeListener(TAG_STATE, h)
   },
-  getTagJob: (): Promise<TagJobFile | null> =>
-    ipcRenderer.invoke(TAG_GET_JOB) as Promise<TagJobFile | null>,
+  getTagJob: (): Promise<TagJobFileSafe | null> =>
+    ipcRenderer.invoke(TAG_GET_JOB) as Promise<TagJobFileSafe | null>,
   discardTagJob: (): Promise<null> =>
     ipcRenderer.invoke(TAG_DISCARD_JOB) as Promise<null>,
 
