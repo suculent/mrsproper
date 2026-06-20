@@ -1,0 +1,60 @@
+{
+  "actionTag": "Tag",
+  "actionKick": "Kick",
+  "actionBan": "Ban",
+  "tagInputLabel": "Tag to apply",
+  "tagInputPlaceholder": "e.g. Moderator",
+  "tagErrorTooLong": "Tag must be {{max}} characters or fewer",
+  "tagErrorControlChars": "Tag cannot contain control characters or line breaks",
+  "tagCharCounter": "{{count}} / {{max}}",
+  "tagLabel": "Tag",
+  "tagConsequenceLine_one": "The tag “{{tag}}” will be set for this person in {{count}} group.",
+  "tagConsequenceLine_other": "The tag “{{tag}}” will be set for this person in {{count}} groups.",
+  "tagReviewTitle": "Review tagging",
+  "tagTotalsTagging_one": "Tagging in {{count}} group",
+  "tagTotalsTagging_other": "Tagging in {{count}} groups",
+  "tagTotalsEmpty": "No groups selected — go back and check at least one group.",
+  "mechanicNote": {
+    "supergroup": "Tag will be set",
+    "basicGroup": "Basic group — will be skipped"
+  },
+  "confirmLabelTag_one": "Tag {{name}} in {{count}} group",
+  "confirmLabelTag_other": "Tag {{name}} in {{count}} groups",
+  "confirmAriaLabelTag_one": "Tag {{name}} in {{count}} group",
+  "confirmAriaLabelTag_other": "Tag {{name}} in {{count}} groups",
+  "confirmDispatching": "Starting…",
+  "progressLabel": "Tagging {{name}} in group {{x}} of {{n}}…",
+  "stopLabel": "Stop tagging",
+  "stoppingLabel": "Stopping…",
+  "floodWaitSubline": "Telegram asked us to slow down — resuming automatically.",
+  "peerFloodBanner": "Telegram has flagged this account for too many actions. Wait a few hours before resuming — your progress is saved and the job can continue from where it stopped.",
+  "peerFloodResumeLabel": "Resume tagging",
+  "rowStatus": {
+    "tagging": "Tagging…",
+    "done": "Tagged",
+    "skippedAdmin": "Skipped — already an admin",
+    "skippedBasicGroup": "Skipped — basic groups not supported",
+    "skipped": "Skipped — tagging stopped"
+  },
+  "rowError": {
+    "TAG_NO_RIGHTS": "You don't have tagging rights in this group —",
+    "TAG_USER_INVALID": "Connection dropped — check your network, then",
+    "TAG_CHANNEL_INVALID": "Telegram refused this tag —",
+    "NETWORK": "Connection dropped — check your network, then",
+    "UNKNOWN": "Telegram refused this tag —"
+  },
+  "summaryPart": {
+    "tagged": "Tagged",
+    "skipped": "Skipped",
+    "failed": "Failed"
+  },
+  "summaryStopped": "Tagging stopped — {{x}} of {{n}} processed.",
+  "summaryFailed_one": "{{count}} tag failed.",
+  "summaryFailed_other": "{{count}} tags failed.",
+  "finishedAt": "Finished {{time}}",
+  "resumeTitle": "Finish tagging {{name}}?",
+  "resumeBody": "{{x}} of {{n}} groups were processed before the run stopped. Resuming continues from the first unprocessed group.",
+  "resumeDestructive": "Resume tagging",
+  "resumeDestructiveAria": "Resume tag job",
+  "resumeNeutral": "Discard job"
+}

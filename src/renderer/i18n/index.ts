@@ -18,6 +18,8 @@ import csGroups from './locales/cs/groups.json'
 import csWizard from './locales/cs/wizard.json'
 import csRemoval from './locales/cs/removal.json'
 import csShell from './locales/cs/shell.json'
+import enTag from './locales/en/tag.json'
+import csTag from './locales/cs/tag.json'
 
 export const resources = {
   en: {
@@ -27,6 +29,7 @@ export const resources = {
     wizard: enWizard,
     removal: enRemoval,
     shell: enShell,
+    tag: enTag,
   },
   cs: {
     auth: csAuth,
@@ -35,6 +38,7 @@ export const resources = {
     wizard: csWizard,
     removal: csRemoval,
     shell: csShell,
+    tag: csTag,
   },
 } as const
 

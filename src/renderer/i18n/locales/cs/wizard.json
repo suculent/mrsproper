@@ -57,5 +57,8 @@
   "groupListAria": "Skupiny, ze kterých bude cíl odebrán",
   "removeSomeoneElse": "Odebrat někoho jiného",
   "changeTarget": "Změnit cíl",
-  "changeTargetAria": "Vymazat aktuální cíl a vrátit se na krok výběru cíle"
+  "changeTargetAria": "Vymazat aktuální cíl a vrátit se na krok výběru cíle",
+  "actionGroupAria": "Akce",
+  "tagSomeoneElse": "Označit další osobu",
+  "tagGroupListAria": "Skupiny, ve kterých bude osoba označena"
 }

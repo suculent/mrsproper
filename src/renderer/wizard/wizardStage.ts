@@ -18,6 +18,8 @@ export type WizardEvent =
   | 'REMOVAL_COMPLETE'
   | 'REMOVAL_STOPPED'
   | 'RESET'
+  | 'TAG_COMPLETE'
+  | 'TAG_STOPPED'
 
 // ---------------------------------------------------------------------------
 // getNextStage — pure lookup table; invalid (stage, event) pairs return stage unchanged
@@ -42,6 +44,8 @@ export function getNextStage(stage: WizardStage, event: WizardEvent): WizardStag
     case 'run':
       if (event === 'REMOVAL_COMPLETE') return 'report'
       if (event === 'REMOVAL_STOPPED') return 'report'
+      if (event === 'TAG_COMPLETE') return 'report'
+      if (event === 'TAG_STOPPED') return 'report'
       return stage
 
     case 'report':

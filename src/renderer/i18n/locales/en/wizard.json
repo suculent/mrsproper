@@ -46,5 +46,8 @@
   "groupListAria": "Groups the target will be removed from",
   "removeSomeoneElse": "Remove someone else",
   "changeTarget": "Change target",
-  "changeTargetAria": "Clear current target and return to the target step"
+  "changeTargetAria": "Clear current target and return to the target step",
+  "actionGroupAria": "Action",
+  "tagSomeoneElse": "Tag someone else",
+  "tagGroupListAria": "Groups the target will be tagged in"
 }
