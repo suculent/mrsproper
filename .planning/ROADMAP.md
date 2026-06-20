@@ -98,7 +98,7 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md — tagConstants + tagValidation + i18n namespace (en/cs) + wizardStage TAG events
 - [x] 12-02-PLAN.md — tagStore: module-singleton, cachedSnapshot guard, tagActions (no retryGroup)
-- [ ] 12-03-PLAN.md — TagInput + TagResumeJobDialog + ReviewScreen 3-way picker/input/confirmation
+- [x] 12-03-PLAN.md — TagInput + TagResumeJobDialog + ReviewScreen 3-way picker/input/confirmation
 - [ ] 12-04-PLAN.md — GroupRow tagStatus slot + GroupsPane tag progress/results + AppShell wiring
 **UI hint**: yes
 
@@ -118,4 +118,4 @@ Plans:
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
-| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 2/4 | In Progress|  |
+| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 3/4 | In Progress|  |
