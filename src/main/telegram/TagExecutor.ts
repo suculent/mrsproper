@@ -43,8 +43,18 @@ import type { TagClient } from './tagClient'
 // ── Constructor options ─────────────────────────────────────────────────────
 
 export interface TagExecutorOptions {
-  /** The layer-224 TagClient — ephemeral per run (open at run start, tear down at end). */
-  tagClient: TagClient
+  /**
+   * Factory that constructs a fresh TagClient (snapshotting the CURRENT session) at each
+   * run start. Using a factory rather than a pre-built instance fixes two bugs (CR-02):
+   *   1. Session snapshot: calling new TagClient() at app-startup captures an empty session
+   *      (before login). The factory is called inside execute(), post-login, so the session
+   *      is always populated.
+   *   2. floodSleepThreshold: the factory is the right place to set floodSleepThreshold:0
+   *      on the inner TelegramClient so FLOOD_WAITs reach the governor rather than being
+   *      silently absorbed by GramJS.
+   * The returned TagClient is ephemeral: connect → use → disconnect per run.
+   */
+  tagClientFactory: () => TagClient
   /** Main layer-198 client — for already-admin GetParticipant check (read, not write). */
   mainClient: { invoke(request: unknown): Promise<unknown> }
   /** Shared account-wide RateLimitGovernor — all Telegram calls must go through it. */
@@ -62,7 +72,7 @@ export interface TagExecutorOptions {
 // ── TagExecutor ─────────────────────────────────────────────────────────────
 
 export class TagExecutor {
-  private readonly _tagClient: TagClient
+  private readonly _tagClientFactory: () => TagClient
   private readonly _mainClient: { invoke(request: unknown): Promise<unknown> }
   private readonly _governor: RateLimitGovernor
   private readonly _enumerator: GroupEnumerator
@@ -88,7 +98,7 @@ export class TagExecutor {
   private _connectingTagClient = false
 
   constructor(options: TagExecutorOptions) {
-    this._tagClient = options.tagClient
+    this._tagClientFactory = options.tagClientFactory
     this._mainClient = options.mainClient
     this._governor = options.governor
     this._enumerator = options.enumerator
@@ -188,6 +198,10 @@ export class TagExecutor {
       return
     }
 
+    // CR-02: construct a fresh TagClient from the factory (snapshots the CURRENT session,
+    // which is only populated post-login; a pre-built instance would carry an empty session).
+    const tagClient = this._tagClientFactory()
+
     // Connect the layer-224 tagClient (brief mutex around the connect window).
     // CR-01: _connectingTagClient is set true BEFORE the try so the finally block can
     // always clear it — even if connect() throws before we get to the post-await reset.
@@ -200,7 +214,7 @@ export class TagExecutor {
     //   (b) _connectingTagClient and _runActive are always cleared on exit — no permanent wedge
     //       if connect() throws (CR-01).
     try {
-      await this._tagClient.connect()
+      await tagClient.connect()
       this._connectingTagClient = false
 
       // Initialize job in TagAuditStore
@@ -276,7 +290,7 @@ export class TagExecutor {
 
         let outcome: TagGroupOutcome
         try {
-          outcome = await this._tagGroup(dialog, resolved, params.tag)
+          outcome = await this._tagGroup(dialog, resolved, params.tag, tagClient)
         } catch (err) {
           // PEER_FLOOD check MUST come first (Pitfall 1)
           const classified = classifyRpcError(err)
@@ -389,7 +403,7 @@ export class TagExecutor {
       this._connectingTagClient = false
       this._runActive = false
       // Disconnect on ALL terminal paths (complete, stopped, hard-stopped, error, connect throw)
-      await this._tagClient.disconnect()
+      await tagClient.disconnect()
     }
   }
 
@@ -440,7 +454,8 @@ export class TagExecutor {
   private async _tagGroup(
     dialog: AdminDialogDTO,
     resolved: { id: bigint; accessHash: bigint },
-    tag: string
+    tag: string,
+    tagClient: TagClient
   ): Promise<TagGroupOutcome> {
     const timestamp = new Date().toISOString()
 
@@ -492,7 +507,7 @@ export class TagExecutor {
 
     // Step 5: issue editChatParticipantRank — tagClient.invoke() is already governor-wrapped
     // DO NOT wrap in governor.run() again (Pitfall 3)
-    await this._tagClient.invoke(
+    await tagClient.invoke(
       makeEditChatParticipantRankRequest(inputPeer, inputUser, tag)
     )
 

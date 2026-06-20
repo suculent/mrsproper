@@ -158,7 +158,10 @@ function makeTagExecutor(config: {
   const onStateChange = (s: TagState) => states.push(s)
 
   const executor = new TagExecutor({
-    tagClient: mockTagClient as never,
+    // CR-02: pass a factory so each run constructs a fresh TagClient (post-login session snapshot).
+    // In tests, the factory always returns the same mockTagClient so connect/invoke/disconnect spies
+    // on mockTagClient still capture all calls — no test assertions change.
+    tagClientFactory: () => mockTagClient as never,
     mainClient: mockMainClient,
     governor,
     enumerator: stubEnumerator as never,
@@ -660,11 +663,12 @@ describe('TagExecutor — tagClient lifecycle (§4.3)', () => {
     const dialogs = [makeDialog('9004', 'supergroup'), makeDialog('9005', 'supergroup')]
     const { executor, mockTagClient } = makeTagExecutor({ dialogs })
 
-    // First execute() starts running — sets run in-flight
+    // First execute() starts running — sets _connectingTagClient = true during connect
     const firstPromise = executor.execute({ dialogIds: ['9004', '9005'], tag: 'dev' })
 
     // Second execute() while first is in-flight:
-    // Because _runActive is true, the idle assertion fails early → connect NOT called again
+    // Because _connectingTagClient is true, the reconnect-race guard fails early → connect NOT called again
+    // (IN-01: the real guard is _connectingTagClient, not _runActive)
     const secondPromise = executor.execute({ dialogIds: ['9004', '9005'], tag: 'dev' })
 
     await vi.runAllTimersAsync()
@@ -672,5 +676,31 @@ describe('TagExecutor — tagClient lifecycle (§4.3)', () => {
 
     // connect should have been called only once (second execute() short-circuits)
     expect(mockTagClient.connect).toHaveBeenCalledTimes(1)
+  })
+
+  it('CR-01: executor not permanently wedged when tagClient.connect() throws', async () => {
+    const dialogs = [makeDialog('9006', 'supergroup')]
+    const { executor, mockTagClient, states } = makeTagExecutor({ dialogs })
+
+    // First execute(): connect() throws — should reset all state cleanly.
+    // Attach .catch() IMMEDIATELY to suppress PromiseRejectionHandledWarning.
+    mockTagClient.connect.mockRejectedValueOnce(new Error('connect failed'))
+    const firstPromise = executor.execute({ dialogIds: ['9006'], tag: 'dev' }).catch(() => {})
+    await vi.runAllTimersAsync()
+    await firstPromise
+
+    // After the failed run, _runActive must be false and _connectingTagClient must be false.
+    // A second execute() must be able to proceed to connect (not blocked by stale flags).
+    mockTagClient.connect.mockResolvedValue(undefined)
+    const secondPromise = executor.execute({ dialogIds: ['9006'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await secondPromise
+
+    // Second run must have connected (executor was not wedged)
+    expect(mockTagClient.connect).toHaveBeenCalledTimes(2)
+
+    // Final state must be terminal (not stuck in a mid-run state)
+    const finalState = states[states.length - 1]
+    expect(['complete', 'stopped', 'hard-stopped']).toContain(finalState.step)
   })
 })

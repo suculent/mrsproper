@@ -316,21 +316,28 @@ app.whenReady().then(async () => {
   const tagAuditStore = createTagAuditStore()
 
   // ── Wire TagExecutor (Phase 11) ───────────────────────────────────────────────
-  // tagInnerClient uses the same session string from the authenticated main client.
-  // API_ID and API_HASH are already in scope from the import at line 142.
-  // Do NOT call tagInnerClient.connect() here — TagExecutor.execute() calls tagClient.connect() per run.
-  const tagInnerClient = new TelegramClient(
-    new StringSession(client.session.save() as unknown as string),
-    API_ID,
-    API_HASH,
-    { connectionRetries: 5 }
-  )
-  const tagClientInstance = new TagClient({
-    inner: tagInnerClient as unknown as import('./telegram/tagClient').TagClientInner,
+  // CR-02 (lazy factory): define a factory rather than a pre-built TagClient instance so
+  // that each run gets a fresh TagClient that snapshots the CURRENT session (post-login).
+  // Building the client at app-startup (before sm.initialize() / login) would capture an
+  // empty session string, causing tag runs to fail to authenticate.
+  // Also sets floodSleepThreshold:0 on the inner client so FLOOD_WAITs reach the governor
+  // (consistent with the main client at line ~154) rather than being silently absorbed.
+  const tagClientFactory = () => new TagClient({
+    inner: new TelegramClient(
+      new StringSession(client.session.save() as unknown as string),
+      API_ID,
+      API_HASH,
+      {
+        connectionRetries: 5,
+        // Phase 11 D-11: floodSleepThreshold=0 forces ALL FLOOD_WAITs to throw so the
+        // shared governor can emit countdown events (matches main client policy, CR-02).
+        floodSleepThreshold: 0,
+      }
+    ) as unknown as import('./telegram/tagClient').TagClientInner,
     governor,
   })
   const tagExecutor = new TagExecutor({
-    tagClient: tagClientInstance,
+    tagClientFactory,
     mainClient: client as unknown as import('./telegram/TagExecutor').TagExecutorOptions['mainClient'],
     governor,
     enumerator,
