@@ -11,7 +11,7 @@ selected groups. Design + Phase 0 spike are complete; see
 - [ ] **TAG-01**: User can choose a "Tag" action (alongside Kick/Ban) and enter one tag string that is applied identically to all selected groups.
 - [x] **TAG-02**: App sets the member tag across selected supergroups/channels via `messages.editChatParticipantRank` (a vendored TL request) issued over an isolated layer-224 connection, leaving the main layer-198 client undisturbed.
 - [x] **TAG-03**: Tag writes are throttled through the shared rate-limit governor (FLOOD_WAIT honored, PEER_FLOOD hard-stops) and the run is resumable via a `tag-job` audit file.
-- [ ] **TAG-04**: Groups where the target is already an admin are skipped and flagged (to avoid overwriting their admin custom title); basic groups are skipped; every group's outcome is reported.
+- [x] **TAG-04**: Groups where the target is already an admin are skipped and flagged (to avoid overwriting their admin custom title); basic groups are skipped; every group's outcome is reported.
 - [x] **TAG-05**: An explicit confirmation gate shows the tag string, target identity, and the exact affected-group list before any write; target identity is sourced from the main process only (never the renderer).
 - [ ] **TAG-06**: The run shows live progress and a per-group success/failure report afterward, reusing the removal flow's progress/results UI.
 
@@ -35,6 +35,6 @@ selected groups. Design + Phase 0 spike are complete; see
 | TAG-01 | Phase 12 | Pending |
 | TAG-02 | Phase 9 | Complete |
 | TAG-03 | Phase 10 | Complete |
-| TAG-04 | Phase 11 | Pending |
+| TAG-04 | Phase 11 | Complete |
 | TAG-05 | Phase 10 | Complete |
 | TAG-06 | Phase 12 | Pending |
