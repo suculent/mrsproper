@@ -183,6 +183,26 @@ function bigIntReplacer(_, value) {
   return typeof value === 'bigint' ? value.toString() : value
 }
 
+// ── Group resolution ─────────────────────────────────────────────────────────
+// A bare numeric id passed to client.getEntity() is treated as a PeerUser, which
+// fails for groups/channels (and never works for private ones). Resolve numeric
+// ids by matching against the dialog list instead — those entities carry the real
+// accessHash needed for private supergroups. Usernames/invite links fall through
+// to getEntity directly.
+async function resolveGroupEntity(client, groupArg) {
+  if (/[^0-9-]/.test(groupArg)) {
+    return await client.getEntity(groupArg)
+  }
+  const wanted = groupArg.replace(/^-100/, '').replace(/^-/, '')
+  const dialogs = await client.getDialogs({})
+  for (const d of dialogs) {
+    if (d.isUser) continue
+    const ent = d.entity
+    if (ent?.id?.toString() === wanted) return ent
+  }
+  return null
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -275,9 +295,14 @@ async function main() {
   console.log(`[Q5] Resolving group: ${args.group}`)
   let groupEntity
   try {
-    groupEntity = await client.getEntity(args.group)
+    groupEntity = await resolveGroupEntity(client, args.group)
   } catch (err) {
     console.error('[ERROR] Could not resolve group entity:', err.message ?? err)
+    await client.disconnect()
+    process.exit(1)
+  }
+  if (!groupEntity) {
+    console.error(`[ERROR] No group found matching "${args.group}". Run --list-groups to see valid ids.`)
     await client.disconnect()
     process.exit(1)
   }
