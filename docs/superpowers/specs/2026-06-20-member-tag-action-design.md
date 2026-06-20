@@ -114,6 +114,12 @@ The pre-existing `"tag"` was visible only in the official client, never in the s
 > - `client.getEntity(<bare numeric id>)` resolves as `PeerUser` and fails for groups — the script
 >   now resolves numeric group ids via the dialog list instead.
 > - `StringSession` is exported from `telegram/sessions`, not the package root.
+> - **Layer-override experiment (2026-06-20):** wrapping `editAdmin` in `InvokeWithLayer(N)`
+>   for N ∈ {214, 220, 224} was **rejected by the server with `CONNECTION_LAYER_INVALID`** at
+>   every value — the call never executed. Per-call layer override is not viable mid-session
+>   (`InvokeWithLayer` must wrap `InitConnection` during the connection handshake). Conclusion
+>   reinforced: there is no per-request shortcut; honoring the member-tag layer requires the
+>   whole connection to negotiate it, i.e. a GramJS client whose TL schema + LAYER match.
 
 ## 4. Architecture
 
