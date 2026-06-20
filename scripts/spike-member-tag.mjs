@@ -77,7 +77,9 @@ import * as readline from 'readline'
 
 // ── CJS interop for the `telegram` package (GramJS 2.26.22 is CommonJS) ───────
 const require = createRequire(import.meta.url)
-const { TelegramClient, StringSession, Api } = require('telegram')
+const { TelegramClient, Api } = require('telegram')
+// StringSession is NOT on the package root in GramJS 2.26.22 — it lives in telegram/sessions
+const { StringSession } = require('telegram/sessions')
 
 // ── big-integer (same package used in RemovalExecutor.ts) ─────────────────────
 const bigInt = require('big-integer')
