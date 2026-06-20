@@ -36,15 +36,18 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   // Severity state — rehydrated from electron-store on mount
   // ---------------------------------------------------------------------------
 
-  const [severity, setSeverity] = useState<'kick' | 'ban'>('ban')
+  // Phase 12: severity widened to action ('kick' | 'ban' | 'tag') — full wiring in Plan 04.
+  // Minimal update here to keep ReviewScreen props in sync after interface rename.
+  const [action, setAction] = useState<'kick' | 'ban' | 'tag'>('ban')
 
   useEffect(() => {
-    severityClient.getSeverity().then(setSeverity).catch(() => {})
+    severityClient.getSeverity().then(setAction).catch(() => {})
   }, [])
 
-  const handleSeverityChange = useCallback((s: 'kick' | 'ban') => {
-    setSeverity(s)
-    void severityClient.setSeverity(s)
+  const handleActionChange = useCallback((a: 'kick' | 'ban' | 'tag') => {
+    setAction(a)
+    // Only persist kick/ban to electron-store — 'tag' is not a severity
+    if (a === 'kick' || a === 'ban') void severityClient.setSeverity(a)
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -84,8 +87,8 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
       <main className={`flex flex-1 overflow-hidden${stage === 'review' ? ' flex-col w-full overflow-y-auto' : ''}`}>
         {stage === 'review' ? (
           <ReviewScreen
-            severity={severity}
-            onSeverityChange={handleSeverityChange}
+            action={action}
+            onActionChange={handleActionChange}
             onConfirm={() => setStage('run')}
             onBack={() => setStage('groups')}
           />

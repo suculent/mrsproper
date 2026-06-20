@@ -17,7 +17,7 @@ interface TagInputProps {
   onChange: (value: string) => void
   error: TagInputError
   disabled?: boolean
-  inputRef?: React.RefObject<HTMLInputElement>
+  inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
 // ---------------------------------------------------------------------------

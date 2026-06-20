@@ -1,8 +1,9 @@
-// ReviewScreen — SAF-01/02/03 gate: dry-run preview + identity + severity selector + single confirmation.
+// ReviewScreen — SAF-01/02/03 gate: dry-run preview + identity + action selector + single confirmation.
 // Replaces RemovalConfirmDialog in the Phase 6 wizard flow.
+// Phase 12: Extended to 3-way Kick/Ban/Tag action picker with TagInput, tag confirmation block.
 // Pattern: src/renderer/removal/RemovalConfirmDialog.tsx (exact analog per PATTERNS.md).
 // Identity block: avatar + name + @username + numeric ID in .text-mono (NOT font-mono).
-// computePlannedActions exported for unit testing (pure function, no jsdom needed).
+// computePlannedActions + computeActionableTagCount exported for unit testing (pure functions, no jsdom needed).
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
@@ -12,8 +13,12 @@ import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/ava
 import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import type { AdminDialogDTO } from '@shared/groupTypes'
 import { removalActions } from '@renderer/store/removalStore'
+import { tagActions } from '@renderer/store/tagStore'
 import { useGroupsStore } from '@renderer/store/groupsStore'
 import { useTargetStore } from '@renderer/store/targetStore'
+import { validateTagInput, computeTagGroups } from './tagValidation'
+import type { TagGroupAction } from './tagValidation'
+import { TagInput } from './TagInput'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from RemovalConfirmDialog.tsx per PATTERNS.md
@@ -98,12 +103,22 @@ export function computePlannedActions(
 }
 
 // ---------------------------------------------------------------------------
+// computeActionableTagCount — pure helper for tag review group count
+// Returns the number of TagGroupActions where willBeSkipped is false.
+// Exported for unit testing — no jsdom dependency.
+// ---------------------------------------------------------------------------
+
+export function computeActionableTagCount(tagGroupActions: TagGroupAction[]): number {
+  return tagGroupActions.filter(g => !g.willBeSkipped).length
+}
+
+// ---------------------------------------------------------------------------
 // ReviewScreen component props
 // ---------------------------------------------------------------------------
 
 interface ReviewScreenProps {
-  severity: 'kick' | 'ban'
-  onSeverityChange(s: 'kick' | 'ban'): void
+  action: 'kick' | 'ban' | 'tag'
+  onActionChange(a: 'kick' | 'ban' | 'tag'): void
   onConfirm(): void
   onBack(): void
 }
@@ -113,17 +128,23 @@ interface ReviewScreenProps {
 // ---------------------------------------------------------------------------
 
 export function ReviewScreen({
-  severity,
-  onSeverityChange,
+  action,
+  onActionChange,
   onConfirm,
   onBack,
 }: ReviewScreenProps): React.JSX.Element {
   const { t } = useTranslation('wizard')
   const { t: tR } = useTranslation('removal')
+  const { t: tT } = useTranslation('tag')
   const { groups, checkedDialogIds } = useGroupsStore()
   const { target: targetState } = useTargetStore()
 
   const [isDispatching, setIsDispatching] = useState(false)
+
+  // Tag local state
+  const [tagValue, setTagValue] = useState('')
+  const tagError = validateTagInput(tagValue)  // derived, not stored
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   const headingRef = useRef<HTMLHeadingElement>(null)
 
@@ -131,6 +152,16 @@ export function ReviewScreen({
   useEffect(() => {
     headingRef.current?.focus()
   }, [])
+
+  // Reset tagValue when switching away from Tag (T-12-06 mitigation)
+  useEffect(() => {
+    if (action !== 'tag') setTagValue('')
+  }, [action])
+
+  // Focus the tag input when Tag is selected (accessibility — keyboard flow)
+  useEffect(() => {
+    if (action === 'tag') tagInputRef.current?.focus()
+  }, [action])
 
   // Derive target identity data
   const targetName =
@@ -146,17 +177,23 @@ export function ReviewScreen({
   const dialogs: AdminDialogDTO[] =
     groups.step === 'loaded' ? groups.dialogs : []
 
-  // Derive planned actions — cast t to the looser TranslateFn type accepted by the pure function
+  // Derive planned actions for kick/ban — cast t to the looser TranslateFn type
+  const severity = action === 'tag' ? 'ban' : action  // fallback unused for tag path
   const plannedActions = computePlannedActions(dialogs, checkedDialogIds, severity, t as TranslateFn)
   const actionableCount = plannedActions.length
 
-  // Count checked groups where canAct is false (no rights)
+  // Derive tag group actions for the tag confirmation list
+  const tagGroupActions = computeTagGroups(dialogs, checkedDialogIds, tT as TranslateFn)
+  const actionableTagDialogIds = tagGroupActions.filter(g => !g.willBeSkipped).map(g => g.dialog)
+  const actionableTagCount = computeActionableTagCount(tagGroupActions)
+
+  // Count checked groups where canAct is false (no rights) — for kick/ban path
   const noRightsCount = [...checkedDialogIds].filter(id => {
     const d = dialogs.find(d => d.id === id)
     return d !== undefined && !d.canAct
   }).length
 
-  // Count groups with the rejoin-cant-be-blocked warning
+  // Count groups with the rejoin-cant-be-blocked warning — for kick/ban path
   const cantBlockCount = plannedActions.filter(p => p.warning === 'rejoin-cant-be-blocked').length
 
   // Avatar data
@@ -167,12 +204,23 @@ export function ReviewScreen({
   const handleConfirm = useCallback(async () => {
     setIsDispatching(true)
     try {
-      await removalActions.startRemoval(severity, plannedActions.map(p => p.dialog.id))
+      if (action === 'tag') {
+        await tagActions.startTag(tagValue.trim(), actionableTagDialogIds.map(d => d.id))
+      } else {
+        await removalActions.startRemoval(action, plannedActions.map(p => p.dialog.id))
+      }
       onConfirm()
     } finally {
       setIsDispatching(false)
     }
-  }, [severity, plannedActions, onConfirm])
+  }, [action, tagValue, actionableTagDialogIds, plannedActions, onConfirm])
+
+  // Determine confirm button disabled state
+  const isConfirmDisabled =
+    isDispatching ||
+    (action === 'tag'
+      ? (tagValue.trim() === '' || tagError !== null || actionableTagCount === 0)
+      : actionableCount === 0)
 
   return (
     <section
@@ -186,7 +234,7 @@ export function ReviewScreen({
         tabIndex={-1}
         className="text-heading font-semibold"
       >
-        {t('reviewTitle')}
+        {action === 'tag' ? tT('tagReviewTitle') : t('reviewTitle')}
       </h2>
 
       {/* Identity block: avatar + name + @username/ID */}
@@ -211,89 +259,151 @@ export function ReviewScreen({
         </div>
       </div>
 
-      {/* Severity segmented control */}
+      {/* Tag string display block — shown above action picker when action=tag and tagValue non-empty */}
+      {action === 'tag' && tagValue && (
+        <div className="flex flex-col gap-1">
+          <span className="text-label font-semibold">{tT('tagLabel')}</span>
+          <span className="bg-secondary rounded-full px-2 py-0.5 text-mono text-label text-foreground w-fit">
+            {tagValue}
+          </span>
+        </div>
+      )}
+
+      {/* Action picker — 3-way segmented radiogroup (Phase 12: extended from 2-way severity) */}
       <div className="flex flex-col gap-2">
         <span className="text-label font-semibold">{t('severityLabel')}</span>
         <div
           role="radiogroup"
-          aria-label={t('severityGroupAria')}
+          aria-label={t('actionGroupAria')}
           className="flex rounded-md border border-border overflow-hidden"
         >
           <Button
             role="radio"
-            aria-checked={severity === 'kick'}
-            variant={severity === 'kick' ? 'default' : 'ghost'}
+            aria-checked={action === 'kick'}
+            variant={action === 'kick' ? 'default' : 'ghost'}
             size="sm"
             className="rounded-none flex-1"
-            onClick={() => onSeverityChange('kick')}
+            onClick={() => onActionChange('kick')}
           >
             {t('severityKick')}
           </Button>
           <Button
             role="radio"
-            aria-checked={severity === 'ban'}
-            variant={severity === 'ban' ? 'default' : 'ghost'}
+            aria-checked={action === 'ban'}
+            variant={action === 'ban' ? 'default' : 'ghost'}
             size="sm"
             className="rounded-none flex-1 border-l border-border"
-            onClick={() => onSeverityChange('ban')}
+            onClick={() => onActionChange('ban')}
           >
             {t('severityBan')}
           </Button>
+          <Button
+            role="radio"
+            aria-checked={action === 'tag'}
+            variant={action === 'tag' ? 'default' : 'ghost'}
+            size="sm"
+            className="rounded-none flex-1 border-l border-border"
+            onClick={() => onActionChange('tag')}
+          >
+            {tT('actionTag')}
+          </Button>
         </div>
 
+        {/* TagInput block — conditionally rendered when action=tag */}
+        {action === 'tag' && (
+          <TagInput
+            value={tagValue}
+            onChange={setTagValue}
+            error={tagError}
+            disabled={isDispatching}
+            inputRef={tagInputRef}
+          />
+        )}
+
         {/* Consequence line — min-h reserves two lines of space so toggling
-            Kick/Ban never causes a layout shift even if the text wraps */}
+            actions never causes a layout shift even if the text wraps */}
         <p className="text-body text-muted-foreground min-h-[2.5rem]">
-          {tR(`severityLine${severity === 'ban' ? 'Ban' : 'Kick'}`, { count: actionableCount })}
+          {action !== 'tag'
+            ? tR(`severityLine${action === 'ban' ? 'Ban' : 'Kick'}`, { count: actionableCount })
+            : tT('tagConsequenceLine', { tag: tagValue, count: actionableTagCount })}
         </p>
       </div>
 
       {/* Totals line */}
       <div className="text-body">
-        {actionableCount === 0 ? (
-          <span className="text-muted-foreground">{t('totalsEmpty')}</span>
+        {action === 'tag' ? (
+          actionableTagCount === 0 ? (
+            <span className="text-muted-foreground">{tT('tagTotalsEmpty')}</span>
+          ) : (
+            <span className="font-semibold text-foreground">
+              {tT('tagTotalsTagging', { count: actionableTagCount })}
+            </span>
+          )
         ) : (
-          <span>
-            <span className="font-semibold text-foreground">{t('totalsRemoving', { count: actionableCount })}</span>
-            {noRightsCount > 0 && (
-              <>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-muted-foreground">{t('totalsExcluded', { count: noRightsCount })}</span>
-              </>
-            )}
-            {cantBlockCount > 0 && (
-              <>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-muted-foreground">{t('totalsCantBlock', { count: cantBlockCount })}</span>
-              </>
-            )}
-          </span>
+          actionableCount === 0 ? (
+            <span className="text-muted-foreground">{t('totalsEmpty')}</span>
+          ) : (
+            <span>
+              <span className="font-semibold text-foreground">{t('totalsRemoving', { count: actionableCount })}</span>
+              {noRightsCount > 0 && (
+                <>
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="text-muted-foreground">{t('totalsExcluded', { count: noRightsCount })}</span>
+                </>
+              )}
+              {cantBlockCount > 0 && (
+                <>
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="text-muted-foreground">{t('totalsCantBlock', { count: cantBlockCount })}</span>
+                </>
+              )}
+            </span>
+          )
         )}
       </div>
 
-      {/* Group list — only checked + actionable groups */}
+      {/* Group list — tag path shows tagGroupActions; kick/ban shows plannedActions */}
       <ScrollArea className="max-h-[40vh] border border-border rounded-md">
-        <ul aria-label={t('groupListAria')}>
-          {plannedActions.map(({ dialog, mechanicNote, warning }) => (
-            <li
-              key={dialog.id}
-              className="px-4 py-2 border-b border-border last:border-b-0 flex flex-col gap-1"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-label font-semibold text-foreground truncate">{dialog.title}</span>
-                <span className="text-label text-muted-foreground shrink-0">
-                  {dialog.memberCount != null ? t('memberCount', { count: dialog.memberCount }) : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                {warning && (
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                )}
+        {action === 'tag' ? (
+          <ul aria-label={t('tagGroupListAria')}>
+            {tagGroupActions.map(({ dialog, mechanicNote }) => (
+              <li
+                key={dialog.id}
+                className="px-4 py-2 border-b border-border last:border-b-0 flex flex-col gap-1"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-label font-semibold text-foreground truncate">{dialog.title}</span>
+                  <span className="text-label text-muted-foreground shrink-0">
+                    {dialog.memberCount != null ? t('memberCount', { count: dialog.memberCount }) : ''}
+                  </span>
+                </div>
                 <span className="text-label text-muted-foreground">{mechanicNote}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul aria-label={t('groupListAria')}>
+            {plannedActions.map(({ dialog, mechanicNote, warning }) => (
+              <li
+                key={dialog.id}
+                className="px-4 py-2 border-b border-border last:border-b-0 flex flex-col gap-1"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-label font-semibold text-foreground truncate">{dialog.title}</span>
+                  <span className="text-label text-muted-foreground shrink-0">
+                    {dialog.memberCount != null ? t('memberCount', { count: dialog.memberCount }) : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {warning && (
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="text-label text-muted-foreground">{mechanicNote}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </ScrollArea>
 
       {/* Footer: back + confirm */}
@@ -303,18 +413,24 @@ export function ReviewScreen({
         </Button>
 
         <Button
-          variant="destructive"
+          variant={action === 'tag' ? 'default' : 'destructive'}
           onClick={handleConfirm}
-          disabled={isDispatching || actionableCount === 0}
-          aria-label={t(`confirmAriaLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })}
+          disabled={isConfirmDisabled}
+          aria-label={
+            action === 'tag'
+              ? tT('confirmAriaLabelTag', { name: targetName, count: actionableTagCount })
+              : t(`confirmAriaLabel${action === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
+          }
         >
           {isDispatching ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              {tR('confirmDispatching')}
+              {action === 'tag' ? tT('confirmDispatching') : tR('confirmDispatching')}
             </>
           ) : (
-            t(`confirmLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
+            action === 'tag'
+              ? tT('confirmLabelTag', { name: targetName, count: actionableTagCount })
+              : t(`confirmLabel${action === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
           )}
         </Button>
       </div>
