@@ -40,8 +40,13 @@ method.
 
 Public MTProto method docs lag the live feature, and the official client cannot be traffic-
 introspected (SSL pinning). Therefore Phase 0 is an **empirical** test, not a documentation
-exercise. It is a **throwaway Node script** using the existing encrypted GramJS session — no
-production code is committed.
+exercise. It is a **throwaway Node script** (`scripts/spike-member-tag.mjs`) — no production
+code is committed.
+
+> **Note on session:** the script performs its **own fresh interactive GramJS login**
+> (`StringSession` + `client.start()`, api_id/api_hash from `.env`). It does **not** reuse the
+> app's production session — that is encrypted via Electron `safeStorage` (Keychain/DPAPI),
+> which is only decryptable inside the Electron main process, not from a plain Node script.
 
 The script:
 
@@ -71,8 +76,32 @@ The script:
   the new `telegram_api.tl`, re-verify every other call still deserializes). That is a separate
   spec and a real maintenance burden — not undertaken without the user's explicit go-ahead.
 
-**Deliverable:** a short findings note appended to this spec (or a sibling file), recording the
-answers to Q1–Q5 and the chosen branch.
+**Deliverable:** the findings table below, filled in after running the spike.
+
+### Spike findings (fill in after running `scripts/spike-member-tag.mjs`)
+
+**Run date:** _TBD_
+**GramJS version under test:** 2.26.22 (layer 198)
+**Test group:** _TBD_ &nbsp;|&nbsp; **Non-admin target:** _TBD_ &nbsp;|&nbsp; **Already-admin target:** _TBD_
+
+| # | Question | Finding | Outcome |
+|---|----------|---------|---------|
+| Q1 | Does layer-198 `editAdmin + rank` (all-false rights) set a member tag on a **non-admin** — badge appears, no promotion? | _TBD_ | ☐ YES ☐ NO |
+| Q2 | What happens to an **already-admin** target's type / rights / title? (pre→post participant diff) | _TBD_ | ☐ untouched ☐ rights changed ☐ title overwritten |
+| Q3 | Which right must the **acting** account hold? What RPC error if it lacks rights? Interaction with the group "Edit Own Tags" setting? | _TBD_ | error code: _____ |
+| Q4 | Max tag length / allowed charset? Does empty string clear vs error? | _TBD_ | max len: ___, empty: ☐ clears ☐ errors |
+| Q5 | Confirmed basic groups (`Chat`) unsupported by `channels.EditAdmin`? | _TBD_ | ☐ confirmed unsupported |
+
+**Decision (from Q1):**
+- ☐ **Q1 = YES** → proceed to Phase 1 (write-only `TagExecutor`).
+- ☐ **Q1 = NO** → stop & reassess (GramJS TL-schema regeneration — separate spec).
+
+**Already-admin decision (from Q2) — resolves §5:**
+- ☐ Skip & flag &nbsp; ☐ Preserve rights, set tag
+
+**Raw notes / surprises:**
+
+> _paste relevant script output or observations here_
 
 ## 4. Architecture
 
