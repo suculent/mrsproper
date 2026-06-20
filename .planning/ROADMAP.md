@@ -28,7 +28,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 **Milestone Goal:** Add a "Tag" action alongside Kick/Ban that sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` (layer 224), reusing the throttled, resumable, audited execution pipeline. Phase 0 spike is complete — setter confirmed, layer-224 technique proven.
 
-- [ ] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore
+- [x] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore (completed 2026-06-20)
 - [ ] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary
 - [ ] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume
 - [ ] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report
@@ -47,7 +47,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 **Plans**: 2 plans
 Plans:
 - [x] 09-01-PLAN.md — tagApi.ts: vendored editChatParticipantRank factory + TL-string encoder with golden-byte tests
-- [ ] 09-02-PLAN.md — tagClient.ts: patch-connect-restore wrapper with governor routing and lifecycle tests
+- [x] 09-02-PLAN.md — tagClient.ts: patch-connect-restore wrapper with governor routing and lifecycle tests
 **UI hint**: no
 
 ### Phase 10: Shared Types, IPC & Audit Wiring
@@ -101,7 +101,7 @@ Plans:
 | 6. UI Integration | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 7. Packaging & Release | v1.0 | 5/5 | Complete | 2026-06-12 |
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
-| 9. Tag API & Layer-224 Connection | v1.6 | 1/2 | In Progress|  |
+| 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 0/TBD | Not started | - |
 | 11. TagExecutor | v1.6 | 0/TBD | Not started | - |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
