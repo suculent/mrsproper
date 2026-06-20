@@ -56,6 +56,14 @@ export const REMOVAL_STATE        = 'removal:state' as const        // push: mai
 export const REMOVAL_GET_JOB      = 'removal:getJob' as const
 export const REMOVAL_DISCARD_JOB  = 'removal:discardJob' as const
 
+// Tag execution IPC channels (Phase 10, TAG-03/TAG-05). Pattern mirrors the REMOVAL_* block exactly above.
+export const TAG_START       = 'tag:start' as const        // { dialogIds, tag }
+export const TAG_ABORT       = 'tag:abort' as const
+export const TAG_GET_STATE   = 'tag:getState' as const
+export const TAG_STATE       = 'tag:state' as const        // push: main → renderer
+export const TAG_GET_JOB     = 'tag:getJob' as const
+export const TAG_DISCARD_JOB = 'tag:discardJob' as const
+
 // Severity preference IPC channels (Phase 6, electron-store pref). Non-secret;
 // Zod-validated (z.enum(['kick','ban'])) in severityChannels.ts.
 export const SEVERITY_GET = 'severity:get' as const
@@ -109,6 +117,12 @@ export const CHANNELS = {
   REMOVAL_STATE,
   REMOVAL_GET_JOB,
   REMOVAL_DISCARD_JOB,
+  TAG_START,
+  TAG_ABORT,
+  TAG_GET_STATE,
+  TAG_STATE,
+  TAG_GET_JOB,
+  TAG_DISCARD_JOB,
   SEVERITY_GET,
   SEVERITY_SET,
   LANGUAGE_GET,
