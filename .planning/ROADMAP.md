@@ -30,7 +30,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 - [x] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore (completed 2026-06-20)
 - [x] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary (completed 2026-06-20)
-- [ ] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume
+- [x] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume (completed 2026-06-20)
 - [ ] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report
 
 ## Phase Details
@@ -81,7 +81,7 @@ Plans:
 Plans:
 - [x] 11-01-PLAN.md — tagExecutor.test.ts: failing RED tests for TagExecutor (all behaviors)
 - [x] 11-02-PLAN.md — TagExecutor.ts: GREEN implementation — throttled, generation-guarded, tag-write state machine
-- [ ] 11-03-PLAN.md — index.ts wiring: replace stub, tagExecutorRef, onStateChange→emitTagState
+- [x] 11-03-PLAN.md — index.ts wiring: replace stub, tagExecutorRef, onStateChange→emitTagState
 **UI hint**: no
 
 ### Phase 12: Renderer — Action Picker, Tag Input & Results
@@ -112,5 +112,5 @@ Plans:
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
-| 11. TagExecutor | v1.6 | 2/3 | In Progress|  |
+| 11. TagExecutor | v1.6 | 3/3 | Complete   | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
