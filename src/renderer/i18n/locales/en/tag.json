@@ -60,5 +60,6 @@
   "resumeBody": "{{x}} of {{n}} groups were processed before the run stopped. Resuming continues from the first unprocessed group.",
   "resumeDestructive": "Resume tagging",
   "resumeDestructiveAria": "Resume tag job",
+  "queuedTagAria": "{{title}} — queued for tagging",
   "resumeNeutral": "Discard job"
 }

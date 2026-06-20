@@ -67,5 +67,6 @@
   "resumeBody": "Bylo zpracováno {{x}} z {{n}} skupin před zastavením. Pokračování začíná od první nezpracované skupiny.",
   "resumeDestructive": "Pokračovat v označování",
   "resumeDestructiveAria": "Pokračovat v úloze označování",
+  "queuedTagAria": "{{title}} — ve frontě k označení",
   "resumeNeutral": "Zrušit úlohu"
 }

@@ -207,7 +207,7 @@ export function GroupRow({
             <Checkbox
               checked={true}
               disabled={true}
-              aria-label={tG('includeInRemovalAria', { title: dialog.title })}
+              aria-label={tT('queuedTagAria', { title: dialog.title })}
             />
           )
       }
