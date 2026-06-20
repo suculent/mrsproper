@@ -157,12 +157,15 @@ function makeTagExecutor(config: {
   const states: TagState[] = []
   const onStateChange = (s: TagState) => states.push(s)
 
+  const restoreMainClientLayer = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+
   const executor = new TagExecutor({
     // CR-02: pass a factory so each run constructs a fresh TagClient (post-login session snapshot).
     // In tests, the factory always returns the same mockTagClient so connect/invoke/disconnect spies
     // on mockTagClient still capture all calls — no test assertions change.
     tagClientFactory: () => mockTagClient as never,
     mainClient: mockMainClient,
+    restoreMainClientLayer,
     governor,
     enumerator: stubEnumerator as never,
     resolver: stubResolver,
@@ -170,7 +173,7 @@ function makeTagExecutor(config: {
     onStateChange,
   })
 
-  return { executor, mockTagClient, mockMainClient, states, auditStore, dialogIds }
+  return { executor, mockTagClient, mockMainClient, restoreMainClientLayer, states, auditStore, dialogIds }
 }
 
 // ---------------------------------------------------------------------------
@@ -702,5 +705,91 @@ describe('TagExecutor — tagClient lifecycle (§4.3)', () => {
     // Final state must be terminal (not stuck in a mid-run state)
     const finalState = states[states.length - 1]
     expect(['complete', 'stopped', 'hard-stopped']).toContain(finalState.step)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Layer-224 isolation (root-cause fix for live "Spojení bylo přerušeno")
+// ---------------------------------------------------------------------------
+
+describe('TagExecutor — layer-224 / layer-198 isolation', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('issues ALL main-client reads (GetParticipant) BEFORE opening the layer-224 tagClient', async () => {
+    // A layer-224 connection upgrades the shared session to 224; the main client must not read
+    // while it is open or its responses come back unparseable. So every mainClient.invoke must
+    // happen before mockTagClient.connect().
+    const dialogs = [makeDialog('1001', 'supergroup'), makeDialog('1002', 'supergroup')]
+    const { executor, mockTagClient, mockMainClient } = makeTagExecutor({ dialogs })
+
+    const order: string[] = []
+    mockMainClient.invoke.mockImplementation(async () => {
+      order.push('main.invoke')
+      return { participant: { className: 'ChannelParticipant' } }
+    })
+    mockTagClient.connect.mockImplementation(async () => {
+      order.push('tag.connect')
+    })
+    mockTagClient.invoke.mockImplementation(async () => {
+      order.push('tag.invoke')
+      return {}
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['1001', '1002'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    const connectIdx = order.indexOf('tag.connect')
+    expect(connectIdx).toBeGreaterThanOrEqual(0)
+    // No main-client invoke may appear AFTER the tag client connects.
+    const lastMainIdx = order.lastIndexOf('main.invoke')
+    expect(lastMainIdx).toBeLessThan(connectIdx)
+    // And the writes happen after connect.
+    expect(order.indexOf('tag.invoke')).toBeGreaterThan(connectIdx)
+  })
+
+  it('restores the main client to layer 198 after a completed run (Phase C)', async () => {
+    const dialogs = [makeDialog('1001', 'supergroup')]
+    const { executor, mockTagClient, restoreMainClientLayer } = makeTagExecutor({ dialogs })
+
+    const order: string[] = []
+    mockTagClient.disconnect.mockImplementation(async () => {
+      order.push('tag.disconnect')
+    })
+    restoreMainClientLayer.mockImplementation(async () => {
+      order.push('restore')
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['1001'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(restoreMainClientLayer).toHaveBeenCalledTimes(1)
+    // Restore happens after the tag client is torn down.
+    expect(order).toEqual(['tag.disconnect', 'restore'])
+  })
+
+  it('does NOT open the tag client or restore layer when a precheck PEER_FLOOD hard-stops the run', async () => {
+    // PEER_FLOOD during the Phase A precheck must hard-stop before any layer-224 connection opens.
+    const dialogs = [makeDialog('1001', 'supergroup')]
+    const { executor, mockTagClient, mockMainClient, restoreMainClientLayer, states } =
+      makeTagExecutor({ dialogs })
+
+    mockMainClient.invoke.mockRejectedValue(
+      Object.assign(new Error('PEER_FLOOD'), { errorMessage: 'PEER_FLOOD' })
+    )
+
+    const execPromise = executor.execute({ dialogIds: ['1001'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(mockTagClient.connect).not.toHaveBeenCalled()
+    expect(restoreMainClientLayer).not.toHaveBeenCalled()
+    expect(states[states.length - 1].step).toBe('hard-stopped')
   })
 })

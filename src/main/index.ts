@@ -339,6 +339,13 @@ app.whenReady().then(async () => {
   const tagExecutor = new TagExecutor({
     tagClientFactory,
     mainClient: client as unknown as import('./telegram/TagExecutor').TagExecutorOptions['mainClient'],
+    // Phase C: after a layer-224 tag run, the shared session is upgraded to layer 224 server-side,
+    // so the main client keeps receiving unparseable 224 responses. Reconnect it to re-send
+    // invokeWithLayer(198) and restore layer-198 parsing for subsequent enumeration/removal.
+    restoreMainClientLayer: async () => {
+      await client.disconnect()
+      await client.connect()
+    },
     governor,
     enumerator,
     resolver,
