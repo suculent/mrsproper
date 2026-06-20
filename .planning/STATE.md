@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 Phase: Milestone v1.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-13 — Milestone v1.0 completed and archived
+Last activity: 2026-06-20 — Completed quick task 260620-f8a: member-tag spike script
 
 ## Performance Metrics
 
@@ -178,6 +178,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260611-t1h | Rename MrProper to MrsProper across code/identifiers + fix visible macOS app name to Mrs. Proper | 2026-06-11 | 618d5a9 | [260611-t1h-rename-mrproper-to-mrsproper-across-code](./quick/260611-t1h-rename-mrproper-to-mrsproper-across-code/) |
+| 260620-f8a | Phase 0 empirical spike: throwaway Node script to test member-tag via channels.EditAdmin rank against a test supergroup | 2026-06-20 | 1c4f674 | [260620-f8a-phase-0-empirical-spike-throwaway-node-s](./quick/260620-f8a-phase-0-empirical-spike-throwaway-node-s/) |
 
 ### Blockers/Concerns
 
