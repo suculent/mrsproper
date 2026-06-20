@@ -112,5 +112,5 @@ Plans:
 | 8. Localization (v1.5) | v1.0 | 9/9 | Complete | 2026-06-13 |
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
-| 11. TagExecutor | v1.6 | 3/3 | Complete   | 2026-06-20 |
+| 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
