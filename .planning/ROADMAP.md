@@ -94,7 +94,12 @@ Plans:
   3. The live progress view updates per group during the run, showing which group is being processed; FLOOD_WAIT countdown appears when the governor is waiting
   4. The per-group results report surfaces all outcome states: `done`, `skipped` (with `TAG_TARGET_IS_ADMIN` or `TAG_UNSUPPORTED_BASIC_GROUP` label), `failed` (with error code), and distinguishes a `hard-stopped` run from a completed one
   5. The existing Kick and Ban flows are unaffected; switching between action types resets the tag input without carrying over stale state
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 12-01-PLAN.md — tagConstants + tagValidation + i18n namespace (en/cs) + wizardStage TAG events
+- [ ] 12-02-PLAN.md — tagStore: module-singleton, cachedSnapshot guard, tagActions (no retryGroup)
+- [ ] 12-03-PLAN.md — TagInput + TagResumeJobDialog + ReviewScreen 3-way picker/input/confirmation
+- [ ] 12-04-PLAN.md — GroupRow tagStatus slot + GroupsPane tag progress/results + AppShell wiring
 **UI hint**: yes
 
 ## Progress
@@ -113,4 +118,4 @@ Plans:
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
-| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/TBD | Not started | - |
+| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/4 | Not started | - |
