@@ -198,4 +198,54 @@ describe('TagAuditStore', () => {
 
     expect(fakeFs._lastWriteOpts).toMatchObject({ mode: 0o600 })
   })
+
+  it('setStatus: updates the persisted job status field and re-writes with 0o600', () => {
+    const store = createTagAuditStore({ fs: fakeFs, app: fakeApp })
+    const job = makeTagJob({ status: 'running' })
+    store.initJob(job)
+
+    const completedAt = '2026-06-20T15:00:00.000Z'
+    store.setStatus('complete', completedAt)
+
+    // Re-read from fake disk to confirm the write happened
+    const written = JSON.parse(fakeFs._files[FINAL_PATH]!) as TagJobFile
+    expect(written.status).toBe('complete')
+    expect(written.completedAt).toBe(completedAt)
+    // 0o600 mode must be preserved on every write
+    expect(fakeFs._lastWriteOpts).toMatchObject({ mode: 0o600 })
+  })
+
+  it('setStatus: updates status without completedAt when completedAt is omitted', () => {
+    const store = createTagAuditStore({ fs: fakeFs, app: fakeApp })
+    store.initJob(makeTagJob({ status: 'running' }))
+
+    store.setStatus('stopped')
+
+    const written = JSON.parse(fakeFs._files[FINAL_PATH]!) as TagJobFile
+    expect(written.status).toBe('stopped')
+    // completedAt should not be injected when not passed
+    expect(written.completedAt).toBeUndefined()
+  })
+
+  it('clearJob: removes the job file so readJob() returns null', () => {
+    const store = createTagAuditStore({ fs: fakeFs, app: fakeApp })
+    store.initJob(makeTagJob())
+
+    // Confirm file exists before clearing
+    expect(fakeFs._files[FINAL_PATH]).toBeDefined()
+
+    store.clearJob()
+
+    // File should no longer exist in fake fs
+    expect(fakeFs._files[FINAL_PATH]).toBeUndefined()
+    // readJob() must return null after clearJob()
+    expect(store.readJob()).toBeNull()
+  })
+
+  it('clearJob: is a no-op when no job file exists', () => {
+    const store = createTagAuditStore({ fs: fakeFs, app: fakeApp })
+    // No initJob — file never created
+    expect(() => store.clearJob()).not.toThrow()
+    expect(store.readJob()).toBeNull()
+  })
 })
