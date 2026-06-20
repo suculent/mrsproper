@@ -95,6 +95,7 @@ function parseArgs(argv) {
     session: null,
     confirm: false,
     listGroups: false,
+    layer: null,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -118,6 +119,11 @@ function parseArgs(argv) {
       case '--list-groups':
         result.listGroups = true
         break
+      case '--layer': {
+        const n = parseInt(args[++i] ?? '', 10)
+        result.layer = Number.isNaN(n) ? null : n
+        break
+      }
       default:
         // Unknown flag — ignore silently
         break
@@ -141,6 +147,8 @@ Optional:
   --confirm                 Skip the "yes" confirmation prompt
   --list-groups             List your groups/channels with their numeric ids, then exit
                             (use to find a private group's id; --group/--user/--tag not needed)
+  --layer <N>               EXPERIMENT: wrap the editAdmin call in InvokeWithLayer(N) to test
+                            whether member-tag behavior is gated behind a newer protocol layer
 
 Environment (from .env):
   MRSPROPER_API_ID          Your Telegram api_id (integer)
@@ -415,14 +423,24 @@ async function main() {
 
   let editAdminSuccess = false
   try {
-    const result = await client.invoke(
-      new Api.channels.EditAdmin({
-        channel: inputChannel,
-        userId: inputUser,
-        adminRights: new Api.ChatAdminRights({}), // all flags omitted → all false
-        rank: args.tag,
-      })
-    )
+    const editAdminReq = new Api.channels.EditAdmin({
+      channel: inputChannel,
+      userId: inputUser,
+      adminRights: new Api.ChatAdminRights({}), // all flags omitted → all false
+      rank: args.tag,
+    })
+
+    // EXPERIMENT (--layer N): announce a newer protocol layer for THIS call only by
+    // wrapping it in InvokeWithLayer. Tests whether member-tag semantics are layer-gated
+    // (i.e. whether editAdmin+rank on a non-admin sets a tag at a newer layer). The rest
+    // of the connection stays at layer 198 so group/user resolution still works.
+    let request = editAdminReq
+    if (args.layer) {
+      console.log(`[EXPERIMENT] Wrapping editAdmin in InvokeWithLayer(${args.layer}) — testing layer-gated member tags.`)
+      request = new Api.InvokeWithLayer({ layer: args.layer, query: editAdminReq })
+    }
+
+    const result = await client.invoke(request)
     editAdminSuccess = true
     console.log('[Q1/Q2] editAdmin succeeded. Raw result:')
     console.log(JSON.stringify(result, bigIntReplacer, 2))
