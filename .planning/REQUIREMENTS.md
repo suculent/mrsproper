@@ -1,0 +1,40 @@
+# Requirements — MrProper
+
+## Milestone v1.6 — Member Tag Action
+
+Scoped requirements for adding a "Tag" action that sets a Telegram member tag across
+selected groups. Design + Phase 0 spike are complete; see
+`docs/superpowers/specs/2026-06-20-member-tag-action-design.md`.
+
+### Member Tagging (TAG)
+
+- [ ] **TAG-01**: User can choose a "Tag" action (alongside Kick/Ban) and enter one tag string that is applied identically to all selected groups.
+- [ ] **TAG-02**: App sets the member tag across selected supergroups/channels via `messages.editChatParticipantRank` (a vendored TL request) issued over an isolated layer-224 connection, leaving the main layer-198 client undisturbed.
+- [ ] **TAG-03**: Tag writes are throttled through the shared rate-limit governor (FLOOD_WAIT honored, PEER_FLOOD hard-stops) and the run is resumable via a `tag-job` audit file.
+- [ ] **TAG-04**: Groups where the target is already an admin are skipped and flagged (to avoid overwriting their admin custom title); basic groups are skipped; every group's outcome is reported.
+- [ ] **TAG-05**: An explicit confirmation gate shows the tag string, target identity, and the exact affected-group list before any write; target identity is sourced from the main process only (never the renderer).
+- [ ] **TAG-06**: The run shows live progress and a per-group success/failure report afterward, reusing the removal flow's progress/results UI.
+
+## Future Requirements (deferred)
+
+- Read back and display a member's current tag in the UI (requires layer-224 deserialization of `channelParticipant.rank` — out of scope for write-only v1.6).
+- Clear/remove an existing tag (set empty) as a distinct action.
+- Per-group different tags.
+- Basic-group (`Chat`) tagging — method accepts `InputPeerChat`, but legacy/low-value; revisit if needed.
+- A "preserve title" mode for admins (read current rank, restore after) instead of skip & flag.
+
+## Out of Scope
+
+- Changing the member-tag setter to `channels.editAdmin` — empirically proven inert on member tags (the spike).
+- Upgrading/forking GramJS to a layer-224 schema — avoided; v1.6 uses a single vendored request + an isolated layer-224 connection (write-only, response is an empty `Updates` that parses at layer 198).
+
+## Traceability
+
+| Requirement | Phase |
+|-------------|-------|
+| TAG-01 | (filled by roadmap) |
+| TAG-02 | (filled by roadmap) |
+| TAG-03 | (filled by roadmap) |
+| TAG-04 | (filled by roadmap) |
+| TAG-05 | (filled by roadmap) |
+| TAG-06 | (filled by roadmap) |

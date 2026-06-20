@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Awaiting next milestone
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-06-13T09:49:41.031Z"
-last_activity: 2026-06-13 — Milestone v1.0 completed and archived
+milestone: v1.6
+milestone_name: Member Tag Action
+status: planning
+last_updated: "2026-06-20T12:44:21.184Z"
+last_activity: 2026-06-20
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 57
-  completed_plans: 57
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-10)
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-20 — Completed quick task 260620-f8a: member-tag spike script
+Status: Defining requirements
+Last activity: 2026-06-20 — Milestone v1.6 started
 
 ## Performance Metrics
 

@@ -10,6 +10,18 @@ It exists for the recurring "serial bad actor" problem: a spammer, troll, or ban
 
 A group admin can confidently remove the right person from every relevant community in one safe, verified pass — without tripping Telegram's rate limits or hitting the wrong account.
 
+## Current Milestone: v1.6 Member Tag Action
+
+**Goal:** Add a "Tag" action alongside Kick/Ban that sets a Telegram member tag across selected groups via `messages.editChatParticipantRank` (protocol layer 224), reusing the throttled, resumable, audited execution pipeline.
+
+**Target features:**
+- A third action — Tag — applying one tag string across all selected supergroups/channels
+- A vendored `editChatParticipantRank` request over an isolated layer-224 connection (the main layer-198 client is untouched)
+- Already-admin targets skipped & flagged (no admin-title clobbering); basic groups skipped
+- Confirmation gate, governor throttling, resume, and live progress reused from the removal flow
+
+**Design + spike complete:** `docs/superpowers/specs/2026-06-20-member-tag-action-design.md` (setter confirmed, layer-224 technique proven, admin/basic-group probes done).
+
 ## Requirements
 
 ### Validated
@@ -39,7 +51,12 @@ A group admin can confidently remove the right person from every relevant commun
 
 <!-- Current scope. Building toward these. -->
 
-- (none — all v1/v1.5 requirements delivered; next milestone not yet defined)
+- Choose a "Tag" action (alongside Kick/Ban) and enter one tag string applied to all selected groups — v1.6 (TAG-01)
+- Set the member tag across selected supergroups/channels via `editChatParticipantRank` over an isolated layer-224 connection, leaving the main layer-198 client undisturbed — v1.6 (TAG-02)
+- Tag writes throttled through the shared governor (FLOOD_WAIT/PEER_FLOOD honored) and resumable via a `tag-job` audit file — v1.6 (TAG-03)
+- Skip & flag already-admin targets (no title clobbering) and basic groups; report per-group outcomes — v1.6 (TAG-04)
+- Explicit confirmation gate (tag + identity + group list) before any write; target identity sourced from the main process only — v1.6 (TAG-05)
+- Live progress and per-group success/failure report, reusing the removal flow UI — v1.6 (TAG-06)
 
 ### Out of Scope
 
@@ -104,4 +121,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-13 after Phase 8 (Localization — i18n & Czech Translation, v1.5) completion — i18next integrated, full Czech translation, Day/Night theme; all 9 milestone phases complete. Big Sur smoke test still pending (07-HUMAN-UAT.md)*
+*Last updated: 2026-06-20 — started milestone v1.6 (Member Tag Action). Design + Phase 0 spike complete (member-tag setter = messages.editChatParticipantRank at layer 224, proven). Requirements TAG-01..06 defined.*
