@@ -31,7 +31,7 @@ Full details: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 9: Tag API & Layer-224 Connection** — Vendored `editChatParticipantRank` request and isolated layer-224 `tagClient` via patch-connect-restore (completed 2026-06-20)
 - [x] **Phase 10: Shared Types, IPC & Audit Wiring** — `tagTypes.ts`, `tagChannels.ts`, `tag-job.json` audit wiring, IPC trust boundary (completed 2026-06-20)
 - [x] **Phase 11: TagExecutor** — Write-only state machine over `tagClient` mirroring `RemovalExecutor`; per-group dispatch, already-admin skip, resume (completed 2026-06-20)
-- [ ] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report
+- [x] **Phase 12: Renderer — Action Picker, Tag Input & Results** — Tag action in UI, tag string input with validation, confirmation screen, live progress and per-group report (completed 2026-06-20)
 
 ## Phase Details
 
@@ -99,7 +99,7 @@ Plans:
 - [x] 12-01-PLAN.md — tagConstants + tagValidation + i18n namespace (en/cs) + wizardStage TAG events
 - [x] 12-02-PLAN.md — tagStore: module-singleton, cachedSnapshot guard, tagActions (no retryGroup)
 - [x] 12-03-PLAN.md — TagInput + TagResumeJobDialog + ReviewScreen 3-way picker/input/confirmation
-- [ ] 12-04-PLAN.md — GroupRow tagStatus slot + GroupsPane tag progress/results + AppShell wiring
+- [x] 12-04-PLAN.md — GroupRow tagStatus slot + GroupsPane tag progress/results + AppShell wiring
 **UI hint**: yes
 
 ## Progress
@@ -118,4 +118,4 @@ Plans:
 | 9. Tag API & Layer-224 Connection | v1.6 | 2/2 | Complete   | 2026-06-20 |
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
-| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 3/4 | In Progress|  |
+| 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 4/4 | Complete   | 2026-06-20 |
