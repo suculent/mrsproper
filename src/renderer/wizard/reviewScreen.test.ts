@@ -1,8 +1,10 @@
-// Tests for computePlannedActions pure function — no jsdom needed (node env).
-// SAF-01/02/03 mechanic derivation oracle: all six GroupType × severity branches + edge cases.
+// Tests for computePlannedActions and computeActionableTagCount pure functions.
+// No jsdom needed (node env). SAF-01/02/03 mechanic derivation oracle plus
+// tag action count-derivation (Phase 12 Plan 03 extension).
 
 import { describe, it, expect } from 'vitest'
-import { computePlannedActions } from './ReviewScreen'
+import { computePlannedActions, computeActionableTagCount } from './ReviewScreen'
+import { computeTagGroups } from './tagValidation'
 import type { AdminDialogDTO } from '@shared/groupTypes'
 
 // ---------------------------------------------------------------------------
@@ -124,5 +126,48 @@ describe('computePlannedActions — mechanic derivation (SAF-03)', () => {
   it('excludes dialog not in dialogs array even if in checkedIds', () => {
     const result = computePlannedActions([supergroupActable], new Set(['999']), 'ban')
     expect(result).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeActionableTagCount — Phase 12 tag count-derivation (uses computeTagGroups)
+// ---------------------------------------------------------------------------
+
+describe('computeActionableTagCount', () => {
+  const t = (key: string) => key
+
+  it('returns count of non-skipped TagGroupActions (supergroups only)', () => {
+    const dialogs: AdminDialogDTO[] = [
+      makeDialog({ id: '10', type: 'supergroup', canAct: true }),
+      makeDialog({ id: '11', type: 'broadcast-channel', canAct: true }),
+    ]
+    const tagGroupActions = computeTagGroups(dialogs, new Set(['10', '11']), t)
+    const count = computeActionableTagCount(tagGroupActions)
+    expect(count).toBe(2)
+  })
+
+  it('excludes basic-group (willBeSkipped=true) from count', () => {
+    const dialogs: AdminDialogDTO[] = [
+      makeDialog({ id: '20', type: 'supergroup', canAct: true }),
+      makeDialog({ id: '21', type: 'basic-group', canAct: true }),
+    ]
+    const tagGroupActions = computeTagGroups(dialogs, new Set(['20', '21']), t)
+    const count = computeActionableTagCount(tagGroupActions)
+    expect(count).toBe(1)
+  })
+
+  it('returns 0 when all groups are basic-group (all skipped)', () => {
+    const dialogs: AdminDialogDTO[] = [
+      makeDialog({ id: '30', type: 'basic-group', canAct: true }),
+      makeDialog({ id: '31', type: 'basic-group', canAct: true }),
+    ]
+    const tagGroupActions = computeTagGroups(dialogs, new Set(['30', '31']), t)
+    const count = computeActionableTagCount(tagGroupActions)
+    expect(count).toBe(0)
+  })
+
+  it('returns 0 for empty tag group actions', () => {
+    const count = computeActionableTagCount([])
+    expect(count).toBe(0)
   })
 })
