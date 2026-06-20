@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '../components/ui/alert'
 import { useGroupsStore, groupsActions } from '../store/groupsStore'
 import { useTargetStore, targetActions } from '../store/targetStore'
 import { useRemovalStore, removalActions } from '../store/removalStore'
+import { useTagStore, tagActions } from '../store/tagStore'
 import { GroupRow } from './GroupRow'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
@@ -36,6 +37,7 @@ interface GroupsPaneProps {
   onNavigateToReview: () => void
   onNavigateToTarget: () => void
   stage: WizardStage
+  activeAction: 'kick' | 'ban' | 'tag'
 }
 
 // ---------------------------------------------------------------------------
@@ -59,13 +61,16 @@ function sortDialogs(dialogs: AdminDialogDTO[], sort: SortMode): AdminDialogDTO[
 // ---------------------------------------------------------------------------
 
 export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
+  const { onNavigateToReview, onNavigateToTarget, activeAction } = props
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
   const { t: tW } = useTranslation('wizard')
+  const { t: tT } = useTranslation('tag')
 
   const { groups, scan, checkedDialogIds } = useGroupsStore()
   const targetState = useTargetStore()
   const { state: removal } = useRemovalStore()
+  const { state: tag } = useTagStore()
 
   const [sort, setSort] = useState<SortMode>('az')
   const [filter, setFilter] = useState('')
@@ -167,7 +172,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   // ---------------------------------------------------------------------------
 
   const isRunActive =
-    removal.step === 'running' || removal.step === 'stopping'
+    removal.step === 'running' || removal.step === 'stopping' ||
+    (activeAction === 'tag' && (tag.step === 'running' || tag.step === 'stopping'))
 
   // Derive removalStatus for a given dialog
   function getRemovalStatus(
@@ -194,6 +200,24 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     }
 
     // In the run but not yet processed — show as queued
+    return 'queued'
+  }
+
+  // Derive tagStatus for a given dialog
+  function getTagStatus(
+    dialogId: string
+  ): 'queued' | 'tagging' | 'done' | 'skipped' | 'failed' | null {
+    const tagActive =
+      tag.step === 'running' || tag.step === 'stopping' ||
+      tag.step === 'complete' || tag.step === 'stopped' || tag.step === 'hard-stopped'
+
+    if (!tagActive) return null
+
+    const outcome = tag.outcomes.find((o) => o.dialogId === dialogId)
+    if (outcome) return outcome.status as 'done' | 'skipped' | 'failed'
+
+    if (tag.step === 'running' && dialogId === tag.currentGroupId) return 'tagging'
+
     return 'queued'
   }
 
@@ -263,6 +287,136 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   function renderProgressSlot(): React.JSX.Element | null {
     // Only in checklist mode
     if (mode !== 'checklist') return null
+
+    // TAG BRANCHES — gated on activeAction === 'tag'; placed before removal branches
+    if (activeAction === 'tag') {
+      // a-tag. Tag progress (running or stopping)
+      if (tag.step === 'running' || tag.step === 'stopping') {
+        const processed = tag.progress.processed
+        const total = tag.progress.total
+        const pct = total > 0 ? Math.round((processed / total) * 100) : 0
+        const isStopping = tag.step === 'stopping'
+
+        return (
+          <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-label text-muted-foreground">
+                {tT('progressLabel', { name: targetName, x: processed + 1, n: total })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-label text-muted-foreground hover:text-foreground"
+                onClick={() => void tagActions.abortTag()}
+                disabled={isStopping}
+                aria-label={tG('stopRemovalAria')}
+              >
+                {isStopping ? (
+                  <>
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                    {tT('stoppingLabel')}
+                  </>
+                ) : (
+                  tT('stopLabel')
+                )}
+              </Button>
+            </div>
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-[width] duration-200"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {tag.floodWaitRemaining != null && tag.floodWaitRemaining > 0 && (
+              <span className="text-label text-muted-foreground flex items-baseline gap-1">
+                {tT('floodWaitSubline')}
+                <FloodCountdown remaining={tag.floodWaitRemaining} />
+              </span>
+            )}
+          </div>
+        )
+      }
+
+      // b-tag. PEER_FLOOD banner (hard-stopped)
+      if (tag.step === 'hard-stopped') {
+        return (
+          <div className="px-4 py-2 shrink-0">
+            <Alert
+              variant="destructive"
+              className="bg-destructive/10 border-destructive/30"
+              role="alert"
+              aria-live="assertive"
+            >
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription className="text-body">
+                {tT('peerFloodBanner')}
+                <div className="mt-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => void tagActions.resumeJobFromDisk()}
+                  >
+                    {tT('peerFloodResumeLabel')}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )
+      }
+
+      // c-tag. Summary band (complete or stopped)
+      if (tag.step === 'complete' || tag.step === 'stopped') {
+        const summary = tag.summary
+        const summaryParts: Array<{ label: string; count: number }> = []
+        if (summary) {
+          if (summary.tagged > 0) summaryParts.push({ count: summary.tagged, label: tT('summaryPart.tagged') })
+          if (summary.skipped > 0) summaryParts.push({ count: summary.skipped, label: tT('summaryPart.skipped') })
+          if (summary.failed > 0) summaryParts.push({ count: summary.failed, label: tT('summaryPart.failed') })
+        }
+        return (
+          <div className="px-4 py-2 shrink-0 border-t border-border flex items-center justify-between gap-2 flex-wrap" role="status">
+            <div className="flex flex-col gap-1">
+              {tag.step === 'stopped' && (
+                <span className="text-label text-muted-foreground">
+                  {tT('summaryStopped', { x: tag.progress.processed, n: tag.progress.total })}
+                </span>
+              )}
+              {summaryParts.length > 0 && (
+                <span className="text-label">
+                  {summaryParts.map((part, i) => (
+                    <React.Fragment key={part.label}>
+                      {i > 0 && <span className="text-muted-foreground"> · </span>}
+                      <span className="font-semibold text-foreground">{part.count}</span>
+                      {' '}
+                      <span className="text-muted-foreground">{part.label}</span>
+                    </React.Fragment>
+                  ))}
+                </span>
+              )}
+              {summary && summary.completedAt && (
+                <span className="text-label text-muted-foreground">
+                  {tT('finishedAt', { time: formatTime(summary.completedAt) })}
+                </span>
+              )}
+              {/* NOTE: no summaryFailed retry copy — tag has no per-group retry */}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => { await targetActions.resetTarget(); onNavigateToTarget() }}
+            >
+              {tW('tagSomeoneElse')}
+            </Button>
+          </div>
+        )
+      }
+
+      // Tag is idle — fall through to scan progress slot (d)
+      return null
+    }
+
+    // EXISTING REMOVAL BRANCHES (unchanged) — placed after tag block
 
     // a. Removal progress (running or stopping)
     if (removal.step === 'running' || removal.step === 'stopping') {
@@ -388,7 +542,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
+            onClick={async () => { await targetActions.resetTarget(); onNavigateToTarget() }}
           >
             {tW('removeSomeoneElse')}
           </Button>
@@ -449,7 +603,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             variant="ghost"
             size="sm"
             className="text-label text-muted-foreground hover:text-foreground"
-            onClick={async () => { await targetActions.resetTarget(); props.onNavigateToTarget() }}
+            onClick={async () => { await targetActions.resetTarget(); onNavigateToTarget() }}
             disabled={isRunActive}
             aria-label={tW('changeTargetAria')}
           >
@@ -486,7 +640,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             <Button
               variant="default"
               size="sm"
-              onClick={() => props.onNavigateToReview()}
+              onClick={() => onNavigateToReview()}
               aria-label={tW('runTriggerAria', { count: checkedCount })}
             >
               {tW('runTriggerLabel', { count: checkedCount })}
@@ -520,8 +674,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         {emptyState ?? (
           <div className="divide-y divide-border">
             {displayedDialogs.map((dialog) => {
-              const rowRemovalStatus = getRemovalStatus(dialog.id)
+              const rowRemovalStatus = activeAction !== 'tag' ? getRemovalStatus(dialog.id) : null
               const outcome = removal.outcomes.find((o) => o.dialogId === dialog.id)
+              const tagOutcome = tag.outcomes.find((o) => o.dialogId === dialog.id)
               return (
                 <GroupRow
                   key={dialog.id}
@@ -531,10 +686,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   onToggle={isRunActive ? () => {} : groupsActions.toggleGroup}
                   onRetry={isRunActive ? () => {} : (dialogId) => void groupsActions.retryScanGroup(dialogId)}
                   removalStatus={rowRemovalStatus}
-                  removalNote={outcome?.note ?? null}
-                  errorCode={outcome?.errorCode ?? null}
+                  removalNote={activeAction !== 'tag' ? (outcome?.note ?? null) : null}
+                  errorCode={activeAction !== 'tag' ? (outcome?.errorCode ?? null) : null}
                   severity={removal.severity ?? 'ban'}
                   onRetryRemoval={(id) => void removalActions.retryGroup(id)}
+                  tagStatus={activeAction === 'tag' ? getTagStatus(dialog.id) : null}
+                  tagErrorCode={activeAction === 'tag' ? (tagOutcome?.errorCode ?? null) : null}
                 />
               )
             })}

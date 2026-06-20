@@ -15,8 +15,10 @@ import { StepIndicator } from '../wizard/StepIndicator'
 import type { WizardStage } from '../wizard/StepIndicator'
 import { ReviewScreen } from '../wizard/ReviewScreen'
 import { ResumeJobDialog } from '../removal/ResumeJobDialog'
+import { TagResumeJobDialog } from '../removal/TagResumeJobDialog'
 import { useSearchStore } from '../store/searchStore'
 import { useRemovalStore } from '../store/removalStore'
+import { useTagStore } from '../store/tagStore'
 import { severityClient } from '../ipc/severityClient'
 
 interface AppShellProps {
@@ -57,6 +59,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   const { state: removal, pendingJob } = useRemovalStore()
   const [resumeOpen, setResumeOpen] = useState(!!pendingJob)
 
+  // Removal auto-advance run→report when removal reaches a terminal state (unchanged)
   useEffect(() => {
     if (
       stage === 'run' &&
@@ -65,6 +68,28 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
       setStage('report')
     }
   }, [removal.step, stage])
+
+  // ---------------------------------------------------------------------------
+  // Tag store subscription + tag auto-advance (gated on action === 'tag')
+  // ---------------------------------------------------------------------------
+
+  const { state: tag, pendingJob: pendingTagJob } = useTagStore()
+
+  // Tag auto-advance run→report — CRITICAL: gate on action === 'tag' to prevent
+  // cross-contamination with removal auto-advance (RESEARCH Pitfall 3)
+  useEffect(() => {
+    if (
+      stage === 'run' &&
+      action === 'tag' &&
+      (tag.step === 'complete' || tag.step === 'stopped' || tag.step === 'hard-stopped')
+    ) {
+      setStage('report')
+    }
+  }, [tag.step, stage, action])
+
+  // Derive tagResumeOpen reactively from store — NOT via useState (RESEARCH Pitfall 1:
+  // useState would miss the initial value when pendingTagJob is set before first render)
+  const tagResumeOpen = pendingTagJob !== null
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -114,6 +139,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
                 onNavigateToReview={() => setStage('review')}
                 onNavigateToTarget={() => setStage('target')}
                 stage={stage}
+                activeAction={action}
               />
             </div>
           </>
@@ -126,6 +152,16 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           open={resumeOpen}
           onOpenChange={setResumeOpen}
           job={pendingJob}
+          onResume={() => setStage('run')}
+        />
+      )}
+
+      {/* TagResumeJobDialog — independent from removal dialog; mounts when pending tag job exists */}
+      {pendingTagJob && (
+        <TagResumeJobDialog
+          open={tagResumeOpen}
+          onOpenChange={() => {}}
+          job={pendingTagJob}
           onResume={() => setStage('run')}
         />
       )}
