@@ -22,7 +22,7 @@
  */
 
 import { Api } from 'telegram'
-import type { GroupsState, AdminDialogDTO, GroupType, GreyReason } from '@shared/groupTypes'
+import type { GroupsState, AdminDialogDTO, GroupType, GreyReason, AddGreyReason } from '@shared/groupTypes'
 import type { RateLimitGovernor } from './governor'
 import { classifyRpcError } from './operationErrors'
 
@@ -179,6 +179,9 @@ export class GroupEnumerator {
       const canAct = entity.creator === true || (entity.adminRights as { banUsers?: boolean } | null | undefined)?.banUsers === true
       const greyReason: GreyReason | null = canAct ? null : 'not-creator'
 
+      const canAdd = this._computeCanAdd(entity)
+      const addGreyReason: AddGreyReason | null = canAdd ? null : 'no-invite-right'
+
       return this._buildDTO({
         id,
         title,
@@ -186,6 +189,8 @@ export class GroupEnumerator {
         type: 'basic-group',
         canAct,
         greyReason,
+        canAdd,
+        addGreyReason,
         // Api.Chat has no participantsCount in GramJS — it's on the full chat object
         memberCount: null,
       })
@@ -205,6 +210,9 @@ export class GroupEnumerator {
         const memberCount: number | null =
           typeof entity.participantsCount === 'number' ? entity.participantsCount : null
 
+        const canAdd = this._computeCanAdd(entity)
+        const addGreyReason: AddGreyReason | null = canAdd ? null : 'no-invite-right'
+
         return this._buildDTO({
           id,
           title,
@@ -212,12 +220,23 @@ export class GroupEnumerator {
           type: 'supergroup',
           canAct,
           greyReason,
+          canAdd,
+          addGreyReason,
           memberCount,
         })
       } else {
         // Broadcast channel — admin can never remove members by kicking (different removal semantics)
         const memberCount: number | null =
           typeof entity.participantsCount === 'number' ? entity.participantsCount : null
+
+        // D-06: canAdd/addGreyReason are independent of canAct here — a broadcast channel
+        // where the admin holds the invite right is addable even though it's not kickable.
+        let canAdd = this._computeCanAdd(entity)
+        let addGreyReason: AddGreyReason | null = canAdd ? null : 'no-invite-right'
+        if (memberCount !== null && memberCount >= 200) {
+          canAdd = false
+          addGreyReason = 'channel-full'
+        }
 
         return this._buildDTO({
           id,
@@ -226,6 +245,8 @@ export class GroupEnumerator {
           type: 'broadcast-channel',
           canAct: false,
           greyReason: 'broadcast-channel',
+          canAdd,
+          addGreyReason,
           memberCount,
         })
       }
@@ -233,6 +254,26 @@ export class GroupEnumerator {
 
     // Not a group/channel (e.g., DM, user dialog) — skip
     return null
+  }
+
+  /**
+   * Compute whether the admin can add members to this group/channel (D-04/D-05, ADD-04).
+   * Zero new Telegram API calls — uses only fields already present on the enumerated entity.
+   *
+   * Rule (OR logic, mirrors the canAct creator/adminRights pattern):
+   *   - creator → always true (all rights implicit)
+   *   - adminRights.inviteUsers === true → explicit invite right granted
+   *   - otherwise: true unless defaultBannedRights.inviteUsers === true (open permissions —
+   *     if the default member rights do not forbid inviting, any member may add)
+   */
+  private _computeCanAdd(entity: Api.Chat | Api.Channel): boolean {
+    const adminRights = entity.adminRights as { inviteUsers?: boolean } | null | undefined
+    const defaultBannedRights = entity.defaultBannedRights as { inviteUsers?: boolean } | null | undefined
+    return (
+      entity.creator === true ||
+      adminRights?.inviteUsers === true ||
+      defaultBannedRights?.inviteUsers !== true
+    )
   }
 
   /**
@@ -248,6 +289,8 @@ export class GroupEnumerator {
     type: GroupType
     canAct: boolean
     greyReason: GreyReason | null
+    canAdd: boolean
+    addGreyReason: AddGreyReason | null
     memberCount: number | null
   }): AdminDialogDTO {
     return {
@@ -258,6 +301,8 @@ export class GroupEnumerator {
       type: params.type,
       canAct: params.canAct,
       greyReason: params.greyReason,
+      canAdd: params.canAdd,
+      addGreyReason: params.addGreyReason,
     }
   }
 }
