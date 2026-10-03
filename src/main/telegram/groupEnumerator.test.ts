@@ -88,6 +88,67 @@ describe('type detection — Api.Chat entity', () => {
       expect(loaded.dialogs[0].greyReason).toBe('not-creator')
     }
   })
+
+  // ── D-04/D-05: canAdd — basic group ──────────────────────────────────────
+  it('canAdd=true when entity.creator=true (D-04/D-05)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [{ entity: 'Chat', id: '110', title: 'Creator Group', creator: true }],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
+    }
+  })
+
+  it('canAdd=true when adminRights.inviteUsers=true (D-04/D-05)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        { entity: 'Chat', id: '111', title: 'Invite Group', creator: false, adminRights: { inviteUsers: true } },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
+    }
+  })
+
+  it('canAdd=false with addGreyReason=no-invite-right when defaultBannedRights.inviteUsers=true and no adminRights.inviteUsers (D-04/D-05)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Chat',
+          id: '112',
+          title: 'Forbidden Group',
+          creator: false,
+          defaultBannedRights: { inviteUsers: true },
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
+    }
+  })
+
+  it('canAdd=true when no adminRights and no defaultBannedRights (open permissions, D-04/D-05)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        { entity: 'Chat', id: '113', title: 'Open Group', creator: false },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -162,6 +223,47 @@ describe('type detection — Api.Channel megagroup', () => {
       expect(loaded.dialogs[0].greyReason).toBeNull()
     }
   })
+
+  // ── D-04: canAdd — supergroup (same rules as basic group) ───────────────
+  it('canAdd=true when adminRights.inviteUsers=true on a supergroup (D-04)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '210',
+          title: 'Invite Supergroup',
+          megagroup: true,
+          adminRights: { inviteUsers: true },
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
+    }
+  })
+
+  it('canAdd=false with addGreyReason=no-invite-right on a supergroup when defaultBannedRights.inviteUsers=true (D-04)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '211',
+          title: 'Forbidden Supergroup',
+          megagroup: true,
+          defaultBannedRights: { inviteUsers: true },
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -199,6 +301,93 @@ describe('type detection — broadcast channel', () => {
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(false)
       expect(loaded.dialogs[0].greyReason).toBe('broadcast-channel')
+    }
+  })
+
+  // ── D-06: canAdd on broadcast channels — invite right split from canAct ──
+  it('canAdd=true while canAct stays false when admin holds the invite right (D-06, ADD-03)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '302',
+          title: 'Invite Broadcast Channel',
+          megagroup: false,
+          adminRights: { inviteUsers: true },
+          participantsCount: 50,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAct).toBe(false)
+      expect(loaded.dialogs[0].greyReason).toBe('broadcast-channel')
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
+    }
+  })
+
+  it('canAdd=false with addGreyReason=no-invite-right when the admin lacks the invite right (D-06)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '303',
+          title: 'No-invite Broadcast Channel',
+          megagroup: false,
+          defaultBannedRights: { inviteUsers: true },
+          participantsCount: 50,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
+    }
+  })
+
+  it('canAdd=false with addGreyReason=channel-full when participantsCount >= 200, regardless of invite right (D-06)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '304',
+          title: 'Full Broadcast Channel',
+          megagroup: false,
+          adminRights: { inviteUsers: true },
+          participantsCount: 200,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('channel-full')
+    }
+  })
+
+  it('canAdd=true when participantsCount < 200 with invite right (channel-full override does not fire below 200, D-06)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '305',
+          title: 'Almost Full Broadcast Channel',
+          megagroup: false,
+          adminRights: { inviteUsers: true },
+          participantsCount: 199,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(true)
+      expect(loaded.dialogs[0].addGreyReason).toBeNull()
     }
   })
 })
