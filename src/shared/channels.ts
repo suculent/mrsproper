@@ -64,6 +64,22 @@ export const TAG_STATE       = 'tag:state' as const        // push: main → ren
 export const TAG_GET_JOB     = 'tag:getJob' as const
 export const TAG_DISCARD_JOB = 'tag:discardJob' as const
 
+// Add execution IPC channels (Phase 14, ADD-06..ADD-11). Pattern mirrors the REMOVAL_*/TAG_* blocks above.
+export const ADD_START        = 'add:start' as const        // { dialogIds, resume? }
+export const ADD_ABORT        = 'add:abort' as const
+export const ADD_RETRY_GROUP  = 'add:retryGroup' as const   // { dialogId }
+export const ADD_GET_STATE    = 'add:getState' as const
+export const ADD_STATE        = 'add:state' as const        // push: main → renderer
+export const ADD_GET_JOB      = 'add:getJob' as const
+export const ADD_DISCARD_JOB  = 'add:discardJob' as const
+
+// Contact-add IPC (Phase 14, ADD-05 main half). Non-blocking; { ok, code? } response.
+export const TARGET_ADD_CONTACT = 'target:addContact' as const
+
+// DM template preference IPC (Phase 14, ADD-16 main half). Mirrors SEVERITY_*/THEME_* pattern.
+export const TEMPLATE_GET = 'template:get' as const
+export const TEMPLATE_SET = 'template:set' as const
+
 // Severity preference IPC channels (Phase 6, electron-store pref). Non-secret;
 // Zod-validated (z.enum(['kick','ban'])) in severityChannels.ts.
 export const SEVERITY_GET = 'severity:get' as const
@@ -123,6 +139,16 @@ export const CHANNELS = {
   TAG_STATE,
   TAG_GET_JOB,
   TAG_DISCARD_JOB,
+  ADD_START,
+  ADD_ABORT,
+  ADD_RETRY_GROUP,
+  ADD_GET_STATE,
+  ADD_STATE,
+  ADD_GET_JOB,
+  ADD_DISCARD_JOB,
+  TARGET_ADD_CONTACT,
+  TEMPLATE_GET,
+  TEMPLATE_SET,
   SEVERITY_GET,
   SEVERITY_SET,
   LANGUAGE_GET,
