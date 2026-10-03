@@ -14,7 +14,6 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import bigInt from 'big-integer'
 import { createMockTelegramClient } from './__mocks__/telegramClient'
 import { RateLimitGovernor } from './governor'
 import { createContactService } from './contactService'
