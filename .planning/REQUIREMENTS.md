@@ -43,7 +43,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Tag cleanup
 
-- [ ] **TAG-07**: TagExecutor no longer performs two-phase layer isolation or `restoreMainClientLayer`; stale layer-224 comments are removed; existing tag behaviour and tests are unchanged
+- [x] **TAG-07**: TagExecutor no longer performs two-phase layer isolation or `restoreMainClientLayer`; stale layer-224 comments are removed; existing tag behaviour and tests are unchanged
 
 ## v2 Requirements
 
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-14 | Phase 15 | Pending |
 | ADD-15 | Phase 15 | Pending |
 | ADD-16 | Phase 15 | Pending |
-| TAG-07 | Phase 13 | Pending |
+| TAG-07 | Phase 13 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total

@@ -44,7 +44,7 @@ in, with the same safety, throttling and reporting as removal — direct invite/
 unban-first for banned targets, and a privacy-block fallback of unique expiring invite links sent
 in one templated direct message.
 
-- [ ] **Phase 13: Add Rights & Scan Semantics (Foundation)** — `canAdd` rights flag, add-mode grey
+- [x] **Phase 13: Add Rights & Scan Semantics (Foundation)** — `canAdd` rights flag, add-mode grey (completed 2026-10-03)
   reasons (incl. broadcast channels), TagExecutor layer-224 cleanup
 
 - [ ] **Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit** — invite/add dispatch,
@@ -165,7 +165,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 13-02-PLAN.md — MembershipScanner banned-vs-not-member scan status split
-- [ ] 13-03-PLAN.md — TagExecutor layer-224 cleanup: delete tagClient.ts/tagApi.ts, consolidate to single-client loop, rewire main/index.ts
+- [x] 13-03-PLAN.md — TagExecutor layer-224 cleanup: delete tagClient.ts/tagApi.ts, consolidate to single-client loop, rewire main/index.ts
 
 **UI hint**: no
 
@@ -218,7 +218,7 @@ Plans:
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
-| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 2/3 | In Progress|  |
+| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete   | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
