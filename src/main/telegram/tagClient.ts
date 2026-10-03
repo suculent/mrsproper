@@ -1,20 +1,12 @@
 /**
- * tagClient.ts — layer-224 isolated connection helper (Phase 9 Plan 02)
+ * tagClient.ts — isolated tag-write connection wrapper (Phase 9 Plan 02; layer-neutral since TL229)
  *
- * Provides a `TagClient` wrapper that performs "patch-connect-restore" of the
- * `AllTLObjects.LAYER` global and routes all invokes through the shared
- * `RateLimitGovernor`. This is the ONLY place in the codebase where the LAYER
- * global is mutated; it is tightly scoped and immediately restored after connect
- * resolves (or throws), so the main layer-198 client is never affected.
- *
- * Design (LOCKED — proven by Phase 0 spike, §4.3 of design spec):
- *   1. `require('telegram/tl/AllTLObjects').LAYER = 224` immediately before connect()
- *   2. `await this._inner.connect()` — GramJS reads LAYER at connect-time
- *   3. `require('telegram/tl/AllTLObjects').LAYER = <prevLayer>` in finally block
- *
- * The finally block guarantees LAYER is restored to its prior value (always 198
- * in production) even if connect() throws. The `_connecting` flag prevents a
- * concurrent double-connect from mutating LAYER twice simultaneously.
+ * `TagClient` is an isolated connection wrapper (separate from the main client,
+ * same `StringSession`) that routes all invokes through the shared
+ * `RateLimitGovernor`. It no longer mutates any global TL layer because the
+ * whole package now runs at layer 229 (via `scripts/tl-apply.mjs`, see
+ * `vendor/telegram-api.tl`), so `editChatParticipantRank`'s layer-229
+ * constructors deserialize normally through the main deserializer.
  *
  * Write-only: do NOT invoke getDialogs/getParticipants on this client.
  *
@@ -22,11 +14,11 @@
  * real TelegramClient (same StringSession as the main client) and the shared
  * governor from src/main/index.ts. That wiring is NOT part of this module.
  *
- * NOTE: main-client reconnect-race mitigation is deferred to Phase 11 per spec
- * §4.3 — a full cross-client mutex would couple TagClient to the main client's
- * internals, which is outside Phase 9 scope. The `_connecting` flag prevents
- * double-mutation within TagClient itself; Phase 11 adds the open/close lifecycle
- * contract (TagClient is opened only when no removal run is in flight).
+ * The `_connecting` flag prevents a concurrent double-connect; it is an
+ * independent protection unrelated to any TL layer concern. NOTE: main-client
+ * reconnect-race mitigation (TagClient opened only when the main client is
+ * quiescent) is handled by the higher-level open/close lifecycle contract in
+ * Phase 11 — this flag is the TagClient-local guard only.
  */
 
 import type { RateLimitGovernor } from './governor'
@@ -34,12 +26,13 @@ import type { RateLimitGovernor } from './governor'
 // ── Unparseable-response detection ─────────────────────────────────────────────
 
 /**
- * True when `err` is GramJS's TypeNotFoundError for an unparseable response — i.e. the
- * layer-224 `Updates` returned by editChatParticipantRank could not be deserialized at
- * layer 198. This is the EXPECTED, harmless outcome of a successful write (Phase 0 spike):
- * the server applied the tag, only the response is unreadable here. Detection mirrors the
- * spike exactly: `.invalidConstructorId` (set by TypeNotFoundError) or a message naming the
- * Constructor ID. A real RPCError has `.errorMessage` instead and must NOT match this.
+ * True when `err` is GramJS's TypeNotFoundError for an unparseable response.
+ * This fallback is retained defensively for any future unparseable response,
+ * independent of layer (the client now runs at the package's ambient global
+ * layer, 229, set once by `scripts/tl-apply.mjs`, not patched per-connection).
+ * Detection mirrors the Phase 0 spike exactly: `.invalidConstructorId` (set by
+ * TypeNotFoundError) or a message naming the Constructor ID. A real RPCError
+ * has `.errorMessage` instead and must NOT match this.
  */
 function isUnparseableUpdatesResponse(err: unknown): boolean {
   if ((err as { invalidConstructorId?: unknown })?.invalidConstructorId != null) return true
@@ -80,9 +73,8 @@ export class TagClient {
   /**
    * Guard flag: true while a connect() call is in flight.
    *
-   * Prevents a second concurrent connect() from patching LAYER to 224 while the
-   * first patch window is still open. Also prevents the first call from racing
-   * with the restore step of a concurrently finishing connect.
+   * Prevents a second concurrent connect() from racing with the first. This is
+   * an independent protection from any TL layer concern.
    *
    * NOTE: Phase 11 adds the higher-level contract that TagClient is opened only
    * when the main client is quiescent — this flag is the TagClient-local guard.
@@ -95,19 +87,10 @@ export class TagClient {
   }
 
   /**
-   * Connect the inner client at layer 224 using patch-connect-restore.
+   * Connect the inner client.
    *
    * Guard: throws if called while a prior connect() is in flight — prevents
-   * double-connection and double LAYER mutation.
-   *
-   * Patch-connect-restore sequence (LOCKED — proven by Phase 0 spike):
-   *   1. allTl.LAYER = 224
-   *   2. await this._inner.connect()   ← server handshake at layer 224
-   *   3. allTl.LAYER = prevLayer (198) ← restore IMMEDIATELY, in finally block
-   *
-   * The finally block ensures LAYER is always restored even if connect() throws.
-   * `require('telegram/tl/AllTLObjects')` is called INSIDE this method body so
-   * vi.mock() can intercept it in tests (module-scope imports bypass the mock).
+   * a double-connection.
    */
   async connect(): Promise<void> {
     if (this._connecting) {
@@ -115,17 +98,9 @@ export class TagClient {
     }
     this._connecting = true
 
-    // Read AllTLObjects inside the method body so vi.mock intercepts correctly.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const allTl: { LAYER: number } = require('telegram/tl/AllTLObjects')
-    const prevLayer = allTl.LAYER // capture current (should always be 198 in production)
-
     try {
-      allTl.LAYER = 224
       await this._inner.connect()
     } finally {
-      // Restore unconditionally — even if connect() threw.
-      allTl.LAYER = prevLayer
       this._connecting = false
     }
   }
@@ -144,15 +119,16 @@ export class TagClient {
       try {
         return await this._inner.invoke(request)
       } catch (err) {
-        // editChatParticipantRank returns an `Updates` that carries layer-224 constructors.
-        // After connect(), AllTLObjects.LAYER is restored to 198, so the layer-198 deserializer
-        // cannot parse the response and GramJS throws TypeNotFoundError (.invalidConstructorId
-        // set; message contains "Constructor ID"). The WRITE was already accepted server-side —
-        // this is the EXPECTED success path, proven by the Phase 0 spike
-        // (scripts/spike-member-tag.mjs). We must swallow it HERE, inside the governor callback,
-        // so the governor does not classify it as NETWORK and retry the (already-applied) write.
-        // Genuine RPC errors (CHAT_ADMIN_REQUIRED, USER_NOT_PARTICIPANT, FLOOD_WAIT, PEER_FLOOD)
-        // carry an `errorMessage` and are re-thrown for the governor / executor to handle.
+        // This fallback is retained defensively for any future unparseable response,
+        // independent of layer (the client now runs at the package's ambient global
+        // layer, 229, set once by scripts/tl-apply.mjs, not patched per-connection).
+        // If GramJS ever throws a TypeNotFoundError-shaped error here
+        // (.invalidConstructorId set; message contains "Constructor ID"), we treat it
+        // as an accepted write and swallow it HERE, inside the governor callback, so
+        // the governor does not classify it as NETWORK and retry an already-applied
+        // write. Genuine RPC errors (CHAT_ADMIN_REQUIRED, USER_NOT_PARTICIPANT,
+        // FLOOD_WAIT, PEER_FLOOD) carry an `errorMessage` and are re-thrown for the
+        // governor / executor to handle.
         if (isUnparseableUpdatesResponse(err)) {
           return { _tagWriteAccepted: true }
         }
@@ -163,7 +139,7 @@ export class TagClient {
 
   /**
    * Disconnect and tear down the inner client.
-   * Call this after the tag run completes to release the layer-224 connection.
+   * Call this after the tag run completes to release the isolated connection.
    */
   async disconnect(): Promise<void> {
     await this._inner.disconnect()

@@ -1,47 +1,33 @@
 /**
- * tagClient.test.ts — layer-224 patch-connect-restore assertions (Phase 9 Plan 02)
+ * tagClient.test.ts — TagClient behavior assertions (Phase 9 Plan 02; layer-neutral since TL229)
  *
  * Test map:
- *   1. LAYER restored to 198 after connect() resolves
- *   2. LAYER is 224 at the moment innerClient.connect() is called
- *   3. LAYER restored to 198 even when connect() throws (finally block)
- *   4. invoke() routes through governor.run() — not directly to inner client
- *   5. governor.run() wraps innerClient.invoke() with the request object
- *   6. disconnect() calls innerClient.disconnect() once
- *   7. Second connect() while one is in progress throws without calling innerClient.connect() twice
+ *   1. invoke() routes through governor.run() — not directly to inner client
+ *   2. governor.run() wraps innerClient.invoke() with the request object
+ *   3. unparseable-response catch treats a TypeNotFoundError-shaped error as success
+ *   4. disconnect() calls innerClient.disconnect() once
+ *   5. Second connect() while one is in progress throws without calling innerClient.connect() twice
+ *
+ * No AllTLObjects/LAYER mocking here — TagClient no longer mutates any global TL
+ * layer (see src/main/telegram/tlLayer.test.ts for the real-package LAYER=229 guard).
  */
 
 import { describe, it, expect, vi } from 'vitest'
 import { TagClient } from './tagClient'
 import { RateLimitGovernor } from './governor'
 
-// ── AllTLObjects mock ──────────────────────────────────────────────────────────
-// vi.mock is hoisted; the LAYER property is mutable so tests can inspect it.
-vi.mock('telegram/tl/AllTLObjects', () => ({ LAYER: 198 }))
-
 // ── Helper: build a mock TagClientInner ───────────────────────────────────────
 
-type LayerSnapshot = { value: number }
-
 /**
- * Create a mock inner client.
- * `connectLayerSeen` is a snapshot object — connect() captures LAYER at call time
- * by reading the mocked AllTLObjects module. We use a callback so the test can
- * control what happens during connect().
+ * Create a mock inner client. We use a callback so the test can control what
+ * happens during connect().
  */
 function makeMockInner(opts?: {
   connectImpl?: () => Promise<void>
   /** If true, connect never resolves (simulates in-flight connect). */
   connectNeverResolves?: boolean
 }) {
-  const connectLayerSeen: LayerSnapshot = { value: -1 }
-
   const connect = vi.fn(async () => {
-    // Capture the LAYER value at call time by dynamically requiring the mocked module.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const allTl = require('telegram/tl/AllTLObjects') as { LAYER: number }
-    connectLayerSeen.value = allTl.LAYER
-
     if (opts?.connectNeverResolves) {
       // Return a promise that never resolves — simulates an in-flight connect.
       return new Promise<void>(() => {})
@@ -54,7 +40,7 @@ function makeMockInner(opts?: {
   const disconnect = vi.fn(async () => {})
   const invoke = vi.fn(async (_req: unknown) => ({}))
 
-  return { connect, disconnect, invoke, connectLayerSeen }
+  return { connect, disconnect, invoke }
 }
 
 // ── Helper: build a no-op governor for tests that don't need governor assertions ──
@@ -68,48 +54,6 @@ function makeGovernor(mockInner: ReturnType<typeof makeMockInner>) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('TagClient', () => {
-  describe('patch-connect-restore: AllTLObjects.LAYER', () => {
-    it('restores LAYER to 198 after connect() resolves', async () => {
-      const allTl = await import('telegram/tl/AllTLObjects')
-      const mockInner = makeMockInner()
-      const governor = makeGovernor(mockInner)
-      const tagClient = new TagClient({ inner: mockInner, governor })
-
-      await tagClient.connect()
-
-      expect(allTl.LAYER).toBe(198)
-    })
-
-    it('sets LAYER to 224 at the moment innerClient.connect() is called', async () => {
-      const mockInner = makeMockInner()
-      const governor = makeGovernor(mockInner)
-      const tagClient = new TagClient({ inner: mockInner, governor })
-
-      await tagClient.connect()
-
-      expect(mockInner.connectLayerSeen.value).toBe(224)
-    })
-
-    it('restores LAYER to 198 even when innerClient.connect() throws', async () => {
-      const allTl = await import('telegram/tl/AllTLObjects')
-      const mockInner = makeMockInner({
-        connectImpl: async () => {
-          throw new Error('network error during connect')
-        },
-      })
-      const governor = makeGovernor(mockInner)
-      const tagClient = new TagClient({ inner: mockInner, governor })
-
-      try {
-        await tagClient.connect()
-      } catch {
-        // expected
-      }
-
-      expect(allTl.LAYER).toBe(198)
-    })
-  })
-
   describe('invoke() governor routing', () => {
     it('routes invoke() through governor.run() — not directly to innerClient.invoke()', async () => {
       const mockInner = makeMockInner()
@@ -135,12 +79,11 @@ describe('TagClient', () => {
     })
   })
 
-  describe('invoke() — layer-224 unparseable response = write accepted', () => {
-    // editChatParticipantRank returns an Updates carrying layer-224 constructors that the
-    // layer-198 deserializer cannot parse. GramJS throws TypeNotFoundError (.invalidConstructorId
-    // set, message "...Constructor ID..."), but the WRITE already succeeded server-side (proven by
-    // the Phase 0 spike). TagClient must treat this specific parse failure as success so the
-    // governor does not retry it and the executor records 'done', not a NETWORK failure.
+  describe('invoke() — layer-229 unparseable response = write accepted', () => {
+    // This defensive fallback catches any TypeNotFoundError-shaped error
+    // (.invalidConstructorId set, message "...Constructor ID..."). If GramJS ever
+    // throws this shape, TagClient must treat it as success so the governor does
+    // not retry it and the executor records 'done', not a NETWORK failure.
 
     it('resolves (treats as success) when inner.invoke throws a TypeNotFoundError-shaped error', async () => {
       const mockInner = makeMockInner()
