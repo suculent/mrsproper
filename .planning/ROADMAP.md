@@ -198,7 +198,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 14-07-PLAN.md — addExecutor.test.ts: failing RED tests for AddExecutor (all behaviors)
+- [x] 14-07-PLAN.md — addExecutor.test.ts: failing RED tests for AddExecutor (all behaviors)
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 6/11 | In Progress|  |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 7/11 | In Progress|  |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
