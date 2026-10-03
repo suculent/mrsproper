@@ -30,6 +30,8 @@ function makeDialog(id: string, type: 'supergroup' | 'basic-group' | 'broadcast-
     type,
     canAct: true,
     greyReason: null,
+    canAdd: true,
+    addGreyReason: null,
   }
 }
 

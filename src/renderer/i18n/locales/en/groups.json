@@ -4,7 +4,11 @@
     "no-ban-right": "You don't have the ban right in this group",
     "broadcast-channel": "Channel — subscribers can't be removed",
     "not-admin": "You're not an admin here",
-    "verify-failed": "Couldn't verify —"
+    "verify-failed": "Couldn't verify —",
+    "already-member": "Already a member of this group",
+    "no-invite-right": "You don't have the invite right in this group",
+    "channel-full": "Channel has reached the 200-member direct-add limit",
+    "banned-no-unban-right": "You don't have the right to lift this ban"
   },
   "groupTypeLabel": {
     "basic-group": "Group",

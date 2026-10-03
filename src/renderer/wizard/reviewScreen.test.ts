@@ -20,6 +20,8 @@ function makeDialog(overrides: Partial<AdminDialogDTO>): AdminDialogDTO {
     type: 'supergroup',
     canAct: true,
     greyReason: null,
+    canAdd: true,
+    addGreyReason: null,
     ...overrides,
   }
 }

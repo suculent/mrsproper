@@ -54,7 +54,7 @@ function makeMockEnumerator() {
   return {
     getState: vi.fn((): GroupsState => ({
       step: 'loaded',
-      dialogs: [{ id: '123', title: 'Test Group', avatar: null, memberCount: 5, type: 'supergroup' as const, canAct: true, greyReason: null }],
+      dialogs: [{ id: '123', title: 'Test Group', avatar: null, memberCount: 5, type: 'supergroup' as const, canAct: true, greyReason: null, canAdd: true, addGreyReason: null }],
     })),
     refresh: vi.fn((): Promise<void> => Promise.resolve()),
   }

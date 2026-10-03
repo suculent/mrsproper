@@ -41,6 +41,8 @@ function makeDialog(
     type,
     canAct: true,
     greyReason: null,
+    canAdd: true,
+    addGreyReason: null,
   }
 }
 

@@ -127,7 +127,11 @@ export interface MockClientConfig {
     title: string
     megagroup?: boolean
     creator?: boolean
-    adminRights?: { banUsers?: boolean }
+    adminRights?: { banUsers?: boolean; inviteUsers?: boolean }
+    /** Forbidden-rights mask for members without explicit adminRights (D-04/D-06). */
+    defaultBannedRights?: { inviteUsers?: boolean }
+    /** Member count — used for the broadcast-channel 200-member channel-full override (D-06). */
+    participantsCount?: number
     /** Basic-group husk flags (migrated-to-supergroup duplicates). */
     migratedTo?: unknown
     deactivated?: boolean
@@ -460,9 +464,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
       return (config.getDialogsResult ?? []).map((d) => ({
         entity: d.entity === 'Chat'
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? Object.assign(new (Api.Chat as any)({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights, migratedTo: d.migratedTo, deactivated: d.deactivated })
+          ? Object.assign(new (Api.Chat as any)({}), { id: bigInt(d.id), creator: d.creator, adminRights: d.adminRights, defaultBannedRights: d.defaultBannedRights, participantsCount: d.participantsCount, migratedTo: d.migratedTo, deactivated: d.deactivated })
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          : Object.assign(new (Api.Channel as any)({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights }),
+          : Object.assign(new (Api.Channel as any)({}), { id: bigInt(d.id), megagroup: d.megagroup, creator: d.creator, adminRights: d.adminRights, defaultBannedRights: d.defaultBannedRights, participantsCount: d.participantsCount }),
         inputEntity: { channelId: bigInt(d.id), accessHash: bigInt.zero },
         title: d.title,
         id: bigInt(d.id),

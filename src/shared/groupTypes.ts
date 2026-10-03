@@ -21,6 +21,16 @@ export type GreyReason =
   | 'verify-failed'
 
 /**
+ * Reason why a group row is non-actionable in Add mode.
+ * Separate from GreyReason (removal-only) — backs D-08 bilingual copy (ADD-04).
+ */
+export type AddGreyReason =
+  | 'already-member'
+  | 'no-invite-right'
+  | 'channel-full'
+  | 'banned-no-unban-right'
+
+/**
  * Renderer-safe representation of a Telegram dialog (group/supergroup/channel)
  * that the logged-in admin is a member of.
  *
@@ -43,12 +53,16 @@ export interface AdminDialogDTO {
   canAct: boolean
   /** Reason why this group is non-actionable, or null if actionable. */
   greyReason: GreyReason | null
+  /** True if the admin can add members here (ADD-04). Computed in GroupEnumerator only. */
+  canAdd: boolean
+  /** Reason this row is non-actionable in Add mode, or null if canAdd is true. */
+  addGreyReason: AddGreyReason | null
 }
 
 /**
  * Membership check result for a single group.
  */
-export type MembershipStatus = 'pending' | 'member' | 'not-member' | 'failed'
+export type MembershipStatus = 'pending' | 'member' | 'not-member' | 'banned' | 'failed'
 
 /**
  * Result of a membership check for one dialog during the scan.

@@ -4,7 +4,11 @@
     "no-ban-right": "Nemáte právo k zákazu v této skupině",
     "broadcast-channel": "Kanál — odběratele nelze odebrat",
     "not-admin": "Nejste správce této skupiny",
-    "verify-failed": "Ověření se nezdařilo —"
+    "verify-failed": "Ověření se nezdařilo —",
+    "already-member": "Již je členem této skupiny",
+    "no-invite-right": "Nemáte právo přidávat členy v této skupině",
+    "channel-full": "Kanál dosáhl limitu 200 přímo přidaných členů",
+    "banned-no-unban-right": "Nemáte právo zrušit tento zákaz"
   },
   "groupTypeLabel": {
     "basic-group": "Skupina",
