@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-10-03T15:16:15.239Z"
-last_activity: 2026-10-03 -- Phase 13 planning complete
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-10-03T15:54:17.904Z"
+last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** v1.7 Add Mode — roadmap drafted (Phases 13–15), awaiting plan-phase
+**Current focus:** Phase 13 — add-rights-scan-semantics-foundation
 
 ## Current Position
 
-Phase: 13 (Add Rights & Scan Semantics) — not started
-Plan: —
+Phase: 13 (add-rights-scan-semantics-foundation) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-10-03 -- Phase 13 planning complete
+Last activity: 2026-10-03
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Last activity: 2026-10-03 -- Phase 13 planning complete
 | Phase 11-tagexecutor P03 | 18 | 1 tasks | 1 files |
 | Phase 12 P01 | 5m 24s | 2 tasks | 11 files |
 | Phase 12 P03 | 359 | 2 tasks | 5 files |
+| Phase 13 P01 | 18min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -96,13 +97,16 @@ Recent decisions affecting current work:
 - [v1.7 roadmap]: GramJS now runs at TL layer 229 everywhere (quick 261003-jni) — Phase 13's TAG-07 cleanup removes the layer-224 isolation hack from TagExecutor since it is no longer needed for tag writes
 - [v1.7 roadmap]: No new TL layer/connection work is needed for Add Mode — `channels.InviteToChannel` / `messages.AddChatUser` are already covered at layer 229, so the milestone compresses to 3 phases (Foundation → AddExecutor → Renderer) instead of the 4-phase Tag pattern (which needed a dedicated API/connection phase)
 - [v1.7 roadmap]: Contact-adding (ADD-05) and the add-log export (ADD-14) are mapped to the Renderer phase (15) since their observable success criteria require the UI (checkbox, save dialog) even though supporting main-process calls are implemented alongside AddExecutor in Phase 14
+- [Phase 13]: canAdd = creator || adminRights.inviteUsers || defaultBannedRights.inviteUsers !== true (open-permissions default)
+- [Phase 13]: Broadcast-channel 200-member channel-full override applies after the base canAdd rule, broadcast-channel branch only
+- [Phase 13]: AddGreyReason's already-member/banned-no-unban-right values are data-foundation only in 13-01; gating/sort logic ships in Phase 15
 
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
 
-- Make country rows clickable in login-form CountryPicker (`2026-06-11-country-picker-rows-clickable.md`, area: ui)
-- Default country Czechia (+420) in CountryPicker (`2026-06-11-default-country-czechia.md`, area: ui)
+None — the two CountryPicker todos (country-picker-rows-clickable, default-country-czechia)
+were confirmed already-shipped and closed to `.planning/todos/done/` in Phase 13 Plan 01.
 
 ### Blockers/Concerns
 
@@ -142,9 +146,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T14:33:35.957Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-add-rights-scan-semantics-foundation/13-CONTEXT.md
+Last session: 2026-10-03T15:54:17.895Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

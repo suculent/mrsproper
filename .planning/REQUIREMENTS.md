@@ -10,9 +10,9 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 ### Mode & Checklist
 
 - [ ] **ADD-01**: User can switch the groups pane between Remove, Tag and Add modes before the checklist is reviewed; the chosen mode determines which actions the review screen offers (Kick/Ban under Remove, Tag under Tag, Add under Add) and switching mode resets the checklist selection
-- [ ] **ADD-02**: In Add mode the checklist inverts: groups the target is NOT a member of are actionable and pre-checked; groups they are already in, and groups where the admin lacks the invite right, are greyed with a cause-specific reason
-- [ ] **ADD-03**: Broadcast channels are actionable in Add mode when the admin holds the invite right (Remove mode keeps them greyed as today)
-- [ ] **ADD-04**: Each enumerated dialog carries a `canAdd` flag computed in the main process (creator, or `inviteUsers` admin right, or default permissions allowing invites); the renderer never derives rights itself
+- [x] **ADD-02**: In Add mode the checklist inverts: groups the target is NOT a member of are actionable and pre-checked; groups they are already in, and groups where the admin lacks the invite right, are greyed with a cause-specific reason
+- [x] **ADD-03**: Broadcast channels are actionable in Add mode when the admin holds the invite right (Remove mode keeps them greyed as today)
+- [x] **ADD-04**: Each enumerated dialog carries a `canAdd` flag computed in the main process (creator, or `inviteUsers` admin right, or default permissions allowing invites); the renderer never derives rights itself
 
 ### Contacts
 
@@ -76,9 +76,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ADD-01 | Phase 15 | Pending |
-| ADD-02 | Phase 13 | Pending |
-| ADD-03 | Phase 13 | Pending |
-| ADD-04 | Phase 13 | Pending |
+| ADD-02 | Phase 13 | Complete |
+| ADD-03 | Phase 13 | Complete |
+| ADD-04 | Phase 13 | Complete |
 | ADD-05 | Phase 15 | Pending |
 | ADD-06 | Phase 14 | Pending |
 | ADD-07 | Phase 14 | Pending |

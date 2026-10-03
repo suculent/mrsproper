@@ -160,7 +160,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — groupTypes.ts canAdd/addGreyReason + GroupEnumerator rights computation + i18n copy + folded CountryPicker todos
+- [x] 13-01-PLAN.md — groupTypes.ts canAdd/addGreyReason + GroupEnumerator rights computation + i18n copy + folded CountryPicker todos
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -218,7 +218,7 @@ Plans:
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
-| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 0/3 | Not started | - |
+| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 1/3 | In Progress|  |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
