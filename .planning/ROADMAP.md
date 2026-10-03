@@ -186,7 +186,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 14-01-PLAN.md — addTypes.ts + channels.ts constants + REQUIREMENTS.md ADD-09 wording alignment
+- [x] 14-01-PLAN.md — addTypes.ts + channels.ts constants + REQUIREMENTS.md ADD-09 wording alignment
 - [ ] 14-02-PLAN.md — mock TelegramClient RPC extension + TargetResolver deleted/bot/contact flags
 
 **Wave 2** *(blocked on Wave 1)*
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 1/11 | In Progress|  |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>

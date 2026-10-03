@@ -20,15 +20,15 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Execution
 
-- [ ] **ADD-06**: User can add the target to each selected group as a throttled, sequential run through the shared governor (`channels.InviteToChannel` for supergroups/channels, `messages.AddChatUser` for basic groups): FLOOD_WAIT honored with countdown, PEER_FLOOD hard-stops the run, ~3 s pacing between groups
-- [ ] **ADD-07**: If the target is currently banned in a group, the run lifts the ban first, then invites
-- [ ] **ADD-08**: Every group outcome is checkpointed to `add-job.json` as it happens; on relaunch an incomplete add job offers Resume / Discard, and a stopped or hard-stopped run can be resumed
-- [ ] **ADD-09**: Per-group outcomes are typed: `done`, `already-member`, `privacy-blocked` (covers not-mutual-contact/privacy-restricted and a broadcast/supergroup channel at its direct-add cap, per D-07/D-12), `failed` with a code (no rights, target in too many channels, previously kicked, deleted account or bot, a basic group at its own member cap, network, unknown), and `skipped`
+- [x] **ADD-06**: User can add the target to each selected group as a throttled, sequential run through the shared governor (`channels.InviteToChannel` for supergroups/channels, `messages.AddChatUser` for basic groups): FLOOD_WAIT honored with countdown, PEER_FLOOD hard-stops the run, ~3 s pacing between groups
+- [x] **ADD-07**: If the target is currently banned in a group, the run lifts the ban first, then invites
+- [x] **ADD-08**: Every group outcome is checkpointed to `add-job.json` as it happens; on relaunch an incomplete add job offers Resume / Discard, and a stopped or hard-stopped run can be resumed
+- [x] **ADD-09**: Per-group outcomes are typed: `done`, `already-member`, `privacy-blocked` (covers not-mutual-contact/privacy-restricted and a broadcast/supergroup channel at its direct-add cap, per D-07/D-12), `failed` with a code (no rights, target in too many channels, previously kicked, deleted account or bot, a basic group at its own member cap, network, unknown), and `skipped`
 
 ### Privacy fallback
 
-- [ ] **ADD-10**: For each privacy-blocked group the run exports a unique invite link limited to one use and expiring 5 days after creation
-- [ ] **ADD-11**: At run end all generated links are sent to the target in ONE direct message; a message refused by the target's privacy settings is reported as such with the links shown so the admin can pass them along another way
+- [x] **ADD-10**: For each privacy-blocked group the run exports a unique invite link limited to one use and expiring 5 days after creation
+- [x] **ADD-11**: At run end all generated links are sent to the target in ONE direct message; a message refused by the target's privacy settings is reported as such with the links shown so the admin can pass them along another way
 - [ ] **ADD-12**: The review screen shows the add consequence line, the exact group list, and the exact direct-message text that would be sent, and requires one explicit confirmation before any write; target identity is sourced from the main process only
 - [ ] **ADD-16**: User can edit the direct-message template used for the invite-link message (default template provided in English and Czech, placeholders for the target's name and the link list); the template is persisted across runs and the rendered message is what ADD-12 previews
 
@@ -80,12 +80,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-03 | Phase 13 | Complete |
 | ADD-04 | Phase 13 | Complete |
 | ADD-05 | Phase 15 | Pending |
-| ADD-06 | Phase 14 | Pending |
-| ADD-07 | Phase 14 | Pending |
-| ADD-08 | Phase 14 | Pending |
-| ADD-09 | Phase 14 | Pending |
-| ADD-10 | Phase 14 | Pending |
-| ADD-11 | Phase 14 | Pending |
+| ADD-06 | Phase 14 | Complete |
+| ADD-07 | Phase 14 | Complete |
+| ADD-08 | Phase 14 | Complete |
+| ADD-09 | Phase 14 | Complete |
+| ADD-10 | Phase 14 | Complete |
+| ADD-11 | Phase 14 | Complete |
 | ADD-12 | Phase 15 | Pending |
 | ADD-13 | Phase 15 | Pending |
 | ADD-14 | Phase 15 | Pending |

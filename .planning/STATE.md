@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-10-03T20:27:27.713Z"
-last_activity: 2026-10-03 -- Phase 14 planning complete
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-10-03T20:32:32.960Z"
+last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 3
+  completed_plans: 4
   percent: 14
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 14 — addexecutor — dispatch, privacy fallback & audit
+**Current focus:** Phase 14 — AddExecutor — Dispatch, Privacy Fallback & Audit
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
+Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
+Plan: 2 of 11
 Status: Ready to execute
-Last activity: 2026-10-03 -- Phase 14 planning complete
+Last activity: 2026-10-03
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Last activity: 2026-10-03 -- Phase 14 planning complete
 | Phase 13 P01 | 18min | 3 tasks | 13 files |
 | Phase 13 P02 | 5min | 2 tasks | 2 files |
 | Phase 13 P03 | 11min | 3 tasks | 8 files |
+| Phase 14 P01 | 2min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase 13]: Basic-group branch keeps returning only 'member'/'not-member' (never 'banned') since bans are not visible via messages.GetFullChat (D-03)
 - [Phase 13-03]: TagExecutorClient mirrors RemovalExecutorClient's minimal invoke(request) shape — no tag-specific client interface needed
 - [Phase 13-03]: D-11 test uses an RPC-shaped error with an unrecognized errorMessage (not a bare no-errorMessage Error) to actually exercise _classifyTagError's UNKNOWN fallthrough, since classifyRpcError maps no-errorMessage errors to NETWORK/retry
+- [Phase 14]: AddJobFile/AddState carry dmStatus — net-new field, no RemovalState/TagState precedent
+- [Phase 14]: ADD-09 wording aligned: privacy-blocked covers not-mutual-contact/privacy-restricted and the broadcast/supergroup direct-add cap per D-07/D-12; failed codes list includes a basic-group member-cap case instead
 
 ### Pending Todos
 
@@ -152,9 +155,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T18:51:12.656Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-addexecutor-dispatch-privacy-fallback-audit/14-CONTEXT.md
+Last session: 2026-10-03T20:32:32.956Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
