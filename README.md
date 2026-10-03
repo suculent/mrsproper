@@ -44,3 +44,18 @@ Built with Electron 37.10.3 (Chromium 138, Node 22) — minimum macOS 11.0 (Big 
 Electron 37 is past its EOL (January 2026). This version was chosen to support
 macOS 11.7.10 (Big Sur) — upgrading to Electron 38+ requires macOS 12 (Monterey).
 See D-16 in `.planning/phases/07-packaging-signing-release/07-CONTEXT.md`.
+
+## Developer: Updating the Telegram TL schema
+
+`npm run tl:update` re-fetches TDLib's current `telegram_api.tl` schema, strips
+the fixed MTProto-core preamble lines (the handful of lines that just alias
+core scalar types like `int`/`long`/`string`, plus a few proxy-only
+constructors GramJS doesn't need), and overwrites `vendor/telegram-api.tl`.
+
+This is a **release-time step**: run it, review the resulting git diff for
+anything unexpected, and commit `vendor/telegram-api.tl` deliberately when you
+want to pick up a new Telegram TL layer. It does **not** touch
+`node_modules/telegram` by itself — that happens via `npm run tl:apply`
+(wired as the `postinstall` hook on every `npm install`), which regenerates
+the installed `telegram` package's TL object model from whatever is
+currently committed in `vendor/telegram-api.tl`.

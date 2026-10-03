@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:changed": "vitest run --changed",
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
-    "release": "bash scripts/release.sh"
+    "release": "bash scripts/release.sh",
+    "tl:update": "node scripts/tl-update.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
