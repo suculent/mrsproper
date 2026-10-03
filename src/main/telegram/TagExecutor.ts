@@ -292,8 +292,9 @@ export class TagExecutor {
    * Tag a single dialog using the correct mechanic.
    *   - basic-group: skip with TAG_UNSUPPORTED_BASIC_GROUP (no API call)
    *   - supergroup/broadcast-channel: GetParticipant precheck (governor-wrapped, shared client);
-   *       ChannelParticipantAdmin → skip with TAG_TARGET_IS_ADMIN; otherwise issue
-   *       EditChatParticipantRank (governor-wrapped, shared client).
+   *       ChannelParticipantAdmin/Creator → skip with TAG_TARGET_IS_ADMIN;
+   *       ChannelParticipantLeft / ChannelParticipantBanned(left=true) → failed TAG_USER_INVALID;
+   *       otherwise issue EditChatParticipantRank (governor-wrapped, shared client).
    * May throw (RPC error) — the caller classifies it (hard-stop vs per-group failure).
    */
   private async _tagGroup(
@@ -328,15 +329,27 @@ export class TagExecutor {
       accessHash: bigInt(resolved.accessHash.toString()),
     })
 
-    // Already-admin pre-flight via the shared client + governor.
+    // Pre-flight via the shared client + governor: short-circuit on participant subtypes the
+    // write cannot succeed for, so we do not spend a governed EditChatParticipantRank call.
     const participantResult = (await this._governor.run(() =>
       this._client.invoke(
         new Api.channels.GetParticipant({ channel: inputChannel, participant: inputUser })
       )
-    )) as { participant?: { className?: string } }
+    )) as { participant?: { className?: string; left?: boolean } }
 
-    if (participantResult?.participant?.className === 'ChannelParticipantAdmin') {
+    const participant = participantResult?.participant
+    const cls = participant?.className
+    // Admin or creator (an admin by definition) → already tagged/ranked, skip.
+    if (cls === 'ChannelParticipantAdmin' || cls === 'ChannelParticipantCreator') {
       return { dialogId: dialog.id, status: 'skipped', errorCode: 'TAG_TARGET_IS_ADMIN', timestamp }
+    }
+    // Not in the group: ChannelParticipantLeft, or ChannelParticipantBanned with left=true
+    // (kicked, cannot rejoin — same TL polarity MembershipScanner uses). The server would
+    // reject the write with USER_NOT_PARTICIPANT, so classify as TAG_USER_INVALID up front.
+    // ChannelParticipantBanned with left=false is a restricted but PRESENT member — fall
+    // through and let the server decide the write.
+    if (cls === 'ChannelParticipantLeft' || (cls === 'ChannelParticipantBanned' && participant?.left === true)) {
+      return { dialogId: dialog.id, status: 'failed', errorCode: 'TAG_USER_INVALID', timestamp }
     }
 
     // Eligible: issue EditChatParticipantRank on the shared client + governor.

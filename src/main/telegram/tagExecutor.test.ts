@@ -97,6 +97,8 @@ function makeTagExecutor(config: {
   dialogs: AdminDialogDTO[]
   /** dialogIds where GetParticipant returns ChannelParticipantAdmin → triggers skip */
   adminDialogIds?: string[]
+  /** dialogId (channelId) → exact participant shape returned by GetParticipant (overrides adminDialogIds) */
+  participantOverrides?: Record<string, { className: string; left?: boolean }>
   /** dialogId (channelId) → errorMessage thrown by the EditChatParticipantRank write */
   tagErrorDialogIds?: Record<string, string>
   auditStore?: TagAuditStore
@@ -113,6 +115,9 @@ function makeTagExecutor(config: {
         request as { channel?: { channelId?: { toString(): string } } }
       ).channel?.channelId?.toString() ?? ''
       getParticipantCalls.push({ channelId })
+      if (config.participantOverrides?.[channelId]) {
+        return { participant: { ...config.participantOverrides[channelId] } }
+      }
       if (config.adminDialogIds?.includes(channelId)) {
         return { participant: { className: 'ChannelParticipantAdmin' } }
       }
@@ -263,6 +268,84 @@ describe('TagExecutor — already-admin skip (TAG-04)', () => {
     expect(checkpointCall).toBeDefined()
     expect(checkpointCall!.outcome.status).toBe('skipped')
     expect(checkpointCall!.outcome.errorCode).toBe('TAG_TARGET_IS_ADMIN')
+  })
+
+  it('skips group where GetParticipant returns ChannelParticipantCreator with TAG_TARGET_IS_ADMIN (no write)', async () => {
+    const dialogs = [makeDialog('2011', 'supergroup')]
+    const auditStore = makeTagAuditStore(['2011'])
+    const { executor, editChatParticipantRankCalls } = makeTagExecutor({
+      dialogs,
+      participantOverrides: { '2011': { className: 'ChannelParticipantCreator' } },
+      auditStore,
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['2011'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(editChatParticipantRankCalls).toHaveLength(0)
+    const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '2011')
+    expect(checkpointCall).toBeDefined()
+    expect(checkpointCall!.outcome.status).toBe('skipped')
+    expect(checkpointCall!.outcome.errorCode).toBe('TAG_TARGET_IS_ADMIN')
+  })
+
+  it('fails with TAG_USER_INVALID without a write when GetParticipant returns ChannelParticipantLeft', async () => {
+    const dialogs = [makeDialog('2012', 'supergroup')]
+    const auditStore = makeTagAuditStore(['2012'])
+    const { executor, editChatParticipantRankCalls } = makeTagExecutor({
+      dialogs,
+      participantOverrides: { '2012': { className: 'ChannelParticipantLeft' } },
+      auditStore,
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['2012'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(editChatParticipantRankCalls).toHaveLength(0)
+    const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '2012')
+    expect(checkpointCall).toBeDefined()
+    expect(checkpointCall!.outcome.status).toBe('failed')
+    expect(checkpointCall!.outcome.errorCode).toBe('TAG_USER_INVALID')
+  })
+
+  it('fails with TAG_USER_INVALID without a write when GetParticipant returns ChannelParticipantBanned with left=true (kicked)', async () => {
+    const dialogs = [makeDialog('2013', 'supergroup')]
+    const auditStore = makeTagAuditStore(['2013'])
+    const { executor, editChatParticipantRankCalls } = makeTagExecutor({
+      dialogs,
+      participantOverrides: { '2013': { className: 'ChannelParticipantBanned', left: true } },
+      auditStore,
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['2013'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(editChatParticipantRankCalls).toHaveLength(0)
+    const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '2013')
+    expect(checkpointCall).toBeDefined()
+    expect(checkpointCall!.outcome.status).toBe('failed')
+    expect(checkpointCall!.outcome.errorCode).toBe('TAG_USER_INVALID')
+  })
+
+  it('proceeds to the write when GetParticipant returns ChannelParticipantBanned with left unset (restricted but present)', async () => {
+    const dialogs = [makeDialog('2014', 'supergroup')]
+    const auditStore = makeTagAuditStore(['2014'])
+    const { executor, editChatParticipantRankCalls } = makeTagExecutor({
+      dialogs,
+      participantOverrides: { '2014': { className: 'ChannelParticipantBanned' } },
+      auditStore,
+    })
+
+    const execPromise = executor.execute({ dialogIds: ['2014'], tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    expect(editChatParticipantRankCalls).toHaveLength(1)
+    const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '2014')
+    expect(checkpointCall?.outcome.status).toBe('done')
   })
 
   it('GetParticipant precheck is issued before the EditChatParticipantRank write for a non-admin target', async () => {
