@@ -870,6 +870,77 @@ describe('AddExecutor — PEER_FLOOD hard-stop, abort, generation guard (mirrors
     expect(auditStore.setStatusCalls.some((c) => c.status === 'hard-stopped')).toBe(true)
   })
 
+  it('CR-03: PEER_FLOOD from the inline ExportChatInvite call (triggered by a missingInvitees response) hard-stops the run instead of being swallowed into failed(UNKNOWN)', async () => {
+    const dialogs = [makeDialog('19001', 'supergroup'), makeDialog('19002', 'supergroup')]
+    const dialogIds = ['19001', '19002']
+    const auditStore = makeAddAuditStore(dialogIds)
+    const { executor, states } = makeExecutor({
+      dialogs,
+      auditStore,
+      mockConfig: {
+        inviteToChannelMissingInviteeDialogIds: { '19001': {} },
+        exportChatInvitePeerFloodPeerIds: ['19001'],
+      },
+    })
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('hard-stopped')
+    const g1 = auditStore.checkpointCalls.find((c) => c.dialogId === '19001')
+    expect(g1).toBeUndefined()
+    const g2 = auditStore.checkpointCalls.find((c) => c.dialogId === '19002')
+    expect(g2).toBeUndefined()
+  })
+
+  it('CR-03: PEER_FLOOD from the inline ExportChatInvite call triggered by a thrown USER_PRIVACY_RESTRICTED (_classifyAddError privacy branch) hard-stops the run instead of being swallowed into failed(UNKNOWN)', async () => {
+    const dialogs = [makeDialog('19003', 'supergroup'), makeDialog('19004', 'supergroup')]
+    const dialogIds = ['19003', '19004']
+    const auditStore = makeAddAuditStore(dialogIds)
+    const { executor, states } = makeExecutor({
+      dialogs,
+      auditStore,
+      mockConfig: {
+        inviteToChannelErrorDialogIds: { '19003': 'USER_PRIVACY_RESTRICTED' },
+        exportChatInvitePeerFloodPeerIds: ['19003'],
+      },
+    })
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('hard-stopped')
+    const g2 = auditStore.checkpointCalls.find((c) => c.dialogId === '19004')
+    expect(g2).toBeUndefined()
+  })
+
+  it('CR-03: PEER_FLOOD from the inline ExportChatInvite call triggered by a thrown USERS_TOO_MUCH (_classifyAddError channel-full branch) hard-stops the run instead of being swallowed into failed(ADD_CHANNEL_FULL)', async () => {
+    const dialogs = [makeDialog('19005', 'supergroup'), makeDialog('19006', 'supergroup')]
+    const dialogIds = ['19005', '19006']
+    const auditStore = makeAddAuditStore(dialogIds)
+    const { executor, states } = makeExecutor({
+      dialogs,
+      auditStore,
+      mockConfig: {
+        inviteToChannelErrorDialogIds: { '19005': 'USERS_TOO_MUCH' },
+        exportChatInvitePeerFloodPeerIds: ['19005'],
+      },
+    })
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('hard-stopped')
+    const g2 = auditStore.checkpointCalls.find((c) => c.dialogId === '19006')
+    expect(g2).toBeUndefined()
+  })
+
   it('abortExecution() during group 2 of 3: remaining groups marked skipped, step becomes stopped', async () => {
     const dialogs = [makeDialog('12001', 'supergroup'), makeDialog('12002', 'supergroup'), makeDialog('12003', 'supergroup')]
     const dialogIds = ['12001', '12002', '12003']
@@ -1199,6 +1270,39 @@ describe('AddExecutor — end-of-run DM dispatch (ADD-11, D-13/D-14)', () => {
     expect(mockClient.sendMessageCalls).toHaveLength(0)
     const finalState = states[states.length - 1]!
     expect(finalState.dmStatus).toBe('pending')
+  })
+
+  it('CR-03: PEER_FLOOD from the inline ExportChatInvite call during stale-link (>5 days) regeneration hard-stops the run instead of silently continuing to SendMessage', async () => {
+    const dialogs = [makeDialog('19007', 'supergroup')]
+    const dialogIds = ['19007']
+    const staleOutcome: AddGroupOutcome = {
+      dialogId: '19007',
+      status: 'privacy-blocked',
+      reason: 'privacy',
+      link: 'https://t.me/+stalelink',
+      timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), // 6 days old
+    }
+    const auditStore = makeAddAuditStore(dialogIds, {
+      jobId: 'ORIGINAL-JOB-ID',
+      targetId: '99',
+      dialogIds,
+      outcomes: [staleOutcome],
+      dmStatus: 'pending',
+      status: 'stopped',
+    })
+    const { executor, states, mockClient } = makeExecutor({
+      dialogs,
+      auditStore,
+      mockConfig: { exportChatInvitePeerFloodPeerIds: ['19007'] },
+    })
+
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+
+    expect(mockClient.sendMessageCalls).toHaveLength(0)
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('hard-stopped')
   })
 
   it('a resumed run (two segments: first stopped with 1 link, second resumed+completed with a 2nd link): the single end-of-run SendMessage call\'s message contains links from BOTH segments', async () => {

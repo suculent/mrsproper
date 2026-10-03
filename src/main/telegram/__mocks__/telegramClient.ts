@@ -237,6 +237,8 @@ export interface MockClientConfig {
   exportChatInviteResult?: Record<string, { link: string; expireDate?: number }>
   /** peerIds for which ExportChatInvite throws LINK_NOT_MODIFIED (D-12: link export itself refused). */
   exportChatInviteErrorPeerIds?: string[]
+  /** peerIds for which ExportChatInvite throws PEER_FLOOD (CR-03: hard-stop must propagate). */
+  exportChatInvitePeerFloodPeerIds?: string[]
   /** If set, SendMessage throws this single errorMessage (e.g. USER_PRIVACY_RESTRICTED). */
   sendMessageError?: string
   /** If set, AddContact throws this errorMessage. */
@@ -604,6 +606,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         const expireDate = (request as { expireDate?: number }).expireDate ?? 0
         const title = (request as { title?: string }).title ?? ''
         _exportChatInviteCalls.push({ peerId, usageLimit, expireDate, title })
+        if (config.exportChatInvitePeerFloodPeerIds?.includes(peerId)) {
+          throw Object.assign(new Error('PEER_FLOOD'), { errorMessage: 'PEER_FLOOD' })
+        }
         if (config.exportChatInviteErrorPeerIds?.includes(peerId)) {
           throw Object.assign(new Error('LINK_NOT_MODIFIED'), { errorMessage: 'LINK_NOT_MODIFIED' })
         }

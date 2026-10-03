@@ -351,15 +351,22 @@ export class AddExecutor {
           // PEER_FLOOD check MUST come first (Pitfall 1)
           const classified = classifyRpcError(err)
           if (classified.disposition === 'hard-stop') {
-            if (signal.aborted) {
-              this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
-              return
-            }
-            if (gen !== this._generation) return
-            this._emitHardStopped(outcomes, ctx)
+            this._handleLoopHardStop(selectedDialogs, outcomes, ctx, signal, gen)
             return
           }
-          outcome = await this._classifyAddError(err, dialog, resolved, targetName)
+          try {
+            outcome = await this._classifyAddError(err, dialog, resolved, targetName)
+          } catch (err2) {
+            // CR-03: _classifyAddError's own privacy/channel-full branches invoke
+            // ExportChatInvite internally and can themselves surface a hard-stop —
+            // route it through the same hard-stop handling as the check above instead
+            // of letting it propagate uncaught out of the loop.
+            if (classifyRpcError(err2).disposition === 'hard-stop') {
+              this._handleLoopHardStop(selectedDialogs, outcomes, ctx, signal, gen)
+              return
+            }
+            throw err2
+          }
         }
       }
 
@@ -418,8 +425,15 @@ export class AddExecutor {
               o.link = regenerated.link
               o.timestamp = regenerated.timestamp
               this._auditStore.checkpoint(o.dialogId, o)
-            } catch {
-              // Link regeneration failed — keep the stale link; the DM still includes it.
+            } catch (err) {
+              // CR-03: a hard-stop (PEER_FLOOD) during link regeneration must abort the
+              // DM-send tail cleanly — never continue to the next regeneration call or
+              // to SendMessage while the account is flagged.
+              if (classifyRpcError(err).disposition === 'hard-stop') {
+                this._emitHardStopped(outcomes, ctx)
+                return
+              }
+              // Any other regeneration failure — keep the stale link; the DM still includes it.
             }
           }
         }
@@ -621,7 +635,10 @@ export class AddExecutor {
             targetName,
             missing[0]!.premiumWouldAllowInvite ?? false
           )
-        } catch {
+        } catch (err) {
+          // CR-03: a hard-stop (PEER_FLOOD) from the inline ExportChatInvite call must
+          // propagate — never swallow it into an ordinary per-group failure.
+          if (classifyRpcError(err).disposition === 'hard-stop') throw err
           return { dialogId: dialog.id, status: 'failed', errorCode: 'UNKNOWN', timestamp }
         }
       }
@@ -665,7 +682,10 @@ export class AddExecutor {
           targetName,
           missing[0]!.premiumWouldAllowInvite ?? false
         )
-      } catch {
+      } catch (err) {
+        // CR-03: a hard-stop (PEER_FLOOD) from the inline ExportChatInvite call must
+        // propagate — never swallow it into an ordinary per-group failure.
+        if (classifyRpcError(err).disposition === 'hard-stop') throw err
         return { dialogId: dialog.id, status: 'failed', errorCode: 'UNKNOWN', timestamp }
       }
     }
@@ -712,7 +732,10 @@ export class AddExecutor {
     if (msg === 'USER_PRIVACY_RESTRICTED' || msg === 'USER_NOT_MUTUAL_CONTACT') {
       try {
         return await this._buildPrivacyBlockedOutcome(dialog, resolved, targetName, false)
-      } catch {
+      } catch (err) {
+        // CR-03: a hard-stop (PEER_FLOOD) from the inline ExportChatInvite call must
+        // propagate — never swallow it into an ordinary per-group failure.
+        if (classifyRpcError(err).disposition === 'hard-stop') throw err
         return { dialogId: dialog.id, status: 'failed', errorCode: 'UNKNOWN', timestamp }
       }
     }
@@ -724,7 +747,10 @@ export class AddExecutor {
       }
       try {
         return await this._buildPrivacyBlockedOutcome(dialog, resolved, targetName, false, 'channel-full')
-      } catch {
+      } catch (err) {
+        // CR-03: a hard-stop (PEER_FLOOD) from the inline ExportChatInvite call must
+        // propagate — never swallow it into an ordinary per-group failure.
+        if (classifyRpcError(err).disposition === 'hard-stop') throw err
         return { dialogId: dialog.id, status: 'failed', errorCode: 'ADD_CHANNEL_FULL', timestamp }
       }
     }
@@ -841,6 +867,28 @@ export class AddExecutor {
       floodWaitRemaining: null,
       dmStatus: 'pending',
     })
+  }
+
+  /**
+   * Shared hard-stop resolution for the main dispatch loop (CR-03): applies the
+   * abort-first-then-generation guard before emitting the authoritative terminal state.
+   * Used both when _addToGroup()'s own call hard-stops and when a hard-stop surfaces
+   * from the nested ExportChatInvite call inside _classifyAddError()'s privacy/
+   * channel-full branches.
+   */
+  private _handleLoopHardStop(
+    selectedDialogs: AdminDialogDTO[],
+    outcomes: AddGroupOutcome[],
+    ctx: { targetId: string; targetName: string; total: number },
+    signal: AbortSignal,
+    gen: number
+  ): void {
+    if (signal.aborted) {
+      this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
+      return
+    }
+    if (gen !== this._generation) return
+    this._emitHardStopped(outcomes, ctx)
   }
 
   /**
