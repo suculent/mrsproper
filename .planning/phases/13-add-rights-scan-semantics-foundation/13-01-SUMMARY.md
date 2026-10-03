@@ -131,3 +131,8 @@ None - no external service configuration required.
 ---
 *Phase: 13-add-rights-scan-semantics-foundation*
 *Completed: 2026-10-03*
+
+## Self-Check: PASSED
+
+All 10 referenced files found on disk; all 5 referenced commit hashes (`6b78768`, `3d96120`,
+`2cbca4e`, `549384a`, `f5bf398`) found in git log.
