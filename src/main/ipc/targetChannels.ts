@@ -64,6 +64,8 @@ const ResolveTargetSchema = z.object({
  *                    RemovalExecutor and creating a circular dependency (CR-01 for removal).
  * @param tagExecutor Structural type — only abortExecution() is needed; avoids importing
  *                    TagExecutor and creating a circular dependency (CR-03 for tag run abort).
+ * @param addExecutor Structural type — only abortExecution() is needed; avoids importing
+ *                    AddExecutor and creating a circular dependency (T-14-19 for add run abort).
  */
 export function registerTargetChannels(
   win: BrowserWindow,
@@ -71,7 +73,8 @@ export function registerTargetChannels(
   scanner: { abortScan(): void },
   searcher: { abortSearch(): void },
   executor?: { abortExecution(): void },
-  tagExecutor?: { abortExecution(): void }
+  tagExecutor?: { abortExecution(): void },
+  addExecutor?: { abortExecution(): void }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
@@ -90,16 +93,21 @@ export function registerTargetChannels(
   })
 
   // ── Handle: target:reset ─────────────────────────────────────────────────
-  // CR-01: abort removal FIRST (Phase 5), then tag run (CR-03), then name search, scan, resolver.
+  // CR-01: abort removal FIRST (Phase 5), then tag run (CR-03), then add run (T-14-19),
+  // then name search, scan, resolver.
   // Order ensures:
   //   1. Any running removal is safely aborted-with-checkpoint before state is wiped (T-05-05-D).
   //   2. Any active tag run is aborted so it doesn't continue tagging the now-cleared target (CR-03).
-  //   3. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
-  //   4. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
-  //   5. resolver.reset() last so target state returns to idle after all downstream cleanup.
+  //   3. Any active add run is aborted so it doesn't continue adding the now-cleared target
+  //      (T-14-19) — otherwise a stale AddExecutor run could keep acting on a cleared target's
+  //      resolved identity.
+  //   4. In-flight name search is aborted and _candidateAccessHashes cleared (T-04.1-10).
+  //   5. Scan state transitions to 'idle' so GroupsPane auto-start effect fires on next confirm.
+  //   6. resolver.reset() last so target state returns to idle after all downstream cleanup.
   ipcMain.handle(TARGET_RESET, () => {
     executor?.abortExecution()    // CR-01: abort removal first (Phase 5)
     tagExecutor?.abortExecution() // CR-03: abort tag run before target is cleared
+    addExecutor?.abortExecution() // T-14-19: abort any active add run before the target is cleared
     searcher.abortSearch()        // CR-01 for name search: clears stale candidates (Phase 4.1)
     scanner.abortScan()           // CR-01: scan → idle before resolver reset
     resolver.reset()

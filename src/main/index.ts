@@ -19,9 +19,22 @@ import { registerTagChannels, emitTagState } from './ipc/tagChannels'
 import { TagExecutor } from './telegram/TagExecutor'
 import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
-import { registerLanguageChannels } from './ipc/languageChannels'
+import { registerLanguageChannels, getStoredLanguage } from './ipc/languageChannels'
 import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
+import { AddExecutor } from './telegram/AddExecutor'
+import { createAddAuditStore } from './storage/addAuditStore'
+import { createAddLogStore } from './storage/addLogStore'
+import { createContactService } from './telegram/contactService'
+import { registerAddChannels, emitAddState } from './ipc/addChannels'
+import {
+  registerTemplateChannels,
+  renderTemplate,
+  DEFAULT_TEMPLATE_EN,
+  DEFAULT_TEMPLATE_CS,
+  preloadTemplateCache,
+  getCachedTemplate,
+} from './ipc/templateChannels'
 import { OP_GOVERNOR_EVENT } from '../shared/channels'
 import type { AuthState } from '../shared/authTypes'
 import type { GovernorEvent } from '../shared/opTypes'
@@ -172,6 +185,7 @@ app.whenReady().then(async () => {
   // is the cleanest forward-reference pattern without restructuring the setup order.
   let executorRef: import('./telegram/RemovalExecutor').RemovalExecutor | null = null
   let tagExecutorRef: TagExecutor | null = null
+  let addExecutorRef: AddExecutor | null = null
 
   const governor = new RateLimitGovernor({
     client: client as unknown as ConstructorParameters<typeof RateLimitGovernor>[0]['client'],
@@ -187,6 +201,7 @@ app.whenReady().then(async () => {
       // _handleGovernorEvent is a no-op when _runActive is false (T-06-02-04 isolation).
       executorRef?._handleGovernorEvent(event)
       tagExecutorRef?._handleGovernorEvent(event)
+      addExecutorRef?._handleGovernorEvent(event)
     },
   })
 
@@ -329,6 +344,54 @@ app.whenReady().then(async () => {
   tagExecutorRef = tagExecutor
   registerTagChannels(currentWin, tagExecutor, enumerator, tagAuditStore, () => sm.getState())
 
+  // ── Wire AddAuditStore ────────────────────────────────────────────────────
+  // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
+  const addAuditStore = createAddAuditStore()
+
+  // ── Wire AddLogStore ──────────────────────────────────────────────────────
+  // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
+  const addLogStore = createAddLogStore()
+
+  // ── Wire contact service (ADD-05 main half) ───────────────────────────────
+  // Shares the same client, governor, and resolver as everything else — single account-wide
+  // governor, single shared client, one serial queue (WR-01).
+  const contactService = createContactService({
+    client: client as unknown as Parameters<typeof createContactService>[0]['client'],
+    governor,
+    resolver,
+  })
+
+  // ── Wire the DM template preference (D-15) ────────────────────────────────
+  // preloadTemplateCache() warms the synchronous cache BEFORE any AddExecutor.execute() can
+  // run — DmTextProvider is a synchronous function, but electron-store access is async.
+  await preloadTemplateCache()
+  const storedLanguage = await getStoredLanguage()
+  const dmLanguage: 'en' | 'cs' = storedLanguage ?? 'en'
+  const getDmText = (vars: { name: string; links: string }): string =>
+    renderTemplate(
+      getCachedTemplate() ?? (dmLanguage === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN),
+      vars
+    )
+
+  // ── Wire AddExecutor ───────────────────────────────────────────────────────
+  // Shares the same client, governor, enumerator, scanner, and resolver as
+  // Removal/Tag — the whole GramJS package speaks TL layer 229 ambiently, so no
+  // second client or TL-layer isolation is needed for add writes (D-01).
+  const addExecutor = new AddExecutor({
+    client: client as unknown as ConstructorParameters<typeof AddExecutor>[0]['client'],
+    governor,
+    enumerator,
+    scanner,
+    resolver,
+    auditStore: addAuditStore,
+    addLogStore,
+    getDmText,
+    onStateChange: (state) => emitAddState(currentWin, state),
+  })
+  addExecutorRef = addExecutor
+  registerAddChannels(currentWin, addExecutor, enumerator, addAuditStore, contactService, () => sm.getState())
+  registerTemplateChannels()
+
   // Phase 6: assign executorRef so governor.onEvent can call _handleGovernorEvent
   executorRef = executor
 
@@ -359,11 +422,20 @@ app.whenReady().then(async () => {
     console.log('[main] Incomplete tag job detected on launch — resumable via renderer')
   }
 
+  // ── On-launch add-job detection (Resume/Discard) ──────────────────────────
+  // Independent of removal-job/tag-job detection; all three can fire simultaneously.
+  const _pendingAddJob = addAuditStore.readJob()
+  if (_pendingAddJob && _pendingAddJob.status !== 'complete') {
+    console.log('[main] Incomplete add job detected on launch — resumable via renderer')
+  }
+
   // CR-01-MAIN: registerTargetChannels receives executor so TARGET_RESET aborts removal first (Phase 5).
   // CR-03 (Phase 11): also receives tagExecutor so TARGET_RESET aborts any active tag run before
   // the target is cleared — without this, a tag run continues tagging the old (now-cleared) target.
-  // Order: executor.abortExecution() → tagExecutor.abortExecution() → searcher → scanner → resolver.reset()
-  registerTargetChannels(currentWin, resolver, scanner, searcher, executor, tagExecutor)
+  // T-14-19 (Phase 14): also receives addExecutor so TARGET_RESET aborts any active add run first.
+  // Order: executor.abortExecution() → tagExecutor.abortExecution() → addExecutor.abortExecution()
+  //        → searcher → scanner → resolver.reset()
+  registerTargetChannels(currentWin, resolver, scanner, searcher, executor, tagExecutor, addExecutor)
 
   // ── Restore session on launch ─────────────────────────────────────────────
   // savedSession is either a live StringSession string or ''.

@@ -6,6 +6,7 @@ import type { SearchState } from '../shared/searchTypes'
 import type { RemovalState, RemovalJobFile } from '../shared/removalTypes'
 import type { TagState, TagJobFileSafe } from '../shared/tagTypes'
 import type { GovernorEvent } from '../shared/opTypes'
+import type { AddState, AddJobFileSafe } from '../shared/addTypes'
 import {
   TARGET_RESOLVE,
   TARGET_CONFIRM,
@@ -45,6 +46,16 @@ import {
   LANGUAGE_SET,
   THEME_GET,
   THEME_SET,
+  ADD_START,
+  ADD_ABORT,
+  ADD_RETRY_GROUP,
+  ADD_GET_STATE,
+  ADD_STATE,
+  ADD_GET_JOB,
+  ADD_DISCARD_JOB,
+  TARGET_ADD_CONTACT,
+  TEMPLATE_GET,
+  TEMPLATE_SET,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -209,4 +220,45 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.invoke(THEME_GET) as Promise<'light' | 'dark' | null>,
   setTheme: (theme: 'light' | 'dark'): Promise<'light' | 'dark'> =>
     ipcRenderer.invoke(THEME_SET, { theme }) as Promise<'light' | 'dark'>,
+
+  // ── Add execution bridge (Phase 14, ADD-06/ADD-08/ADD-05/ADD-16) ─────────
+  // add:start carries { dialogIds }; resume is computed server-side (D-20), never sent by the
+  // renderer. Zod-validated + auth-gated + dialog-map-gated in addChannels.ts. Target identity
+  // is read from main process only (T-05-04-B). No renderer UI calls this yet (Phase 15's job) —
+  // wired here so the full surface is reachable end-to-end once that UI exists.
+  startAdd: (dialogIds: string[]): Promise<AddState> =>
+    ipcRenderer.invoke(ADD_START, { dialogIds }) as Promise<AddState>,
+  abortAdd: (): Promise<AddState> =>
+    ipcRenderer.invoke(ADD_ABORT) as Promise<AddState>,
+  // add:retryGroup carries only { dialogId }; Zod-validated + job-dialogId-gated.
+  retryAddGroup: (dialogId: string): Promise<void> =>
+    ipcRenderer.invoke(ADD_RETRY_GROUP, { dialogId }) as Promise<void>,
+  getAddState: (): Promise<AddState> =>
+    ipcRenderer.invoke(ADD_GET_STATE) as Promise<AddState>,
+  onAddState: (cb: (s: AddState) => void): (() => void) => {
+    const h = (_: unknown, s: AddState): void => cb(s)
+    ipcRenderer.on(ADD_STATE, h)
+    return () => ipcRenderer.removeListener(ADD_STATE, h)
+  },
+  // add:getJob — returns AddJobFileSafe | null (accessHash stripped); used on launch to
+  // detect pending jobs.
+  getAddJob: (): Promise<AddJobFileSafe | null> =>
+    ipcRenderer.invoke(ADD_GET_JOB) as Promise<AddJobFileSafe | null>,
+  // add:discardJob — clears the job file; called when user clicks Discard in a Resume prompt.
+  discardAddJob: (): Promise<null> =>
+    ipcRenderer.invoke(ADD_DISCARD_JOB) as Promise<null>,
+
+  // ── Contact-add bridge (Phase 14, ADD-05 main half) ───────────────────────
+  // target:addContact takes no payload (confirmation only); non-blocking — always resolves to
+  // { ok, code? }, never rejects (D-08).
+  addTargetToContacts: (): Promise<{ ok: boolean; code?: string }> =>
+    ipcRenderer.invoke(TARGET_ADD_CONTACT) as Promise<{ ok: boolean; code?: string }>,
+
+  // ── DM template preference bridge (Phase 14, ADD-16 main half) ───────────
+  // Non-secret pref channels; Zod-validated (z.string().min(1).max(4000)) in templateChannels.ts.
+  // getDmTemplate returns null on first launch — caller falls back to the built-in EN/CS default.
+  getDmTemplate: (): Promise<string | null> =>
+    ipcRenderer.invoke(TEMPLATE_GET) as Promise<string | null>,
+  setDmTemplate: (template: string): Promise<string> =>
+    ipcRenderer.invoke(TEMPLATE_SET, { template }) as Promise<string>,
 })
