@@ -438,17 +438,19 @@ These four strings are `[ASSUMED]` drafts per D-09 — flagged for user UAT revi
 | A2 | `ChannelParticipantBanned.left === false` (unset) is the correct signal for "banned but needs an explicit unban before re-invite," per D-01's literal wording | Pitfall 5 | If the polarity is inverted, Add-mode would either (a) never offer unban-first for truly kicked users (silent capability gap) or (b) offer it for users who already left normally (harmless extra no-op), depending on which direction is wrong; recommend a live spike before relying on it in Phase 14 |
 | A3 | The four draft i18n strings (`already-member`, `no-invite-right`, `channel-full`, `banned-no-unban-right`) match the project's existing tone/formality (formal vykání in Czech, short factual English) well enough to pass UAT with only minor wording tweaks | Code Examples / i18n | Low risk — D-09 already designates these as Claude-drafted-user-reviewed; worst case is a UAT revision cycle, not a functional defect |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `entity.bannedRights.inviteUsers` reflect the logged-in admin's own restriction, or some other aggregate?**
    - What we know: the field exists on `Api.Channel` at layer 229 and is documented informally elsewhere as "restrictions imposed on this user in this channel."
    - What's unclear: no live empirical test was run in this research session (unlike the Phase 0 Tag spike, which did empirically verify its equivalent ambiguity).
    - Recommendation: either accept it as a best-effort optimization (fail open — i.e., don't gate `canAdd` on it, just use D-04's literal rule, and let Phase 14's live `channels.InviteToChannel` call surface a `RIGHT_FORBIDDEN`-style error if wrong) or spend one small verification task confirming it against a real restricted-admin test account before wiring it in. Given Claude's Discretion explicitly marks this as optional ("if cheap"), recommend the planner treat it as a stretch addition, not a blocking requirement for ADD-04.
+   - **RESOLVED:** Per Claude's Discretion (13-CONTEXT.md), this self-check is deliberately NOT folded into the D-04 `canAdd` formula for this phase — D-04 ships as the literal fail-open rule. If the admin's own `bannedRights.inviteUsers` restriction is wrong in a specific group, Phase 14's live `channels.InviteToChannel` call surfaces the resulting server error (e.g. `RIGHT_FORBIDDEN`) at execution time instead.
 
 2. **`ChannelParticipantBanned.left` polarity for a classic kick+ban** (see Pitfall 5 / Assumption A2).
    - What we know: D-01 is a locked decision with an explicit mapping.
    - What's unclear: whether that mapping matches live Telegram server behavior for the "banned AND removed" case specifically (as opposed to "banned but still technically a participant, restricted").
    - Recommendation: a one-off manual or scripted verification against a real test group (mirroring the existing Phase 0 spike pattern already used for the Tag feature) before Phase 14 builds the unban-first flow on top of this status.
+   - **RESOLVED:** D-01 locks the mapping (`left` unset → `banned`, `left===true` → `not-member`) as the shipped contract for this phase; `membershipScanner.test.ts` (plan 13-02, Task 2) pins this polarity with an explicit test for both cases, documenting it as a tested, locked contract rather than an unverified assumption. The live-server empirical check against a real banned/kicked test account remains open and is tracked as a manual-only verification in 13-VALIDATION.md, to be completed before Phase 14 builds the unban-first flow on top of this status.
 
 ## Environment Availability
 
