@@ -6,7 +6,7 @@
  * `Api.messages.EditChatParticipantRank` directly on the single shared main client through
  * `governor.run()` — no second client, no connect/disconnect lifecycle, and no TL-layer
  * mutation (D-10). The whole GramJS package now speaks TL layer 229 ambiently, so the
- * layer-224 two-phase isolation this class previously required is no longer needed.
+ * two-phase, dual-connection TL-layer isolation this class previously required is no longer needed.
  *
  * Security:
  *   - T-05-04-B: target identity read from resolver.getResolvedUser() only — never from execute() args.

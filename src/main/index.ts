@@ -317,7 +317,7 @@ app.whenReady().then(async () => {
   // ── Wire TagExecutor ───────────────────────────────────────────────────────
   // Shares the same client, governor, enumerator, resolver, and auditStore as
   // RemovalExecutor — the whole GramJS package now speaks TL layer 229 ambiently, so no
-  // second client or layer-224 isolation is needed for tag writes (D-10, TAG-07).
+  // second client or TL-layer isolation is needed for tag writes (D-10, TAG-07).
   const tagExecutor = new TagExecutor({
     client: client as unknown as ConstructorParameters<typeof TagExecutor>[0]['client'],
     governor,
