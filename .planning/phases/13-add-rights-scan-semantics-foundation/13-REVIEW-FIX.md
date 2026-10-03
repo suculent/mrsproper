@@ -31,6 +31,7 @@ Note for the team: `npx tsc --build` emits gitignored `.js`/`.jsx`/`.d.ts` artif
 **Files modified:** `src/main/telegram/MembershipScanner.ts`, `src/main/telegram/membershipScanner.test.ts`, `.planning/phases/13-add-rights-scan-semantics-foundation/13-CONTEXT.md`
 **Commit:** c779ba7
 **Status:** fixed: requires human verification (logic contract change)
+**Human verification:** done 2026-10-03 via 13-UAT.md tests 3 and 4 on a live account. Kicked-and-banned test account (`left=true`) was not offered for removal; restricted-but-present test account (`left` unset) was listed and removable. Polarity confirmed.
 **Applied fix:** Mapping is now `left === true` → `'banned'` (kicked, not in the group, cannot rejoin — Add mode needs unban-first) and `left` unset/false → `'member'` (restricted but still a participant), matching the TL schema (`channelParticipantBanned ... left:flags.0?true` — "whether the user has left the group", verified in `node_modules/telegram/tl/static/api.tl:783`). Both scanner tests re-pinned to the new contract; code comment rewritten; D-01 in 13-CONTEXT.md amended with a dated revision note recommending a live-account check of both `left` states before Phase 14 builds on it.
 
 ### CR-02: `_computeCanAdd` returns `true` for every broadcast channel the admin merely subscribes to
