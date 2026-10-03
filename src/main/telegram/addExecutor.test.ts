@@ -290,6 +290,27 @@ describe('AddExecutor — per-group dispatch (ADD-06, D-02)', () => {
     expect(checkpointCall?.outcome.errorCode).toBe('ADD_NO_RIGHTS')
   })
 
+  it('WR-02: a FLOOD_WAIT the governor could not fully absorb (exceeds the 3600s ceiling, disposition "wait") does NOT trigger the blind fwd_limit retry', async () => {
+    const dialogs = [makeDialog('3011', 'basic-group')]
+    const { executor, mockClient, auditStore } = makeExecutor({
+      dialogs,
+      // FLOOD_WAIT_9999 exceeds the governor's 3600s ceiling, so governor.run() throws
+      // immediately WITHOUT retrying — this is the "not fully absorbed" FLOOD_WAIT WR-02
+      // describes, reaching AddExecutor's catch on the very first fwdLimit:1000 attempt.
+      mockConfig: { addChatUserErrorDialogIds: { '3011': 'FLOOD_WAIT_9999' } },
+    })
+
+    const p = executor.execute({ dialogIds: ['3011'] })
+    await vi.runAllTimersAsync()
+    await p
+
+    // Only the FIRST fwdLimit:1000 call was made — no second governed call with
+    // fwdLimit:100 fired on top of an already rate-limited account.
+    expect(mockClient.addChatUserCalls).toHaveLength(1)
+    const checkpointCall = auditStore.checkpointCalls.find((c) => c.dialogId === '3011')
+    expect(checkpointCall?.outcome.status).toBe('failed')
+  })
+
   it('supergroup/broadcast-channel: calls channels.InviteToChannel with InputChannel + InputPeerUser from the entity map and resolver — never bigInt.zero for the user', async () => {
     const dialogs = [makeDialog('4001', 'supergroup'), makeDialog('4002', 'broadcast-channel')]
     const { executor, mockClient } = makeExecutor({ dialogs })

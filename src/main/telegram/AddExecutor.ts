@@ -736,7 +736,13 @@ export class AddExecutor {
   private _isKnownAddTerminalError(err: unknown): boolean {
     const msg = (err as { errorMessage?: string })?.errorMessage ?? ''
     if (KNOWN_ADD_TERMINAL_ERRORS.has(msg)) return true
-    return classifyRpcError(err).disposition === 'hard-stop'
+    // WR-02: only a genuinely-unrecognized, non-retryable error ('fail' disposition —
+    // i.e. an unmapped/UNKNOWN RPCError, presumably the undocumented fwd_limit
+    // rejection) is presumed eligible for the one-shot D-03 retry. 'hard-stop'
+    // (PEER_FLOOD), 'wait' (FLOOD_WAIT not fully absorbed by the governor), and
+    // 'retry' (NETWORK) must never trigger extra traffic right when the account may
+    // already be under rate-limit pressure.
+    return classifyRpcError(err).disposition !== 'fail'
   }
 
   /** Extract the missingInvitees array from an InvitedUsers-shaped response. */
