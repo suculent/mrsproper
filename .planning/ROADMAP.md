@@ -182,7 +182,40 @@ Plans:
   4. Every per-group outcome is one of `done | already-member | privacy-blocked | failed(code) | skipped`, checkpointed to `add-job.json` as it happens; relaunching with an incomplete job detects it, and resuming a stopped or hard-stopped run continues from the last checkpoint
   5. TDD tests mirror `removalExecutor.test.ts` / `tagExecutor.test.ts` coverage: per-group dispatch (both mechanics), unban-first, link generation + expiry, checkpoint + resume, PEER_FLOOD hard-stop, FLOOD_WAIT via the governor
 
-**Plans**: TBD
+**Plans**: 11 plans
+Plans:
+**Wave 1**
+
+- [ ] 14-01-PLAN.md — addTypes.ts + channels.ts constants + REQUIREMENTS.md ADD-09 wording alignment
+- [ ] 14-02-PLAN.md — mock TelegramClient RPC extension + TargetResolver deleted/bot/contact flags
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 14-03-PLAN.md — addAuditStore.ts: add-job.json persistence + sameDialogIdSet (TDD)
+- [ ] 14-04-PLAN.md — addLogStore.ts: append-only add-log.txt writer (TDD)
+- [ ] 14-05-PLAN.md — contactService.ts: non-blocking contacts.AddContact wrapper (TDD)
+- [ ] 14-06-PLAN.md — templateChannels.ts: DM template store + renderTemplate + EN/CS defaults (TDD)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 14-07-PLAN.md — addExecutor.test.ts: failing RED tests for AddExecutor (all behaviors)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 14-08-PLAN.md — AddExecutor.ts: core dispatch, unban-first, privacy-block+link, error classification (GREEN-A)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 14-09-PLAN.md — AddExecutor.ts: continuation-based resume, end-of-run DM, add-log append (GREEN-B)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 14-10-PLAN.md — addChannels.ts: ADD_* IPC handlers + target:addContact (TDD)
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 14-11-PLAN.md — main/index.ts + preload/index.ts wiring, targetChannels.ts TARGET_RESET extension
+
 **UI hint**: no
 
 ### Phase 15: Renderer — Add Mode, Contacts, Template & Reporting
