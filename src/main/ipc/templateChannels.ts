@@ -38,7 +38,12 @@ import { TEMPLATE_GET, TEMPLATE_SET } from '@shared/channels'
 // a doubled brace pair.
 
 export function renderTemplate(template: string, vars: { name: string; links: string }): string {
-  return template.replace(/\{name\}/g, vars.name).replace(/\{links\}/g, vars.links)
+  // WR-03: single pass over BOTH placeholders. vars.name is the add target's own Telegram
+  // display name — fully attacker/target-controlled. Two sequential .replace() calls would
+  // let a name containing the literal substring "{links}" get inserted by the first call and
+  // then re-matched and substituted by the second, corrupting the rendered DM. A single regex
+  // with a callback never re-scans substituted content.
+  return template.replace(/\{name\}|\{links\}/g, (m) => (m === '{name}' ? vars.name : vars.links))
 }
 
 // ── Built-in defaults (used when no template is yet persisted) ─────────────

@@ -64,6 +64,11 @@ describe('renderTemplate', () => {
     )
   })
 
+  it('WR-03: a target display name containing the literal substring "{links}" is not re-substituted by the second placeholder', () => {
+    const result = renderTemplate('Hi {name}!\n{links}', { name: 'Evil{links}Name', links: 'https://t.me/+real' })
+    expect(result).toBe('Hi Evil{links}Name!\nhttps://t.me/+real')
+  })
+
   it('does not touch i18next-style {{ }} double-brace syntax if present in a template', () => {
     const template = 'Hi {name}! {{notAPlaceholder}}'
     expect(renderTemplate(template, { name: 'Jan', links: '' })).toBe(
