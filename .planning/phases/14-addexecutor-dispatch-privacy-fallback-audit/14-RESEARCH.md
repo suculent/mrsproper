@@ -589,24 +589,24 @@ All rows sourced from `core.telegram.org/method/channels.inviteToChannel`, `.../
 | A6 | `contacts.AddContact` accepts `phone: ''` without error (per official docs' explicit statement) | Pattern 5 | Low risk — if wrong, the contact-add call fails and the non-blocking `{ ok: false }` path (D-08) absorbs it gracefully regardless |
 | A7 | `TargetResolver` can be safely extended with `_resolvedDeleted`/`_resolvedBot`/`_resolvedContact`/`_resolvedMutualContact` private fields without affecting Removal/Tag's existing `getResolvedUser()` consumers | Pitfall 1, Code Examples Pattern 5 | Low risk — purely additive; Removal/Tag destructure only `{id, accessHash, name}` today and would be unaffected by extra fields on the return object |
 
-## Open Questions
+## Open Questions (RESOLVED in planning — see 14-07-PLAN.md `<behavior>` block, D-20)
 
-1. **"Same run" equality rule for continuation-based resume (Pattern 1)**
+1. **"Same run" equality rule for continuation-based resume (Pattern 1)** — RESOLVED (D-20): `ADD_START` passes a `resume` hint computed from `addAuditStore.readJob()`; `AddExecutor` re-validates same `targetId` + order-insensitive `dialogIds` set (`sameDialogIdSet`) before continuing the old jobId, else starts a fresh job.
    - What we know: D-13/D-18 require job-id continuity across stop→resume segments; D-16 says detection+IPC are this phase's job, the Resume/Discard *prompt* is Phase 15's.
    - What's unclear: the exact trigger condition `execute()` (or a distinct method) uses to decide "this call continues job X" vs. "this is a genuinely new run" — target-id match alone, or target-id + identical `dialogIds` set, or an explicit flag passed down from the IPC layer (which itself would need to read `addAuditStore.readJob()` before calling `executor.execute()`)?
    - Recommendation: decide in planning. The cleanest options are (a) the IPC handler (`addChannels.ts`'s `ADD_START`) reads the existing job itself and passes an explicit `{ resume: boolean }` flag into `execute()`, keeping `AddExecutor` itself simple, or (b) `AddExecutor.execute()` does the detection internally (shown in Pattern 1) so the IPC contract stays identical to Removal/Tag's `{ dialogIds, ...options }`. Option (a) is more explicit and testable; option (b) requires fewer IPC surface changes.
 
-2. **`USERS_TOO_MUCH` on basic groups — link fallback or hard failure? (Pitfall 3 / A5)**
+2. **`USERS_TOO_MUCH` on basic groups — link fallback or hard failure? (Pitfall 3 / A5)** — RESOLVED: basic group → `failed(ADD_CHANNEL_FULL)`, no link; broadcast/supergroup → `privacy-blocked` reason `channel-full` + inline link (Plan 14-08).
    - What we know: D-12 explicitly scopes the link-fallback behavior to broadcast channels hitting `InviteToChannel`'s cap.
    - What's unclear: whether the same user-friendly link-fallback should extend to basic groups hitting their own member cap via `AddChatUser`.
    - Recommendation: default to `failed(ADD_CHANNEL_FULL)` (no link) for basic groups per the literal scope of D-12, but flag this explicitly for user confirmation during `/gsd:discuss-phase` or planning — it's a one-line decision, not a research gap.
 
-3. **`CHANNEL_PRIVATE` on `InviteToChannel` — not in D-19's error-code vocabulary**
+3. **`CHANNEL_PRIVATE` on `InviteToChannel` — not in D-19's error-code vocabulary** — RESOLVED: maps to `failed(UNKNOWN)` (Plan 14-08).
    - What we know: official docs list `CHANNEL_PRIVATE` (406) as a possible error for `channels.inviteToChannel` ("You haven't joined this channel/supergroup").
    - What's unclear: this should be structurally impossible in practice (the admin is enumerating their own dialogs, so they're necessarily joined) — but defensive classification still needs a bucket. D-19's code list has no `ADD_CHANNEL_PRIVATE` equivalent.
    - Recommendation: map to `failed(UNKNOWN)` (safe default per D-19's unmapped-error rule) rather than inventing a new code for an error that should never realistically occur.
 
-4. **Does `InviteToChannel`'s success response ever include updates that reveal "already a member" without an error or a `missing_invitees` entry? (A3)**
+4. **Does `InviteToChannel`'s success response ever include updates that reveal "already a member" without an error or a `missing_invitees` entry? (A3)** — RESOLVED: dual signal — pre-run scanner status `member` short-circuits with zero RPCs; runtime `USER_ALREADY_PARTICIPANT` is the defensive second signal (Plans 14-07/14-08).
    - What we know: the TL response only exposes `updates` + `missingInvitees`; no documented "already present" signal distinct from silent success.
    - What's unclear: whether to rely purely on the pre-run Phase-13 scan status (`already-member` addGreyReason — though those rows are greyed/non-selectable in the UI per Phase 13 D-07, so they shouldn't even reach the executor) or add a defensive post-hoc check.
    - Recommendation: trust Phase 13's `addGreyReason: 'already-member'` filtering at the UI layer (Phase 15) to prevent already-member dialogs from ever being selected; the executor only needs to handle the *mid-run* case (target joined between scan and run) via whatever signal the live RPC actually returns — confirm with a live-account smoke test during implementation, since this is unverifiable from documentation alone.
