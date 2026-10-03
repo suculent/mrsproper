@@ -30,6 +30,7 @@ import type { AddLogBlockEntry } from '@shared/addTypes'
 function createFakeFs() {
   const _appends: Array<{ path: string; data: string; opts?: unknown }> = []
   const _contents: Record<string, string> = {}
+  const _chmodCalls: Array<{ path: string; mode: number }> = []
 
   return {
     appendFileSync(path: string, data: string, opts?: unknown): void {
@@ -39,8 +40,12 @@ function createFakeFs() {
     existsSync(path: string): boolean {
       return path in _contents
     },
+    chmodSync(path: string, mode: number): void {
+      _chmodCalls.push({ path, mode })
+    },
     _appends,
     _contents,
+    _chmodCalls,
   }
 }
 
@@ -149,6 +154,29 @@ describe('addLogStore', () => {
     expect(notNeeded).not.toBe(sent)
     expect(sent).not.toBe(refused)
     expect(notNeeded).not.toBe(refused)
+  })
+
+  it('WR-04: when add-log.txt already exists before the first append this session, chmodSync(path, 0o600) is called defensively once', () => {
+    const fakeFs = createFakeFs()
+    // Simulate a pre-existing add-log.txt (e.g. restored from a backup) whose permissions
+    // were never set by this store's own appendFileSync({ mode }) call.
+    fakeFs._contents['/fake/userData/add-log.txt'] = 'pre-existing content\n'
+    const store = createAddLogStore({ fs: fakeFs, app: createFakeApp() })
+
+    store.appendBlock(makeEntry())
+    store.appendBlock(makeEntry())
+
+    expect(fakeFs._chmodCalls).toHaveLength(1)
+    expect(fakeFs._chmodCalls[0]).toEqual({ path: '/fake/userData/add-log.txt', mode: 0o600 })
+  })
+
+  it('WR-04: when add-log.txt does not exist yet, chmodSync is never called (appendFileSync creating it at 0o600 is sufficient)', () => {
+    const fakeFs = createFakeFs()
+    const store = createAddLogStore({ fs: fakeFs, app: createFakeApp() })
+
+    store.appendBlock(makeEntry())
+
+    expect(fakeFs._chmodCalls).toHaveLength(0)
   })
 
   it('appendBlock: an entry with empty addedDialogs and empty linkedDialogs still writes a block (zero-added run is still logged)', () => {
