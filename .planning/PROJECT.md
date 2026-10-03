@@ -23,8 +23,32 @@ Confirmed working end-to-end against a real account. Built on v1.0 (core removal
 response parsing. Resolved by separating layer-198 reads (admin pre-checks) from layer-224 writes
 in time and restoring the main client to 198 afterward.
 
-**Next milestone:** TBD — run `/gsd:new-milestone`. Candidate follow-ups: confirm the real tag
-max-length (currently a provisional 16-char cap), read-back/clear-tag actions, per-group tags.
+**2026-10-03 fix (quick 261003-jni):** Telegram's late-September schema rollout broke membership
+scan/name search at TL layer 198 (participant constructors renumbered to carry `rank`). The whole
+GramJS package now runs at TL layer 229 via a vendored TDLib schema (`vendor/telegram-api.tl`,
+regenerated into `node_modules/telegram` by a postinstall script). The layer-224 isolation hack is
+no longer needed; `tagClient` is layer-neutral, `TagExecutor` cleanup is queued for v1.7.
+
+## Current Milestone: v1.7 Add Mode
+
+**Goal:** Let the admin add the resolved target to every selected group they are not yet in, with
+the same safety, throttling and reporting as removal.
+
+**Target features:**
+- Remove / Tag / Add mode switch on the groups pane; in Add mode the membership checklist inverts
+  to show groups the target is NOT in (kick/ban stay inside Remove mode on the review screen)
+- "Add to contacts" / "Přidat do kontaktů" checkbox, pre-checked, shown with the target card while
+  Add mode is active; on target confirmation the target is added to the admin's contacts if not
+  already there (unchecked = skip; the privacy fallback then goes straight to links)
+- Direct add via `channels.InviteToChannel` (supergroups AND broadcast channels when the admin holds
+  the invite right) / `messages.AddChatUser` (basic groups); unban first for banned targets
+- Privacy-block fallback: unique single-use invite links per group expiring in 5 days, sent to the
+  target in ONE direct message at run end; message previewed on the review screen before confirm
+- Add log: one record per added user (timestamp + the invite links generated for them), stored
+  alongside the job files, exportable as plain text from the app
+- New throttled, resumable AddExecutor with its own job file and per-group outcomes
+  (done | already-member | privacy-blocked+links | failed(code) | skipped)
+- Cleanup: remove the dead layer-224 two-phase / restoreMainClientLayer logic in TagExecutor
 
 **Design reference:** `docs/superpowers/specs/2026-06-20-member-tag-action-design.md`.
 
@@ -63,7 +87,7 @@ max-length (currently a provisional 16-char cap), read-back/clear-tag actions, p
 
 <!-- Current scope. Building toward these. -->
 
-(None — v1.6 shipped. Run `/gsd:new-milestone` to define the next milestone.)
+(v1.7 Add Mode — requirements being defined in REQUIREMENTS.md; see Current Milestone above.)
 
 ### Out of Scope
 
@@ -128,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 after v1.6 milestone — Member Tag Action shipped (TAG-01..06 validated, live-confirmed end-to-end). Two-phase layer-224/198 isolation was the key fix.*
+*Last updated: 2026-10-03 — milestone v1.7 Add Mode started (after quick 261003-jni moved GramJS to TL layer 229).*

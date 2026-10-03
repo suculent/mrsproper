@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Member Tag Action
-status: Awaiting next milestone
-stopped_at: Completed 11-tagexecutor-11-02-PLAN.md
-last_updated: "2026-06-20T21:18:11.621Z"
-last_activity: 2026-10-03 — Completed quick task 261003-jni: Move GramJS client to TL layer 229
+milestone: v1.7
+milestone_name: Add Mode
+status: planning
+last_updated: "2026-10-03T14:04:01.545Z"
+last_activity: 2026-10-03
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
-  percent: 80
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 
 ## Current Position
 
-Phase: Milestone v1.6 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-03 — Completed quick task 261003-jni: Move GramJS client to TL layer 229
+Status: Defining requirements
+Last activity: 2026-10-03 — Milestone v1.7 started
 
 ## Performance Metrics
 
