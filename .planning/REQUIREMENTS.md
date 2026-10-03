@@ -23,7 +23,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 - [ ] **ADD-06**: User can add the target to each selected group as a throttled, sequential run through the shared governor (`channels.InviteToChannel` for supergroups/channels, `messages.AddChatUser` for basic groups): FLOOD_WAIT honored with countdown, PEER_FLOOD hard-stops the run, ~3 s pacing between groups
 - [ ] **ADD-07**: If the target is currently banned in a group, the run lifts the ban first, then invites
 - [ ] **ADD-08**: Every group outcome is checkpointed to `add-job.json` as it happens; on relaunch an incomplete add job offers Resume / Discard, and a stopped or hard-stopped run can be resumed
-- [ ] **ADD-09**: Per-group outcomes are typed: `done`, `already-member`, `privacy-blocked`, `failed` with a code (no rights, not mutual contact, target in too many channels, previously kicked, deleted account or bot, channel at the direct-add cap, network, unknown) and `skipped`
+- [ ] **ADD-09**: Per-group outcomes are typed: `done`, `already-member`, `privacy-blocked` (covers not-mutual-contact/privacy-restricted and a broadcast/supergroup channel at its direct-add cap, per D-07/D-12), `failed` with a code (no rights, target in too many channels, previously kicked, deleted account or bot, a basic group at its own member cap, network, unknown), and `skipped`
 
 ### Privacy fallback
 
