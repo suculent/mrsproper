@@ -30,7 +30,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 - [x] **ADD-10**: For each privacy-blocked group the run exports a unique invite link limited to one use and expiring 5 days after creation
 - [x] **ADD-11**: At run end all generated links are sent to the target in ONE direct message; a message refused by the target's privacy settings is reported as such with the links shown so the admin can pass them along another way
 - [ ] **ADD-12**: The review screen shows the add consequence line, the exact group list, and the exact direct-message text that would be sent, and requires one explicit confirmation before any write; target identity is sourced from the main process only
-- [ ] **ADD-16**: User can edit the direct-message template used for the invite-link message (default template provided in English and Czech, placeholders for the target's name and the link list); the template is persisted across runs and the rendered message is what ADD-12 previews
+- [x] **ADD-16**: User can edit the direct-message template used for the invite-link message (default template provided in English and Czech, placeholders for the target's name and the link list); the template is persisted across runs and the rendered message is what ADD-12 previews
 
 ### Reporting & Log
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-13 | Phase 15 | Pending |
 | ADD-14 | Phase 15 | Complete |
 | ADD-15 | Phase 15 | Pending |
-| ADD-16 | Phase 15 | Pending |
+| ADD-16 | Phase 15 | Complete |
 | TAG-07 | Phase 13 | Complete |
 
 **Coverage:**

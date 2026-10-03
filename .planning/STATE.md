@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Add Mode
 status: executing
 stopped_at: Completed 14-05-PLAN.md
-last_updated: "2026-10-03T20:59:01.355Z"
+last_updated: "2026-10-03T21:03:36.084Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 8
+  completed_plans: 9
   percent: 14
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
-Plan: 6 of 11
+Plan: 7 of 11
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -73,6 +73,7 @@ Last activity: 2026-10-03
 | Phase 14 P03 | 4min | 2 tasks | 2 files |
 | Phase 14 P04 | 8min | 2 tasks | 2 files |
 | Phase 14 P05 | 2min | 2 tasks | 2 files |
+| Phase 14 P06 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase 14]: [14-03]: AddJobFileSchema requires dmStatus (non-optional) so a missing field is rejected as schema mismatch, distinguishing AddAuditStore from Tag/Removal job-file precedent
 - [Phase ?]: [14-04]: Follow-up add-log blocks marked with a literal CONTINUATION substring in the header line, grep-able per D-18, no separate field needed
 - [Phase 14]: [14-05] createContactService: addIfMissing() is the D-08 non-blocking contacts.AddContact wrapper (skip-if-contact, never-rethrows, single governor.run call); not wired into Plan 14-10's IPC/main index yet
+- [Phase 14]: [14-06] renderTemplate() uses two sequential single-brace regex replaces (no templating library); confirmed by test to leave i18next's {{ }} double-brace syntax untouched
+- [Phase 14]: [14-06] DEFAULT_TEMPLATE_CS drafted with formal vykani and a gender-neutral 'radi bychom' construction per D-15
+- [Phase 14]: [14-06] TEMPLATE_GET returns null (not a default template) on first launch, so Plan 14-11's wiring chooses the EN/CS default by current app language
 
 ### Pending Todos
 
@@ -164,7 +168,7 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T20:59:01.351Z
+Last session: 2026-10-03T21:03:36.080Z
 Stopped at: Completed 14-05-PLAN.md
 Resume file: None
 

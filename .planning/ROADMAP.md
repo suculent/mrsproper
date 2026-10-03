@@ -194,7 +194,7 @@ Plans:
 - [x] 14-03-PLAN.md — addAuditStore.ts: add-job.json persistence + sameDialogIdSet (TDD)
 - [x] 14-04-PLAN.md — addLogStore.ts: append-only add-log.txt writer (TDD)
 - [x] 14-05-PLAN.md — contactService.ts: non-blocking contacts.AddContact wrapper (TDD)
-- [ ] 14-06-PLAN.md — templateChannels.ts: DM template store + renderTemplate + EN/CS defaults (TDD)
+- [x] 14-06-PLAN.md — templateChannels.ts: DM template store + renderTemplate + EN/CS defaults (TDD)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 5/11 | In Progress|  |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 6/11 | In Progress|  |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
