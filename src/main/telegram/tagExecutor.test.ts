@@ -1,15 +1,13 @@
 /**
- * RED → GREEN tests for TagExecutor.ts (TAG-03, TAG-04, §4.3 lifecycle).
+ * Tests for TagExecutor.ts (TAG-03, TAG-04, TAG-07 single-client consolidation).
  *
  * Test map:
- *   TAG-03 per-group dispatch: tagClient.invoke called once per supergroup
- *   TAG-03 per-group dispatch: tagClient.connect at run start / disconnect at run end
+ *   TAG-03 per-group dispatch: EditChatParticipantRank issued once per supergroup
  *   TAG-03 per-group dispatch: step:running emitted with currentGroupId
  *   TAG-04 already-admin skip: GetParticipant → ChannelParticipantAdmin → skipped TAG_TARGET_IS_ADMIN
- *   TAG-04 already-admin skip: GetParticipant called via mainClient, not tagClient
+ *   TAG-04 already-admin skip: GetParticipant precheck issued before the write for a non-admin target
  *   TAG-04 basic-group skip: TAG_UNSUPPORTED_BASIC_GROUP, no API call
  *   TAG-03 PEER_FLOOD: hard-stop; remaining groups NOT marked skipped (resumable)
- *   TAG-03 PEER_FLOOD: tagClient.disconnect called even on hard-stop
  *   TAG-03 abort: remaining groups marked skipped, step:stopped
  *   TAG-03 abort: abortExecution() when idle emits idle state
  *   TAG-03 generation guard: stale run result not emitted after new execute()
@@ -17,9 +15,7 @@
  *   TAG-03 checkpoint ordering: setStatus('stopped') called when aborted mid-run
  *   TAG-03 _handleGovernorEvent no-op when _runActive is false
  *   TAG-03 _handleGovernorEvent emits floodWaitRemaining during active run
- *   §4.3 tagClient lifecycle: disconnect called on abort (stopped path)
- *   §4.3 tagClient lifecycle: connect called before first invoke
- *   §4.3 tagClient lifecycle: connect NOT called twice when run already in-flight
+ *   D-11: a parse failure (non-RPC-shaped error) on the write surfaces as UNKNOWN, not success
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -92,42 +88,59 @@ function makeTagAuditStore(dialogIds: string[] = []): TagAuditStore & {
 /**
  * Create a TagExecutor with injectable dependencies.
  *
- * mockTagClient: connect/invoke/disconnect spies for the layer-224 write path.
- * mockMainClient: invoke spy for GetParticipant (already-admin check) — returns
- *   ChannelParticipant by default, ChannelParticipantAdmin for adminDialogIds.
+ * mockClient: a SINGLE client (TAG-07 D-10 — no second tagClient/mainClient split).
+ * Its invoke() dispatches BOTH GetParticipant (already-admin precheck) AND
+ * EditChatParticipantRank (the tag write) by ctorName/className, mirroring the shared
+ * __mocks__/telegramClient.ts dispatch pattern.
  */
 function makeTagExecutor(config: {
   dialogs: AdminDialogDTO[]
   /** dialogIds where GetParticipant returns ChannelParticipantAdmin → triggers skip */
   adminDialogIds?: string[]
+  /** dialogId (channelId) → errorMessage thrown by the EditChatParticipantRank write */
+  tagErrorDialogIds?: Record<string, string>
   auditStore?: TagAuditStore
 }) {
-  // mockTagClient — layer-224 write path; invoke records editChatParticipantRank calls
-  const mockTagClient = {
-    connect: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-    disconnect: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
-    invoke: vi.fn<(arg: unknown) => Promise<unknown>>().mockResolvedValue({}),
-  }
+  const editChatParticipantRankCalls: Array<{ channelId: string; rank: string }> = []
+  const getParticipantCalls: Array<{ channelId: string }> = []
 
-  // mockMainClient — main layer-198 client; used for GetParticipant pre-flight only
-  const mockMainClient = {
-    invoke: vi.fn<(arg: unknown) => Promise<unknown>>().mockImplementation(async (request: unknown) => {
-      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
-      const className = (request as { className?: string })?.className ?? ''
-      if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
-        const channelId = (
-          request as { channel?: { channelId?: { toString(): string } } }
-        ).channel?.channelId?.toString() ?? ''
-        if (config.adminDialogIds?.includes(channelId)) {
-          return { participant: { className: 'ChannelParticipantAdmin' } }
-        }
-        return { participant: { className: 'ChannelParticipant' } }
+  const defaultInvoke = async (request: unknown): Promise<unknown> => {
+    const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+    const className = (request as { className?: string })?.className ?? ''
+
+    if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
+      const channelId = (
+        request as { channel?: { channelId?: { toString(): string } } }
+      ).channel?.channelId?.toString() ?? ''
+      getParticipantCalls.push({ channelId })
+      if (config.adminDialogIds?.includes(channelId)) {
+        return { participant: { className: 'ChannelParticipantAdmin' } }
+      }
+      return { participant: { className: 'ChannelParticipant' } }
+    }
+
+    if (ctorName === 'EditChatParticipantRank' || className === 'messages.EditChatParticipantRank') {
+      const channelId = (
+        request as { peer?: { channelId?: { toString(): string } } }
+      ).peer?.channelId?.toString() ?? ''
+      const rank = (request as { rank?: string }).rank ?? ''
+      editChatParticipantRankCalls.push({ channelId, rank })
+      if (config.tagErrorDialogIds?.[channelId]) {
+        const msg = config.tagErrorDialogIds[channelId]!
+        throw Object.assign(new Error(msg), { errorMessage: msg })
       }
       return {}
-    }),
+    }
+
+    return {}
   }
 
-  const governor = new RateLimitGovernor({ client: mockMainClient as never })
+  // Single shared client — TAG-07 D-10: no mainClient/tagClient split.
+  const mockClient = {
+    invoke: vi.fn<(arg: unknown) => Promise<unknown>>().mockImplementation(defaultInvoke),
+  }
+
+  const governor = new RateLimitGovernor({ client: mockClient as never })
 
   const stubEnumerator = {
     getState: () => ({ step: 'loaded' as const, dialogs: config.dialogs }),
@@ -159,15 +172,8 @@ function makeTagExecutor(config: {
   const states: TagState[] = []
   const onStateChange = (s: TagState) => states.push(s)
 
-  const restoreMainClientLayer = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
-
   const executor = new TagExecutor({
-    // CR-02: pass a factory so each run constructs a fresh TagClient (post-login session snapshot).
-    // In tests, the factory always returns the same mockTagClient so connect/invoke/disconnect spies
-    // on mockTagClient still capture all calls — no test assertions change.
-    tagClientFactory: () => mockTagClient as never,
-    mainClient: mockMainClient,
-    restoreMainClientLayer,
+    client: mockClient,
     governor,
     enumerator: stubEnumerator as never,
     resolver: stubResolver,
@@ -175,7 +181,15 @@ function makeTagExecutor(config: {
     onStateChange,
   })
 
-  return { executor, mockTagClient, mockMainClient, restoreMainClientLayer, states, auditStore, dialogIds }
+  return {
+    executor,
+    mockClient,
+    editChatParticipantRankCalls,
+    getParticipantCalls,
+    states,
+    auditStore,
+    dialogIds,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,47 +204,17 @@ describe('TagExecutor — per-group dispatch (TAG-03)', () => {
     vi.useRealTimers()
   })
 
-  it('calls tagClient.invoke with editChatParticipantRank request once per supergroup', async () => {
+  it('issues EditChatParticipantRank once per supergroup', async () => {
     const dialogs = [makeDialog('1001', 'supergroup'), makeDialog('1002', 'supergroup')]
-    const { executor, mockTagClient, states } = makeTagExecutor({ dialogs })
+    const { executor, editChatParticipantRankCalls, states } = makeTagExecutor({ dialogs })
 
     const execPromise = executor.execute({ dialogIds: ['1001', '1002'], tag: 'dev' })
     await vi.runAllTimersAsync()
     await execPromise
 
-    expect(mockTagClient.invoke).toHaveBeenCalledTimes(2)
+    expect(editChatParticipantRankCalls).toHaveLength(2)
     const finalState = states[states.length - 1]
     expect(finalState.step).toBe('complete')
-  })
-
-  it('calls tagClient.connect at run start and tagClient.disconnect at run end (§4.3)', async () => {
-    const dialogs = [makeDialog('1003', 'supergroup')]
-    const { executor, mockTagClient } = makeTagExecutor({ dialogs })
-
-    const connectOrder: string[] = []
-    mockTagClient.connect.mockImplementation(async () => {
-      connectOrder.push('connect')
-    })
-    mockTagClient.invoke.mockImplementation(async () => {
-      connectOrder.push('invoke')
-      return {}
-    })
-    mockTagClient.disconnect.mockImplementation(async () => {
-      connectOrder.push('disconnect')
-    })
-
-    const execPromise = executor.execute({ dialogIds: ['1003'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    expect(mockTagClient.connect).toHaveBeenCalledTimes(1)
-    expect(mockTagClient.disconnect).toHaveBeenCalledTimes(1)
-    // connect must precede invoke which must precede disconnect
-    const connectIdx = connectOrder.indexOf('connect')
-    const invokeIdx = connectOrder.indexOf('invoke')
-    const disconnectIdx = connectOrder.lastIndexOf('disconnect')
-    expect(connectIdx).toBeLessThan(invokeIdx)
-    expect(invokeIdx).toBeLessThan(disconnectIdx)
   })
 
   it('emits step:running with currentGroupId for each group being processed', async () => {
@@ -264,7 +248,7 @@ describe('TagExecutor — already-admin skip (TAG-04)', () => {
   it('skips group where GetParticipant returns ChannelParticipantAdmin with TAG_TARGET_IS_ADMIN', async () => {
     const dialogs = [makeDialog('2001', 'supergroup')]
     const auditStore = makeTagAuditStore(['2001'])
-    const { executor, mockTagClient } = makeTagExecutor({
+    const { executor, editChatParticipantRankCalls } = makeTagExecutor({
       dialogs,
       adminDialogIds: ['2001'],
       auditStore,
@@ -274,32 +258,29 @@ describe('TagExecutor — already-admin skip (TAG-04)', () => {
     await vi.runAllTimersAsync()
     await execPromise
 
-    expect(mockTagClient.invoke).not.toHaveBeenCalled()
+    expect(editChatParticipantRankCalls).toHaveLength(0)
     const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '2001')
     expect(checkpointCall).toBeDefined()
     expect(checkpointCall!.outcome.status).toBe('skipped')
     expect(checkpointCall!.outcome.errorCode).toBe('TAG_TARGET_IS_ADMIN')
   })
 
-  it('GetParticipant is called via mainClient (not tagClient) for already-admin check', async () => {
+  it('GetParticipant precheck is issued before the EditChatParticipantRank write for a non-admin target', async () => {
     const dialogs = [makeDialog('2002', 'supergroup')]
-    const { executor, mockTagClient, mockMainClient } = makeTagExecutor({ dialogs })
+    const { executor, mockClient } = makeTagExecutor({ dialogs })
 
     const execPromise = executor.execute({ dialogIds: ['2002'], tag: 'dev' })
     await vi.runAllTimersAsync()
     await execPromise
 
-    // mainClient.invoke should have been called for GetParticipant
-    expect(mockMainClient.invoke).toHaveBeenCalled()
-    const mainCalls = mockMainClient.invoke.mock.calls
-    const getParticipantCall = mainCalls.find(args => {
+    const ctorNames = mockClient.invoke.mock.calls.map(args => {
       const req = args[0] as { className?: string; constructor?: { name?: string } }
-      return req?.className === 'channels.GetParticipant' ||
-             req?.constructor?.name === 'GetParticipant'
+      return req?.className ?? req?.constructor?.name ?? ''
     })
-    expect(getParticipantCall).toBeDefined()
-    // tagClient.invoke should also be called (for the actual tag write on a non-admin)
-    expect(mockTagClient.invoke).toHaveBeenCalledTimes(1)
+    const getParticipantIdx = ctorNames.findIndex(n => n.includes('GetParticipant'))
+    const editRankIdx = ctorNames.findIndex(n => n.includes('EditChatParticipantRank'))
+    expect(getParticipantIdx).toBeGreaterThanOrEqual(0)
+    expect(editRankIdx).toBeGreaterThan(getParticipantIdx)
   })
 })
 
@@ -318,21 +299,15 @@ describe('TagExecutor — basic-group skip (TAG-04)', () => {
   it('skips basic-group dialogs with TAG_UNSUPPORTED_BASIC_GROUP, no API call', async () => {
     const dialogs = [makeDialog('3001', 'basic-group')]
     const auditStore = makeTagAuditStore(['3001'])
-    const { executor, mockTagClient, mockMainClient } = makeTagExecutor({ dialogs, auditStore })
+    const { executor, editChatParticipantRankCalls, getParticipantCalls } = makeTagExecutor({ dialogs, auditStore })
 
     const execPromise = executor.execute({ dialogIds: ['3001'], tag: 'dev' })
     await vi.runAllTimersAsync()
     await execPromise
 
-    // No tagClient.invoke for basic-group (skipped before any API call)
-    expect(mockTagClient.invoke).not.toHaveBeenCalled()
-    // No mainClient.invoke for GetParticipant (basic-group is detected from type, no pre-flight)
-    const getParticipantCall = mockMainClient.invoke.mock.calls.find(args => {
-      const req = args[0] as { className?: string; constructor?: { name?: string } }
-      return req?.className === 'channels.GetParticipant' ||
-             req?.constructor?.name === 'GetParticipant'
-    })
-    expect(getParticipantCall).toBeUndefined()
+    // No write and no precheck for basic-group (skipped before any API call)
+    expect(editChatParticipantRankCalls).toHaveLength(0)
+    expect(getParticipantCalls).toHaveLength(0)
     // outcome should be skipped with TAG_UNSUPPORTED_BASIC_GROUP
     const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '3001')
     expect(checkpointCall).toBeDefined()
@@ -361,16 +336,11 @@ describe('TagExecutor — PEER_FLOOD hard-stop (TAG-03)', () => {
     ]
     const dialogIds = ['4001', '4002', '4003']
     const auditStore = makeTagAuditStore(dialogIds)
-    const { executor, mockTagClient, states } = makeTagExecutor({ dialogs, auditStore })
-
-    // PEER_FLOOD on group 4002 (second invoke call)
-    let invokeCallCount = 0
-    mockTagClient.invoke.mockImplementation(async () => {
-      invokeCallCount++
-      if (invokeCallCount === 2) {
-        throw { errorMessage: 'PEER_FLOOD' }
-      }
-      return {}
+    const { executor, states } = makeTagExecutor({
+      dialogs,
+      auditStore,
+      // PEER_FLOOD on group 4002's write
+      tagErrorDialogIds: { '4002': 'PEER_FLOOD' },
     })
 
     const execPromise = executor.execute({ dialogIds, tag: 'dev' })
@@ -393,19 +363,6 @@ describe('TagExecutor — PEER_FLOOD hard-stop (TAG-03)', () => {
     expect(g3).toBeUndefined()
 
     expect(auditStore.setStatusCalls.some(c => c.status === 'hard-stopped')).toBe(true)
-  })
-
-  it('calls tagClient.disconnect even on PEER_FLOOD hard-stop', async () => {
-    const dialogs = [makeDialog('4004', 'supergroup'), makeDialog('4005', 'supergroup')]
-    const { executor, mockTagClient } = makeTagExecutor({ dialogs })
-
-    mockTagClient.invoke.mockRejectedValueOnce({ errorMessage: 'PEER_FLOOD' })
-
-    const execPromise = executor.execute({ dialogIds: ['4004', '4005'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    expect(mockTagClient.disconnect).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -484,7 +441,7 @@ describe('TagExecutor — generation guard (D-15)', () => {
 
   it('new execute() call while first is in-flight: first run outcome not emitted after second starts', async () => {
     const dialogs = [makeDialog('6001', 'supergroup'), makeDialog('6002', 'supergroup')]
-    const { executor, mockTagClient, states } = makeTagExecutor({ dialogs })
+    const { executor, editChatParticipantRankCalls, states } = makeTagExecutor({ dialogs })
 
     // First call starts
     const firstPromise = executor.execute({ dialogIds: ['6001', '6002'], tag: 'dev' })
@@ -502,8 +459,8 @@ describe('TagExecutor — generation guard (D-15)', () => {
     // The executor should be in a consistent state (not corrupted by stale generation)
     expect(executor.getState()).toBeDefined()
 
-    // tagClient.invoke calls should be well-defined (not duplicated from stale run)
-    expect(mockTagClient.invoke.mock.calls.length).toBeGreaterThanOrEqual(0)
+    // Write calls should be well-defined (not duplicated from stale run)
+    expect(editChatParticipantRankCalls.length).toBeGreaterThanOrEqual(0)
   })
 })
 
@@ -611,10 +568,10 @@ describe('TagExecutor — _handleGovernorEvent + _runActive', () => {
 })
 
 // ---------------------------------------------------------------------------
-// §4.3 — tagClient lifecycle
+// D-11 — parse failure on EditChatParticipantRank is NOT swallowed as success
 // ---------------------------------------------------------------------------
 
-describe('TagExecutor — tagClient lifecycle (§4.3)', () => {
+describe('TagExecutor — D-11 parse-failure surfaces as UNKNOWN', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -622,176 +579,34 @@ describe('TagExecutor — tagClient lifecycle (§4.3)', () => {
     vi.useRealTimers()
   })
 
-  it('tagClient.disconnect is called on abort (stopped path)', async () => {
-    const dialogs = [makeDialog('9001', 'supergroup'), makeDialog('9002', 'supergroup')]
-    const auditStore = makeTagAuditStore(['9001', '9002'])
-    const { executor, mockTagClient } = makeTagExecutor({ dialogs, auditStore })
+  it('an unrecognized/unparseable RPC error on the write surfaces as status=failed, errorCode=UNKNOWN', async () => {
+    const dialogs = [makeDialog('10001', 'supergroup')]
+    const auditStore = makeTagAuditStore(['10001'])
+    const { executor, mockClient } = makeTagExecutor({ dialogs, auditStore })
 
-    let abortCalled = false
-    const originalCheckpoint = auditStore.checkpoint.bind(auditStore)
-    auditStore.checkpoint = (dialogId: string, outcome: TagGroupOutcome) => {
-      originalCheckpoint(dialogId, outcome)
-      if (dialogId === '9001' && !abortCalled) {
-        abortCalled = true
-        executor.abortExecution()
+    // Override the write branch to throw an RPC-shaped error whose message does not match
+    // any recognized TagErrorCode string — simulates a parse failure / unparseable response.
+    // No "unparseable response = success" tolerance exists (D-11): this must propagate to
+    // _classifyTagError's UNKNOWN fallthrough, NOT be silently recorded as 'done'.
+    mockClient.invoke.mockImplementation(async (request: unknown) => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'GetParticipant' || className === 'channels.GetParticipant') {
+        return { participant: { className: 'ChannelParticipant' } }
       }
-    }
-
-    const execPromise = executor.execute({ dialogIds: ['9001', '9002'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    expect(mockTagClient.disconnect).toHaveBeenCalledTimes(1)
-  })
-
-  it('tagClient.connect is called before the first invoke', async () => {
-    const dialogs = [makeDialog('9003', 'supergroup')]
-    const { executor, mockTagClient } = makeTagExecutor({ dialogs })
-
-    const callOrder: string[] = []
-    mockTagClient.connect.mockImplementation(async () => {
-      callOrder.push('connect')
-    })
-    mockTagClient.invoke.mockImplementation(async () => {
-      callOrder.push('invoke')
+      if (ctorName === 'EditChatParticipantRank' || className === 'messages.EditChatParticipantRank') {
+        throw Object.assign(new Error('UNRECOGNIZED_PARSE_ERROR'), { errorMessage: 'UNRECOGNIZED_PARSE_ERROR' })
+      }
       return {}
     })
 
-    const execPromise = executor.execute({ dialogIds: ['9003'], tag: 'dev' })
+    const execPromise = executor.execute({ dialogIds: ['10001'], tag: 'dev' })
     await vi.runAllTimersAsync()
     await execPromise
 
-    expect(callOrder.indexOf('connect')).toBeLessThan(callOrder.indexOf('invoke'))
-  })
-
-  it('tagClient.connect() is NOT called when a run is already active (_connectingTagClient guard)', async () => {
-    const dialogs = [makeDialog('9004', 'supergroup'), makeDialog('9005', 'supergroup')]
-    const { executor, mockTagClient } = makeTagExecutor({ dialogs })
-
-    // First execute() starts running — sets _connectingTagClient = true during connect
-    const firstPromise = executor.execute({ dialogIds: ['9004', '9005'], tag: 'dev' })
-
-    // Second execute() while first is in-flight:
-    // Because _connectingTagClient is true, the reconnect-race guard fails early → connect NOT called again
-    // (IN-01: the real guard is _connectingTagClient, not _runActive)
-    const secondPromise = executor.execute({ dialogIds: ['9004', '9005'], tag: 'dev' })
-
-    await vi.runAllTimersAsync()
-    await Promise.allSettled([firstPromise, secondPromise])
-
-    // connect should have been called only once (second execute() short-circuits)
-    expect(mockTagClient.connect).toHaveBeenCalledTimes(1)
-  })
-
-  it('CR-01: executor not permanently wedged when tagClient.connect() throws', async () => {
-    const dialogs = [makeDialog('9006', 'supergroup')]
-    const { executor, mockTagClient, states } = makeTagExecutor({ dialogs })
-
-    // First execute(): connect() throws — should reset all state cleanly.
-    // Attach .catch() IMMEDIATELY to suppress PromiseRejectionHandledWarning.
-    mockTagClient.connect.mockRejectedValueOnce(new Error('connect failed'))
-    const firstPromise = executor.execute({ dialogIds: ['9006'], tag: 'dev' }).catch(() => {})
-    await vi.runAllTimersAsync()
-    await firstPromise
-
-    // After the failed run, _runActive must be false and _connectingTagClient must be false.
-    // A second execute() must be able to proceed to connect (not blocked by stale flags).
-    mockTagClient.connect.mockResolvedValue(undefined)
-    const secondPromise = executor.execute({ dialogIds: ['9006'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await secondPromise
-
-    // Second run must have connected (executor was not wedged)
-    expect(mockTagClient.connect).toHaveBeenCalledTimes(2)
-
-    // Final state must be terminal (not stuck in a mid-run state)
-    const finalState = states[states.length - 1]
-    expect(['complete', 'stopped', 'hard-stopped']).toContain(finalState.step)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Layer-224 isolation (root-cause fix for live "Spojení bylo přerušeno")
-// ---------------------------------------------------------------------------
-
-describe('TagExecutor — layer-224 / layer-198 isolation', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('issues ALL main-client reads (GetParticipant) BEFORE opening the layer-224 tagClient', async () => {
-    // A layer-224 connection upgrades the shared session to 224; the main client must not read
-    // while it is open or its responses come back unparseable. So every mainClient.invoke must
-    // happen before mockTagClient.connect().
-    const dialogs = [makeDialog('1001', 'supergroup'), makeDialog('1002', 'supergroup')]
-    const { executor, mockTagClient, mockMainClient } = makeTagExecutor({ dialogs })
-
-    const order: string[] = []
-    mockMainClient.invoke.mockImplementation(async () => {
-      order.push('main.invoke')
-      return { participant: { className: 'ChannelParticipant' } }
-    })
-    mockTagClient.connect.mockImplementation(async () => {
-      order.push('tag.connect')
-    })
-    mockTagClient.invoke.mockImplementation(async () => {
-      order.push('tag.invoke')
-      return {}
-    })
-
-    const execPromise = executor.execute({ dialogIds: ['1001', '1002'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    const connectIdx = order.indexOf('tag.connect')
-    expect(connectIdx).toBeGreaterThanOrEqual(0)
-    // No main-client invoke may appear AFTER the tag client connects.
-    const lastMainIdx = order.lastIndexOf('main.invoke')
-    expect(lastMainIdx).toBeLessThan(connectIdx)
-    // And the writes happen after connect.
-    expect(order.indexOf('tag.invoke')).toBeGreaterThan(connectIdx)
-  })
-
-  it('restores the main client to layer 198 after a completed run (Phase C)', async () => {
-    const dialogs = [makeDialog('1001', 'supergroup')]
-    const { executor, mockTagClient, restoreMainClientLayer } = makeTagExecutor({ dialogs })
-
-    const order: string[] = []
-    mockTagClient.disconnect.mockImplementation(async () => {
-      order.push('tag.disconnect')
-    })
-    restoreMainClientLayer.mockImplementation(async () => {
-      order.push('restore')
-    })
-
-    const execPromise = executor.execute({ dialogIds: ['1001'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    expect(restoreMainClientLayer).toHaveBeenCalledTimes(1)
-    // Restore happens after the tag client is torn down.
-    expect(order).toEqual(['tag.disconnect', 'restore'])
-  })
-
-  it('does NOT open the tag client or restore layer when a precheck PEER_FLOOD hard-stops the run', async () => {
-    // PEER_FLOOD during the Phase A precheck must hard-stop before any layer-224 connection opens.
-    const dialogs = [makeDialog('1001', 'supergroup')]
-    const { executor, mockTagClient, mockMainClient, restoreMainClientLayer, states } =
-      makeTagExecutor({ dialogs })
-
-    mockMainClient.invoke.mockRejectedValue(
-      Object.assign(new Error('PEER_FLOOD'), { errorMessage: 'PEER_FLOOD' })
-    )
-
-    const execPromise = executor.execute({ dialogIds: ['1001'], tag: 'dev' })
-    await vi.runAllTimersAsync()
-    await execPromise
-
-    expect(mockTagClient.connect).not.toHaveBeenCalled()
-    expect(restoreMainClientLayer).not.toHaveBeenCalled()
-    expect(states[states.length - 1].step).toBe('hard-stopped')
+    const checkpointCall = auditStore.checkpointCalls.find(c => c.dialogId === '10001')
+    expect(checkpointCall).toBeDefined()
+    expect(checkpointCall!.outcome.status).toBe('failed')
+    expect(checkpointCall!.outcome.errorCode).toBe('UNKNOWN')
   })
 })

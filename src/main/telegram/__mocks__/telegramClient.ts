@@ -188,6 +188,18 @@ export interface MockClientConfig {
    * Initialized to [] by the factory — do not pass in config; read after execute().
    */
   deleteChatUserCalls?: Array<{ chatId: string }>
+
+  // ── Phase 13: TagExecutor single-client mock controls (D-10) ────────────
+  /**
+   * Records each EditChatParticipantRank call for tagExecutor.test.ts assertions.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  editChatParticipantRankCalls?: Array<{ channelId: string; rank: string }>
+  /**
+   * Maps dialogId (channelId) → errorMessage string. EditChatParticipantRank throws with
+   * the mapped errorMessage for the matching channelId — mirrors removeErrorDialogIds's shape.
+   */
+  tagErrorDialogIds?: Record<string, string>
 }
 
 const DEFAULT_IDENTITY = {
@@ -206,9 +218,11 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
   // Phase 5: initialize call-recording arrays on the config object (always reset per factory call)
   config.editBannedCalls = []
   config.deleteChatUserCalls = []
+  config.editChatParticipantRankCalls = []
   // Expose on the returned client for test assertions (read after execute)
   const _editBannedCalls = config.editBannedCalls
   const _deleteChatUserCalls = config.deleteChatUserCalls
+  const _editChatParticipantRankCalls = config.editChatParticipantRankCalls
 
   const sessionStr = config.sessionString ?? 'mock-session-string'
 
@@ -439,6 +453,21 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         return {}  // success
       }
 
+      // ── Phase 13: messages.EditChatParticipantRank — tag write (TAG-07 D-10) ──────
+      if (ctorName === 'EditChatParticipantRank' || (request as { className?: string })?.className === 'messages.EditChatParticipantRank') {
+        const channelId = (request as { peer?: { channelId?: { toString(): string } } })
+          .peer?.channelId?.toString() ?? ''
+        const rank = (request as { rank?: string }).rank ?? ''
+        // Record the call for sequence assertions
+        _editChatParticipantRankCalls.push({ channelId, rank })
+        // Check error controls
+        if (config.tagErrorDialogIds?.[channelId]) {
+          const msg = config.tagErrorDialogIds[channelId]!
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        return {}  // success
+      }
+
       // messages.GetFullChat — basic group membership (GRP-01)
       if (ctorName === 'GetFullChat' || (request as { className?: string })?.className === 'messages.GetFullChat') {
         const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
@@ -528,6 +557,7 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
     // These are the same array instances as config.editBannedCalls / config.deleteChatUserCalls.
     editBannedCalls: _editBannedCalls,
     deleteChatUserCalls: _deleteChatUserCalls,
+    editChatParticipantRankCalls: _editChatParticipantRankCalls,
   }
 
   return client
