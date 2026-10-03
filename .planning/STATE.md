@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-10-03T20:48:17.196Z"
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-10-03T20:53:42.615Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 6
+  completed_plans: 7
   percent: 14
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
-Plan: 4 of 11
+Plan: 5 of 11
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -71,6 +71,7 @@ Last activity: 2026-10-03
 | Phase 14 P01 | 2min | 3 tasks | 3 files |
 | Phase 14 P02 | 12min | 2 tasks | 3 files |
 | Phase 14 P03 | 4min | 2 tasks | 2 files |
+| Phase 14 P04 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [14-02]: Extended mock resolveUsernameResult/resolvePhoneResult/getUsersResult with optional deleted/bot/contact fields (default false) for TargetResolver flag-passthrough tests
 - [Phase ?]: [14-02]: AddChatUser mock error config fires only on the first recorded call per chatId, enabling the D-03 fwd_limit 1000->100 retry sequence to be asserted in later AddExecutor tests
 - [Phase 14]: [14-03]: AddJobFileSchema requires dmStatus (non-optional) so a missing field is rejected as schema mismatch, distinguishing AddAuditStore from Tag/Removal job-file precedent
+- [Phase ?]: [14-04]: Follow-up add-log blocks marked with a literal CONTINUATION substring in the header line, grep-able per D-18, no separate field needed
 
 ### Pending Todos
 
@@ -160,8 +162,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T20:48:17.192Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-10-03T20:53:42.610Z
+Stopped at: Completed 14-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
