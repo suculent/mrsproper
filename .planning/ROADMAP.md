@@ -206,7 +206,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 14-09-PLAN.md — AddExecutor.ts: continuation-based resume, end-of-run DM, add-log append (GREEN-B)
+- [x] 14-09-PLAN.md — AddExecutor.ts: continuation-based resume, end-of-run DM, add-log append (GREEN-B)
 
 **Wave 6** *(blocked on Wave 5)*
 
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 8/11 | In Progress|  |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 9/11 | In Progress|  |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
