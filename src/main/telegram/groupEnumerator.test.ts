@@ -349,7 +349,51 @@ describe('type detection — broadcast channel', () => {
     }
   })
 
-  it('canAdd=false with addGreyReason=channel-full when participantsCount >= 200, regardless of invite right (D-06)', async () => {
+  it('canAdd=false with addGreyReason=no-invite-right for a plain subscriber (no adminRights, no defaultBannedRights — realistic broadcast shape)', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '306',
+          title: 'Subscribed Broadcast Channel',
+          megagroup: false,
+          creator: false,
+          participantsCount: 50,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
+    }
+  })
+
+  it('no-invite-right wins over channel-full when the admin lacks the invite right on a >=200 channel', async () => {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [
+        {
+          entity: 'Channel',
+          id: '307',
+          title: 'Full Subscribed Broadcast Channel',
+          megagroup: false,
+          creator: false,
+          participantsCount: 250,
+        },
+      ],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
+    if (loaded?.step === 'loaded') {
+      expect(loaded.dialogs[0].canAdd).toBe(false)
+      expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
+    }
+  })
+
+  it('canAdd=false with addGreyReason=channel-full when participantsCount >= 200 and the admin holds the invite right (D-06)', async () => {
     const { enumerator, emitted } = makeEnumerator({
       getDialogsResult: [
         {

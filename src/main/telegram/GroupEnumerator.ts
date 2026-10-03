@@ -233,7 +233,10 @@ export class GroupEnumerator {
         // where the admin holds the invite right is addable even though it's not kickable.
         let canAdd = this._computeCanAdd(entity)
         let addGreyReason: AddGreyReason | null = canAdd ? null : 'no-invite-right'
-        if (memberCount !== null && memberCount >= 200) {
+        // Only override with 'channel-full' when the base rule allowed adding — an admin
+        // without the invite right cannot use the Phase 14 invite-link fallback either,
+        // so 'no-invite-right' must win for them.
+        if (canAdd && memberCount !== null && memberCount >= 200) {
           canAdd = false
           addGreyReason = 'channel-full'
         }
@@ -260,20 +263,26 @@ export class GroupEnumerator {
    * Compute whether the admin can add members to this group/channel (D-04/D-05, ADD-04).
    * Zero new Telegram API calls — uses only fields already present on the enumerated entity.
    *
-   * Rule (OR logic, mirrors the canAct creator/adminRights pattern):
+   * Rule (mirrors the canAct creator/adminRights pattern):
    *   - creator → always true (all rights implicit)
    *   - adminRights.inviteUsers === true → explicit invite right granted
-   *   - otherwise: true unless defaultBannedRights.inviteUsers === true (open permissions —
-   *     if the default member rights do not forbid inviting, any member may add)
+   *   - broadcast channel (Api.Channel, !megagroup) → otherwise false. Broadcast channels have
+   *     no member-level permissions (`default_banned_rights` is never populated for them), so
+   *     only the creator or an admin holding invite_users may add subscribers. Falling through
+   *     to the open-permissions clause would report every merely-subscribed channel as addable.
+   *   - megagroup / basic group → true unless defaultBannedRights.inviteUsers === true (open
+   *     permissions — if the default member rights do not forbid inviting, any member may add)
    */
   private _computeCanAdd(entity: Api.Chat | Api.Channel): boolean {
     const adminRights = entity.adminRights as { inviteUsers?: boolean } | null | undefined
+    if (entity.creator === true || adminRights?.inviteUsers === true) return true
+
+    // Broadcast channels have no member-level permissions: only creator/admin may add.
+    if (entity instanceof Api.Channel && !entity.megagroup) return false
+
+    // Megagroups / basic groups: open permissions unless the default mask forbids inviting.
     const defaultBannedRights = entity.defaultBannedRights as { inviteUsers?: boolean } | null | undefined
-    return (
-      entity.creator === true ||
-      adminRights?.inviteUsers === true ||
-      defaultBannedRights?.inviteUsers !== true
-    )
+    return defaultBannedRights?.inviteUsers !== true
   }
 
   /**
