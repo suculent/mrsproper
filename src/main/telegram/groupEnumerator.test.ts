@@ -51,6 +51,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(true)
       expect(loaded.dialogs[0].greyReason).toBeNull()
@@ -71,6 +72,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(true)
       expect(loaded.dialogs[0].greyReason).toBeNull()
@@ -83,6 +85,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(false)
       expect(loaded.dialogs[0].greyReason).toBe('not-creator')
@@ -96,6 +99,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(true)
       expect(loaded.dialogs[0].addGreyReason).toBeNull()
@@ -110,6 +114,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(true)
       expect(loaded.dialogs[0].addGreyReason).toBeNull()
@@ -130,6 +135,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(false)
       expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
@@ -144,6 +150,7 @@ describe('type detection — Api.Chat entity', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(true)
       expect(loaded.dialogs[0].addGreyReason).toBeNull()
@@ -162,6 +169,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].type).toBe('supergroup')
     }
@@ -181,6 +189,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(true)
       expect(loaded.dialogs[0].greyReason).toBeNull()
@@ -195,6 +204,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(false)
       expect(loaded.dialogs[0].greyReason).toBe('no-ban-right')
@@ -218,6 +228,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(true)
       expect(loaded.dialogs[0].greyReason).toBeNull()
@@ -239,6 +250,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(true)
       expect(loaded.dialogs[0].addGreyReason).toBeNull()
@@ -259,6 +271,7 @@ describe('type detection — Api.Channel megagroup', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(false)
       expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
@@ -279,6 +292,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].type).toBe('broadcast-channel')
     }
@@ -298,6 +312,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(false)
       expect(loaded.dialogs[0].greyReason).toBe('broadcast-channel')
@@ -320,6 +335,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAct).toBe(false)
       expect(loaded.dialogs[0].greyReason).toBe('broadcast-channel')
@@ -343,6 +359,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(false)
       expect(loaded.dialogs[0].addGreyReason).toBe('no-invite-right')
@@ -408,6 +425,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(false)
       expect(loaded.dialogs[0].addGreyReason).toBe('channel-full')
@@ -429,6 +447,7 @@ describe('type detection — broadcast channel', () => {
     })
     await enumerator.enumerateAtLogin()
     const loaded = emitted.find((s) => s.step === 'loaded')
+    expect(loaded?.step).toBe('loaded')
     if (loaded?.step === 'loaded') {
       expect(loaded.dialogs[0].canAdd).toBe(true)
       expect(loaded.dialogs[0].addGreyReason).toBeNull()
