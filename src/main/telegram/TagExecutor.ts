@@ -109,8 +109,9 @@ export class TagExecutor {
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — NO renderer
    * payload is accepted for target identity. The IPC payload carries only dialogIds and tag.
    *
-   * D-15: increments _generation at the start; each loop iteration checks if generation has been
-   * superseded (by a newer execute() or abortExecution()) and exits early.
+   * D-15: increments _generation at the start; each loop iteration checks whether this run was
+   * aborted (abortExecution() → marks remaining skipped, emits 'stopped') or superseded by a
+   * newer execute() (exits silently — the newer run owns the audit store and emitted state).
    */
   async execute(params: { dialogIds: string[]; tag: string }): Promise<void> {
     // D-15: increment generation to invalidate any prior in-flight run
@@ -174,11 +175,16 @@ export class TagExecutor {
     })
 
     for (const dialog of selectedDialogs) {
-      // Generation/abort guard: top of loop
-      if (gen !== this._generation || signal.aborted) {
+      // Abort/generation guard: top of loop.
+      // Order matters: abortExecution() both aborts the signal AND bumps _generation, so
+      // check the signal first — abort owns the "mark remaining skipped + emit stopped" path.
+      // A bare generation mismatch means a NEWER execute() superseded this run: that run now
+      // owns _auditStore, _runActive and the emitted state, so exit silently without touching them.
+      if (signal.aborted) {
         this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
         return
       }
+      if (gen !== this._generation) return
 
       this._emit({
         step: 'running',
@@ -205,11 +211,12 @@ export class TagExecutor {
         outcome = this._classifyTagError(err, dialog.id)
       }
 
-      // Generation guard: BEFORE checkpoint (Pitfall 7 — gen can change during await)
-      if (gen !== this._generation || signal.aborted) {
+      // Abort/generation guard: BEFORE checkpoint (Pitfall 7 — gen can change during await)
+      if (signal.aborted) {
         this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
         return
       }
+      if (gen !== this._generation) return
 
       // Checkpoint the outcome (BEFORE pacing sleep)
       this._auditStore.checkpoint(dialog.id, outcome)
@@ -218,17 +225,20 @@ export class TagExecutor {
       // Inter-group pacing: 2s base + up to 1s jitter (fires AFTER outcome checkpointed)
       await new Promise<void>(r => setTimeout(r, 2000 + Math.random() * 1000))
 
-      // Generation guard: after pacing sleep
-      if (gen !== this._generation || signal.aborted) {
+      // Abort/generation guard: after pacing sleep
+      if (signal.aborted) {
         this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
         return
       }
+      if (gen !== this._generation) return
     }
 
-    // Generation guard: post-loop, before emitting complete.
-    if (gen !== this._generation || signal.aborted) {
+    // Abort/generation guard: post-loop, before emitting complete (same split as in-loop).
+    if (signal.aborted) {
+      this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
       return
     }
+    if (gen !== this._generation) return
 
     const completedAt = new Date().toISOString()
     this._auditStore.setStatus('complete', completedAt)
