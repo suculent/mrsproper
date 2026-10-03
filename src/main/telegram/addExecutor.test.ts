@@ -1230,6 +1230,47 @@ describe('AddExecutor — end-of-run DM dispatch (ADD-11, D-13/D-14)', () => {
     expect(outcome?.outcome.link).toBeTruthy()
   })
 
+  it('CR-02: SendMessage throws a NETWORK (non-privacy) error: the run still reaches "complete" with dmStatus "refused" instead of hanging uncaught at "running" forever', async () => {
+    const dialogs = [makeDialog('16012', 'supergroup')]
+    const { executor, states, auditStore } = makeExecutor({
+      dialogs,
+      mockConfig: {
+        inviteToChannelMissingInviteeDialogIds: { '16012': {} },
+        sendMessageError: 'NETWORK',
+      },
+    })
+
+    const p = executor.execute({ dialogIds: ['16012'] })
+    await vi.runAllTimersAsync()
+    await p
+
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('complete')
+    expect(finalState.dmStatus).toBe('refused')
+    // The run reached a terminal state: _runActive was reset, so a fresh execute() call
+    // is not blocked by the double-start guard (mirrored at the IPC layer via getState()).
+    expect(executor.getState().step).toBe('complete')
+    expect(auditStore.setStatusCalls.some((c) => c.status === 'complete')).toBe(true)
+  })
+
+  it('CR-02: SendMessage throws PEER_FLOOD: the run hard-stops (T-14-11) rather than being folded into dmStatus "refused"', async () => {
+    const dialogs = [makeDialog('16013', 'supergroup')]
+    const { executor, states } = makeExecutor({
+      dialogs,
+      mockConfig: {
+        inviteToChannelMissingInviteeDialogIds: { '16013': {} },
+        sendMessageError: 'PEER_FLOOD',
+      },
+    })
+
+    const p = executor.execute({ dialogIds: ['16013'] })
+    await vi.runAllTimersAsync()
+    await p
+
+    const finalState = states[states.length - 1]!
+    expect(finalState.step).toBe('hard-stopped')
+  })
+
   it('a run stopped (abort) mid-run: ZERO SendMessage calls, dmStatus stays "pending"', async () => {
     const dialogs = [makeDialog('16006', 'supergroup'), makeDialog('16007', 'supergroup')]
     const dialogIds = ['16006', '16007']

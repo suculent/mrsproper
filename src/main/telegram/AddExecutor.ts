@@ -458,10 +458,21 @@ export class AddExecutor {
           ['USER_PRIVACY_RESTRICTED', 'USER_IS_BLOCKED', 'YOU_BLOCKED_USER', 'PRIVACY_PREMIUM_REQUIRED'].includes(msg)
         ) {
           dmStatus = 'refused'
+        } else if (classifyRpcError(err).disposition === 'hard-stop') {
+          // PEER_FLOOD during the DM send (T-14-11): the per-group work already
+          // completed successfully — hard-stop the run exactly like the main dispatch
+          // loop rather than letting it fall through to the generic branch below.
+          this._emitHardStopped(outcomes, ctx)
+          return
         } else {
-          // PEER_FLOOD / FLOOD_WAIT / NETWORK propagate as a genuine run failure, not a
-          // dmStatus value.
-          throw err
+          // CR-02: FLOOD_WAIT / NETWORK / any unrecognized RPC error used to propagate
+          // out of execute() uncaught here, which addChannels.ts's fire-and-forget
+          // .catch() silently discards — leaving step stuck at 'running' forever and
+          // permanently wedging the double-start guard. The add work itself already
+          // succeeded; only the notification DM failed, so finish in a terminal,
+          // resumable state instead.
+          console.error('[AddExecutor] end-of-run DM send failed:', msg || '(no errorMessage)')
+          dmStatus = 'refused'
         }
       }
     }
