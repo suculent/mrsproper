@@ -231,7 +231,36 @@ Plans:
   4. The review screen shows the add consequence line, the exact group list, and the exact rendered DM text (reflecting the current template) before one explicit confirmation is required to start the run; target identity is sourced from the main process only, never passed up from the renderer
   5. Live per-group progress appears during an add run, a per-group results report (with retry per failed group) appears afterward, and the admin can export the add log to a plain-text file via a save dialog — every new string in this phase exists in both English and Czech (formal vykání, 3-form plurals)
 
-**Plans**: TBD
+**Plans**: 13 plans
+Plans:
+**Wave 1**
+
+- [ ] 15-01-PLAN.md — src/shared/dmTemplate.ts: relocate renderTemplate + defaults, shared max-length constant
+- [ ] 15-02-PLAN.md — main-process clipboard IPC + ADD_EXPORT_LOG handler + addLogStore.getLogPath()
+- [ ] 15-03-PLAN.md — modeRules.ts + groupsStore recompute + addValidation.ts (computeAddGroups, validateDmTemplate)
+- [ ] 15-04-PLAN.md — add i18n namespace (en/cs) + textarea.tsx primitive + groups.json modeSwitch keys
+- [ ] 15-05-PLAN.md — targetStore contact-add dispatch (addToContactsChecked/maybeAddToContacts)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 15-06-PLAN.md — preload bridge (exportAddLog, writeClipboardText) + clipboardClient.ts
+- [ ] 15-11-PLAN.md — TargetCard.tsx Add-to-contacts checkbox + failure notice
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 15-07-PLAN.md — addClient.ts + addStore.ts (clone of tagStore + removalStore.retryGroup)
+- [ ] 15-08-PLAN.md — GroupRow.tsx Add-mode status rendering + Copy-link button
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 15-09-PLAN.md — ModeSwitch.tsx + GroupsPane.tsx wiring (partition, progress/report, export button)
+- [ ] 15-10-PLAN.md — ReviewScreen.tsx mode/severity split + DmTemplateEditor.tsx + templateClient.ts
+- [ ] 15-12-PLAN.md — AddResumeJobDialog.tsx + SettingsMenu.tsx export entry
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 15-13-PLAN.md — AppShell.tsx mode/severity split + final wiring
+
 **UI hint**: yes
 
 ## Progress
@@ -253,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/13 | Planned | - |
 </content>
