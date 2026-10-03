@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: planning
-stopped_at: Phase 15 context gathered
-last_updated: "2026-10-03T22:41:08.673Z"
+stopped_at: Phase 15 UI-SPEC approved
+last_updated: "2026-10-03T23:02:50.281Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
@@ -179,9 +179,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T22:41:08.669Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-CONTEXT.md
+Last session: 2026-10-03T23:02:50.275Z
+Stopped at: Phase 15 UI-SPEC approved
+Resume file: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-UI-SPEC.md
 
 ## Operator Next Steps
 
