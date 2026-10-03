@@ -72,6 +72,25 @@ async function getStore(): Promise<TemplateStore> {
   return _store
 }
 
+// ── Synchronous template cache (Plan 14-11) ─────────────────────────────────
+// DmTextProvider (src/shared/addTypes.ts) is a SYNCHRONOUS function, but electron-store
+// access is async — AddExecutor cannot await a store read at DM-send time. preloadTemplateCache()
+// is called once at app startup (main/index.ts, before any AddExecutor.execute() can run) to
+// warm this cache; getCachedTemplate() then gives the DmTextProvider closure a synchronous read.
+
+let _cachedTemplate: string | null = null
+
+/** Warm the synchronous template cache from the persisted store. Call once at app startup. */
+export async function preloadTemplateCache(): Promise<void> {
+  const store = await getStore()
+  _cachedTemplate = store.get('template', null)
+}
+
+/** Synchronous read of the warmed template cache — null when none is persisted. */
+export function getCachedTemplate(): string | null {
+  return _cachedTemplate
+}
+
 // ── IPC handler registration ─────────────────────────────────────────────────
 
 /**
@@ -101,6 +120,9 @@ export function registerTemplateChannels(): void {
     const { template } = TemplateSetSchema.parse(payload)
     const store = await getStore()
     store.set('template', template)
+    // Keep the synchronous cache in sync so a template edited mid-session is reflected
+    // in the next DM render without requiring an app restart.
+    _cachedTemplate = template
     return template
   })
 }

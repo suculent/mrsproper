@@ -45,6 +45,21 @@ async function getStore(): Promise<LanguageStore> {
   return _store
 }
 
+// ── Launch-time language read (Plan 14-11) ──────────────────────────────────
+
+/**
+ * Read the persisted language preference for launch-time use (DM default-template
+ * language selection, main/index.ts). Returns null when no preference is stored —
+ * caller falls back to 'en'. Mirrors themeChannels.ts's getStoredTheme() exactly.
+ * Read-only, no caching: language changes mid-session do not retroactively change
+ * which BUILT-IN default would have applied — only a stored custom template is live-cached
+ * (see templateChannels.ts's getCachedTemplate()).
+ */
+export async function getStoredLanguage(): Promise<'en' | 'cs' | null> {
+  const store = await getStore()
+  return store.get('language') ?? null
+}
+
 // ── IPC handler registration ───────────────────────────────────────────────
 
 /**
