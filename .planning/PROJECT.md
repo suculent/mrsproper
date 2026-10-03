@@ -29,6 +29,12 @@ GramJS package now runs at TL layer 229 via a vendored TDLib schema (`vendor/tel
 regenerated into `node_modules/telegram` by a postinstall script). The layer-224 isolation hack is
 no longer needed; `tagClient` is layer-neutral, `TagExecutor` cleanup is queued for v1.7.
 
+**2026-10-03 Phase 13 complete (v1.7 foundation):** every enumerated dialog now carries `canAdd` +
+`addGreyReason` computed in `GroupEnumerator` (creator / `inviteUsers` right / default permissions,
+broadcast channels included, 200-member channel cap); `MembershipScanner` distinguishes `banned`
+from `not-member`; `TagExecutor` is a single-client loop (layer-224 isolation code and
+`tagClient.ts`/`tagApi.ts` deleted). Main-process/data layer only, no renderer changes yet.
+
 ## Current Milestone: v1.7 Add Mode
 
 **Goal:** Let the admin add the resolved target to every selected group they are not yet in, with
@@ -87,7 +93,14 @@ the same safety, throttling and reporting as removal.
 
 <!-- Current scope. Building toward these. -->
 
-(v1.7 Add Mode — requirements being defined in REQUIREMENTS.md; see Current Milestone above.)
+(v1.7 Add Mode — see REQUIREMENTS.md and Current Milestone above. Remaining: Phases 14–15,
+AddExecutor + Add-mode renderer.)
+
+Validated in Phase 13: Add Rights & Scan Semantics (Foundation) — 2026-10-03:
+- ✓ Each enumerated dialog carries a main-process `canAdd` flag (creator, `inviteUsers` admin right, or default permissions allowing invites); the renderer never derives rights itself — ADD-04
+- ✓ Broadcast channels report `canAdd: true` when the admin holds the invite right while staying non-actionable for removal — ADD-03 (data layer; Add-mode UI lands in Phase 15)
+- ✓ Per-dialog data distinguishes already-member / no-invite-right / channel-full / banned-without-unban-right so Add mode can grey rows with a cause-specific reason — ADD-02 (data layer; checklist inversion lands in Phase 15)
+- ✓ TagExecutor runs on the single shared client with no two-phase layer isolation, no `restoreMainClientLayer`, no stale layer-224 comments; tag behaviour and tests unchanged — TAG-07
 
 ### Out of Scope
 
@@ -152,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 — milestone v1.7 Add Mode started (after quick 261003-jni moved GramJS to TL layer 229).*
+*Last updated: 2026-10-03 — Phase 13 (Add Rights & Scan Semantics foundation) complete; v1.7 Add Mode continues with Phase 14.*
