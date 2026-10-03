@@ -146,6 +146,23 @@ describe('AddAuditStore', () => {
     expect(read!.outcomes[0]!.premiumWouldAllow).toBe(true)
   })
 
+  it('checkpoint: checkpointing the same dialogId twice replaces the stale entry instead of appending a duplicate (CR-01)', () => {
+    const store = createAddAuditStore({ fs: fakeFs, app: fakeApp })
+    const job = makeAddJob()
+    store.initJob(job)
+
+    // Simulates a continuation resume (D-20): the previous segment left dialog '111'
+    // 'skipped', and the resumed segment reprocesses it to a real outcome.
+    store.checkpoint('111', makeOutcome('111', { status: 'skipped' }))
+    store.checkpoint('111', makeOutcome('111', { status: 'done' }))
+
+    const read = store.readJob()
+    expect(read).not.toBeNull()
+    const entriesFor111 = read!.outcomes.filter((o) => o.dialogId === '111')
+    expect(entriesFor111).toHaveLength(1)
+    expect(entriesFor111[0]!.status).toBe('done')
+  })
+
   it('readJob: returns null when no job file present', () => {
     const store = createAddAuditStore({ fs: fakeFs, app: fakeApp })
     expect(store.readJob()).toBeNull()

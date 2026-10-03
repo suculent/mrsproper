@@ -205,9 +205,15 @@ export function createAddAuditStore(deps: AddAuditStoreDeps = {}): AddAuditStore
         if (!onDisk) throw new Error('AddAuditStore.checkpoint: no active job')
         _currentJob = onDisk
       }
+      // CR-01: replace any existing entry for this dialogId instead of appending a
+      // duplicate. A continuation resume (D-20) can reprocess a dialog the previous
+      // segment already marked 'skipped' — without this dedup, the stale entry would
+      // survive on disk alongside the new outcome, corrupting add-job.json with
+      // contradictory rows for the same dialog.
+      const deduped = _currentJob.outcomes.filter((o) => o.dialogId !== dialogId)
       _currentJob = {
         ..._currentJob,
-        outcomes: [..._currentJob.outcomes, { ...outcome, dialogId }],
+        outcomes: [...deduped, { ...outcome, dialogId }],
       }
       writeAtomic(_currentJob)
     },
