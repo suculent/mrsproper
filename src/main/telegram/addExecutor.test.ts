@@ -1545,6 +1545,24 @@ describe('AddExecutor — retryGroup (mirrors RemovalExecutor.retryGroup)', () =
     vi.useRealTimers()
   })
 
+  it('WR-01: retryGroup() hitting a PEER_FLOOD-classified error transitions to hard-stopped instead of vanishing into the fire-and-forget IPC .catch() with no feedback', async () => {
+    const dialogs = [makeDialog('18008', 'supergroup')]
+    const mockConfig: MockClientConfig = { inviteToChannelErrorDialogIds: { '18008': 'CHAT_ADMIN_REQUIRED' } }
+    const { executor } = makeExecutor({ dialogs, mockConfig })
+
+    const p = executor.execute({ dialogIds: ['18008'] })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+
+    // Reconfigure the SAME mock config object (captured by reference inside the mock
+    // client's closures) so the retry hits PEER_FLOOD instead of the original error.
+    mockConfig.inviteToChannelErrorDialogIds = { '18008': 'PEER_FLOOD' }
+    await executor.retryGroup('18008')
+
+    expect(executor.getState().step).toBe('hard-stopped')
+  })
+
   it('retryGroup is available when step is complete, stopped, or hard-stopped', async () => {
     const dialogs = [makeDialog('18001', 'supergroup')]
     const { executor, mockClient } = makeExecutor({

@@ -563,7 +563,24 @@ export class AddExecutor {
     try {
       newOutcome = await this._addToGroup(dialog, resolved, scanStatus)
     } catch (err) {
-      newOutcome = await this._classifyAddError(err, dialog, resolved, targetName)
+      // WR-01: a hard-stop (PEER_FLOOD) must never vanish into the fire-and-forget
+      // .catch() at the IPC boundary with zero feedback — explicitly transition to
+      // hard-stopped instead.
+      if (classifyRpcError(err).disposition === 'hard-stop') {
+        this._hardStopRetry(dialogId)
+        return
+      }
+      try {
+        newOutcome = await this._classifyAddError(err, dialog, resolved, targetName)
+      } catch (err2) {
+        // CR-03: _classifyAddError's own privacy/channel-full branches can also
+        // surface a hard-stop via their inline ExportChatInvite call.
+        if (classifyRpcError(err2).disposition === 'hard-stop') {
+          this._hardStopRetry(dialogId)
+          return
+        }
+        throw err2
+      }
     }
 
     // Generation guard AFTER await, BEFORE updating state
@@ -593,6 +610,18 @@ export class AddExecutor {
   /** Return the current AddState. */
   getState(): AddState {
     return this._currentState
+  }
+
+  /**
+   * WR-01: explicit hard-stop transition for retryGroup() — a PEER_FLOOD-classified
+   * error during a single-group retry must be surfaced (logged + state transition)
+   * rather than silently discarded by the fire-and-forget .catch() at the IPC boundary.
+   * The retried group's prior outcome is left unchanged (no checkpoint write).
+   */
+  private _hardStopRetry(dialogId: string): void {
+    console.error('[AddExecutor] retryGroup hard-stopped (PEER_FLOOD-classified error) for dialog:', dialogId)
+    this._auditStore.setStatus('hard-stopped')
+    this._emit({ ...this._currentState, step: 'hard-stopped', floodWaitRemaining: null })
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────
