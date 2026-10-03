@@ -439,28 +439,40 @@ describe('TagExecutor — generation guard (D-15)', () => {
     vi.useRealTimers()
   })
 
-  it('new execute() call while first is in-flight: first run outcome not emitted after second starts', async () => {
+  it('new execute() call while first is in-flight: stale run exits silently and never writes into the new run', async () => {
     const dialogs = [makeDialog('6001', 'supergroup'), makeDialog('6002', 'supergroup')]
-    const { executor, editChatParticipantRankCalls, states } = makeTagExecutor({ dialogs })
+    const auditStore = makeTagAuditStore(['6001', '6002'])
+    const { executor, states } = makeTagExecutor({ dialogs, auditStore })
 
     // First call starts
     const firstPromise = executor.execute({ dialogIds: ['6001', '6002'], tag: 'dev' })
 
-    // Immediately start a second execute() which increments _generation
+    // Immediately start a second execute() which increments _generation and supersedes the first
     const secondPromise = executor.execute({ dialogIds: ['6001', '6002'], tag: 'dev' })
 
     await vi.runAllTimersAsync()
     await Promise.allSettled([firstPromise, secondPromise])
 
-    // Only one terminal state should be the last emitted state
+    // The second run owns the terminal state: it must be 'complete', not a 'stopped'
+    // emitted by the superseded first run.
     const lastState = states[states.length - 1]
-    expect(['complete', 'stopped', 'hard-stopped']).toContain(lastState.step)
+    expect(lastState.step).toBe('complete')
+    expect(executor.getState().step).toBe('complete')
 
-    // The executor should be in a consistent state (not corrupted by stale generation)
-    expect(executor.getState()).toBeDefined()
+    // No 'stopped' state may be emitted at all — supersession is not an abort.
+    expect(states.map(s => s.step)).not.toContain('stopped')
 
-    // Write calls should be well-defined (not duplicated from stale run)
-    expect(editChatParticipantRankCalls.length).toBeGreaterThanOrEqual(0)
+    // The stale run must not checkpoint its leftover dialogs as 'skipped' into the new job:
+    // each dialog is checkpointed exactly once, with status 'done'.
+    for (const id of ['6001', '6002']) {
+      const calls = auditStore.checkpointCalls.filter(c => c.dialogId === id)
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.outcome.status).toBe('done')
+    }
+
+    // The job status is never flipped to 'stopped' by the stale run.
+    expect(auditStore.setStatusCalls.map(c => c.status)).not.toContain('stopped')
+    expect(auditStore.setStatusCalls.map(c => c.status)).toContain('complete')
   })
 })
 
