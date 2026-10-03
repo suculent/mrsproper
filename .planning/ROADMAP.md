@@ -131,7 +131,11 @@ Plans:
   2. A broadcast channel where the admin holds the invite right reports `canAdd: true` even though it keeps `canAct: false` for removal (Remove mode is unaffected); a broadcast channel without the invite right reports `canAdd: false`
   3. The membership/rights data available to the renderer distinguishes, per dialog, "already a member" from "not a member, no invite right" so Add mode can grey a row with a cause-specific reason instead of a generic one
   4. `TagExecutor` contains no two-phase layer isolation logic, no `restoreMainClientLayer` calls, and no stale layer-224 comments; the existing `tagExecutor.test.ts` suite passes unmodified in behavior (tag writes still work end-to-end at the now-default TL layer 229)
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 13-01-PLAN.md — groupTypes.ts canAdd/addGreyReason + GroupEnumerator rights computation + i18n copy + folded CountryPicker todos
+- [ ] 13-02-PLAN.md — MembershipScanner banned-vs-not-member scan status split
+- [ ] 13-03-PLAN.md — TagExecutor layer-224 cleanup: delete tagClient.ts/tagApi.ts, consolidate to single-client loop, rewire main/index.ts
 **UI hint**: no
 
 ### Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit
@@ -177,7 +181,7 @@ Plans:
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
-| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 0/0 | Not started | - |
+| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 0/3 | Not started | - |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
