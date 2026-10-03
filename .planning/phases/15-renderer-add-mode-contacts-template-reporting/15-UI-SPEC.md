@@ -89,6 +89,8 @@ used for the target's `@username`/numeric ID in the review-screen identity block
 already shipped) — **not** used for DM template text or invite links (those are plain Body/Label
 to stay readable as prose).
 
+*Weight footnote:* some existing rows render Label at `font-medium` (500) via utility overrides inherited from `GroupRow.tsx` / `ReviewScreen.tsx`. This is tolerated pre-existing precedent, not a third weight introduced by this phase; new Add-mode elements use only 400 / 600.
+
 ---
 
 ## Color
@@ -114,9 +116,10 @@ reserved-for set; nothing else may use `primary`):
   shipped for Removal/Tag scan progress)
 - Focus rings (`ring-ring`, same token as `primary`) on the mode switch, checkbox, textarea,
   Copy button, Save button
-- Inline text links: "Edit template" toggle, "retry" links on failed add rows, "Copy" link/button
-  on privacy-blocked rows (`text-primary underline-offset-2 hover:underline`, identical to the
-  existing `retryRemovalAria`/`retryScanLabel` link styling)
+- Inline text links: "Edit template" toggle and "retry" links on failed add rows
+  (`text-primary underline-offset-2 hover:underline`, identical to the existing
+  `retryRemovalAria`/`retryScanLabel` link styling). The Copy-link control on privacy-blocked
+  rows is the icon-only ghost button defined in Section 6, not an inline text link.
 - The pre-checked "Add to contacts" checkbox's checked-fill state (`data-[state=checked]:bg-primary`,
   the existing shadcn Checkbox default — no override)
 
@@ -133,6 +136,14 @@ reserved-for set; nothing else may use `primary`):
   destructive of the three actions — extend that same ternary to
   `action === 'remove' ? 'destructive' : 'default'` so both Tag and Add confirm buttons stay
   `default`/accent-colored, never red.
+
+---
+
+## Visual Hierarchy (focal points)
+
+- **Groups pane (Add mode):** the eye lands first on the pre-checked actionable rows at the top of the list; the mode switch in the header is secondary context, the greyed rows below are tertiary. The run-trigger button is the single accent element beneath the list.
+- **Add review screen:** the confirm button ("Add {name} to N groups") is the primary visual anchor; the consequence line above the group list is secondary; the DM preview block is tertiary and the "Edit template" toggle, textarea and "Save template" / "Reset to default" controls stay visually subordinate (small size, no accent fill except Save template).
+- **Report:** the summary band with the DM status line anchors the stage; per-row Copy link and retry links are quiet inline actions, never competing with the Export add log button.
 
 ---
 
@@ -237,7 +248,7 @@ would be visually louder than warranted for a non-blocking, retryable-via-links 
 | `dmEditToggleClose` **[AUTO]** | Done editing | Hotovo |
 | `dmPlaceholderLegendName` **[AUTO]** | `{name}` — the person's display name | `{name}` — jméno dané osoby |
 | `dmPlaceholderLegendLinks` **[AUTO]** | `{links}` — the invite links, one per line | `{links}` — pozvánkové odkazy, jeden na řádek |
-| `dmSaveLabel` | Save | Uložit |
+| `dmSaveLabel` | Save template | Uložit šablonu |
 | `dmResetLabel` | Reset to default | Obnovit výchozí |
 | `dmValidationMissingLinks` | Template must include `{links}`. | Šablona musí obsahovat `{links}`. |
 | `dmValidationEmpty` | Template can't be empty. | Šablona nemůže být prázdná. |
@@ -326,7 +337,7 @@ Visual (D-14/D-15/D-16):
 | `rowStatus.done` | Added | Přidáno |
 | `rowStatus.alreadyMember` | Already a member | Již je členem |
 | `rowStatus.linkCreated` | Invite link created | Pozvánkový odkaz vytvořen |
-| `rowStatus.copyLink` | Copy | Kopírovat |
+| `rowStatus.copyLink` | Copy link | Kopírovat odkaz |
 | `rowStatus.linkCopied` | Copied! | Zkopírováno! |
 | `rowStatus.premiumHint` | Telegram Premium would allow a direct add. | Telegram Premium by umožnil přímé přidání. |
 | `rowStatus.skipped` | Skipped — adding stopped | Přeskočeno — přidávání zastaveno |
