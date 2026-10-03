@@ -97,6 +97,10 @@ export interface MockClientConfig {
     username: string
     firstName: string
     accessHash: string
+    /** TargetResolver D-05/D-08 precheck flags (Phase 14) — default false when omitted. */
+    deleted?: boolean
+    bot?: boolean
+    contact?: boolean
   }
   /** If set, invoke (ResolvePhone) will throw this error. */
   resolvePhoneError?: MockRPCErrorCode
@@ -106,6 +110,10 @@ export interface MockClientConfig {
     firstName: string
     username?: string
     accessHash: string
+    /** TargetResolver D-05/D-08 precheck flags (Phase 14) — default false when omitted. */
+    deleted?: boolean
+    bot?: boolean
+    contact?: boolean
   }
   /** If set, invoke (GetFullUser) returns this data. */
   getFullUserResult?: { about: string | null }
@@ -155,7 +163,16 @@ export interface MockClientConfig {
   /** If set, channels.GetParticipants throws this error for these channelIds. */
   getParticipantsError?: Record<string, MockRPCErrorCode>
   /** If set, users.GetUsers returns this user for the given userId. */
-  getUsersResult?: Record<string, { firstName?: string; lastName?: string; username?: string; accessHash?: string }>
+  getUsersResult?: Record<string, {
+    firstName?: string
+    lastName?: string
+    username?: string
+    accessHash?: string
+    /** TargetResolver D-05/D-08 precheck flags (Phase 14) — default false when omitted. */
+    deleted?: boolean
+    bot?: boolean
+    contact?: boolean
+  }>
 
   // ── Phase 5: removal mock controls ───────────────────────────────────────
   /**
@@ -372,8 +389,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
               firstName: r.firstName,
               lastName: undefined,
               username: r.username,
-              deleted: false,
-              bot: false,
+              deleted: r.deleted ?? false,
+              bot: r.bot ?? false,
+              contact: r.contact ?? false,
               premium: false,
               status: undefined,
             },
@@ -403,8 +421,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
               firstName: r.firstName,
               lastName: undefined,
               username: r.username ?? null,
-              deleted: false,
-              bot: false,
+              deleted: r.deleted ?? false,
+              bot: r.bot ?? false,
+              contact: r.contact ?? false,
               premium: false,
               status: undefined,
             },
@@ -472,8 +491,9 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
           firstName: u.firstName,
           lastName: u.lastName,
           username: u.username ?? null,
-          deleted: false,
-          bot: false,
+          deleted: u.deleted ?? false,
+          bot: u.bot ?? false,
+          contact: u.contact ?? false,
           premium: false,
           status: undefined,
         }]

@@ -76,6 +76,10 @@ export class TargetResolver {
   private _resolvedUserId: bigint | null = null
   private _resolvedAccessHash: bigint | null = null
   private _resolvedName: string | null = null
+  /** D-05 precheck data source (deleted/bot) + D-08 contact service flag (contact). */
+  private _resolvedDeleted: boolean | null = null
+  private _resolvedBot: boolean | null = null
+  private _resolvedContact: boolean | null = null
 
   /**
    * Generation token (WR-03): incremented by every resolve() and reset().
@@ -178,6 +182,9 @@ export class TargetResolver {
     const prevResolvedUserId = this._resolvedUserId
     const prevResolvedAccessHash = this._resolvedAccessHash
     const prevResolvedName = this._resolvedName
+    const prevResolvedDeleted = this._resolvedDeleted
+    const prevResolvedBot = this._resolvedBot
+    const prevResolvedContact = this._resolvedContact
 
     this._emit({ step: 'resolving' })
 
@@ -229,6 +236,9 @@ export class TargetResolver {
       this._resolvedName =
         [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
         (targetUser.firstName ?? '')
+      this._resolvedDeleted = targetUser.deleted ?? false
+      this._resolvedBot = targetUser.bot ?? false
+      this._resolvedContact = (targetUser as { contact?: boolean }).contact ?? false
 
       const bio = await this._fetchBio(targetUser)
       const avatar = await this._fetchAvatar(targetUser)
@@ -247,6 +257,9 @@ export class TargetResolver {
         this._resolvedUserId = prevResolvedUserId
         this._resolvedAccessHash = prevResolvedAccessHash
         this._resolvedName = prevResolvedName
+        this._resolvedDeleted = prevResolvedDeleted
+        this._resolvedBot = prevResolvedBot
+        this._resolvedContact = prevResolvedContact
         return
       }
       const classified = classifyRpcError(err)
@@ -280,6 +293,9 @@ export class TargetResolver {
     this._resolvedUserId = null
     this._resolvedAccessHash = null
     this._resolvedName = null
+    this._resolvedDeleted = null
+    this._resolvedBot = null
+    this._resolvedContact = null
     this._emit({ step: 'idle' })
   }
 
@@ -296,11 +312,25 @@ export class TargetResolver {
    * It MUST NOT be called from renderer-facing code or IPC handlers.
    * The accessHash must never cross to the renderer.
    */
-  getResolvedUser(): { id: bigint; accessHash: bigint; name: string } | null {
+  getResolvedUser(): {
+    id: bigint
+    accessHash: bigint
+    name: string
+    deleted: boolean
+    bot: boolean
+    contact: boolean
+  } | null {
     if (this._resolvedUserId === null || this._resolvedAccessHash === null) {
       return null
     }
-    return { id: this._resolvedUserId, accessHash: this._resolvedAccessHash, name: this._resolvedName ?? '' }
+    return {
+      id: this._resolvedUserId,
+      accessHash: this._resolvedAccessHash,
+      name: this._resolvedName ?? '',
+      deleted: this._resolvedDeleted ?? false,
+      bot: this._resolvedBot ?? false,
+      contact: this._resolvedContact ?? false,
+    }
   }
 
   // ── Private resolution paths ───────────────────────────────────────────────
@@ -359,6 +389,9 @@ export class TargetResolver {
     this._resolvedName =
       [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
       (targetUser.firstName ?? '')
+    this._resolvedDeleted = targetUser.deleted ?? false
+    this._resolvedBot = targetUser.bot ?? false
+    this._resolvedContact = (targetUser as { contact?: boolean }).contact ?? false
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
@@ -409,6 +442,9 @@ export class TargetResolver {
     this._resolvedName =
       [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() ||
       (targetUser.firstName ?? '')
+    this._resolvedDeleted = targetUser.deleted ?? false
+    this._resolvedBot = targetUser.bot ?? false
+    this._resolvedContact = (targetUser as { contact?: boolean }).contact ?? false
 
     const bio = await this._fetchBio(targetUser)
     const avatar = await this._fetchAvatar(targetUser)
@@ -519,6 +555,7 @@ interface ApiUserShape {
   username?: string | null
   deleted?: boolean
   bot?: boolean
+  contact?: boolean
   premium?: boolean
   status?: Api.TypeUserStatus | undefined
 }

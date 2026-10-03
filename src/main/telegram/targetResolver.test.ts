@@ -128,6 +128,23 @@ describe('TargetResolver.resolve — username path (TGT-01, TGT-03)', () => {
     expect(states.some((s) => s.step === 'resolving')).toBe(true)
     expect(states[states.length - 1].step).toBe('resolved')
   })
+
+  it('Plan 14-02: username-path resolve with deleted:true surfaces via getResolvedUser()', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '400',
+        username: 'deleteduser',
+        firstName: 'Deleted',
+        accessHash: '0',
+        deleted: true,
+      },
+    })
+
+    await resolver.resolve('@deleteduser')
+    resolver.confirm()
+
+    expect(resolver.getResolvedUser()?.deleted).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -183,6 +200,22 @@ describe('TargetResolver.resolve — phone path (TGT-02, TGT-03)', () => {
     expect(last.step).toBe('resolved')
     const resolved = last as Extract<TargetState, { step: 'resolved' }>
     expect(resolved.target.id).toBe('222222222')
+  })
+
+  it('Plan 14-02: phone-path resolve with bot:true surfaces via getResolvedUser()', async () => {
+    const { resolver } = makeResolver({
+      resolvePhoneResult: {
+        userId: '401',
+        firstName: 'BotPhone',
+        accessHash: '0',
+        bot: true,
+      },
+    })
+
+    await resolver.resolve('+420111222333')
+    resolver.confirm()
+
+    expect(resolver.getResolvedUser()?.bot).toBe(true)
   })
 
   it('input +420123456789 routes to phone resolution path (not username)', async () => {
@@ -414,6 +447,34 @@ describe('TargetResolver.confirm (VRF-03 prerequisite)', () => {
 // ---------------------------------------------------------------------------
 
 describe('TargetResolver.reset', () => {
+  it('Plan 14-02: a fresh (never-resolved) resolver getResolvedUser() is null', () => {
+    const { resolver } = makeResolver()
+
+    expect(resolver.getResolvedUser()).toBeNull()
+  })
+
+  it('Plan 14-02: after reset(), getResolvedUser() is null including the deleted/bot/contact fields', async () => {
+    const { resolver } = makeResolver({
+      resolveUsernameResult: {
+        userId: '404',
+        username: 'resetextended',
+        firstName: 'ResetExtended',
+        accessHash: '0',
+        deleted: true,
+        bot: true,
+        contact: true,
+      },
+    })
+
+    await resolver.resolve('@resetextended')
+    resolver.confirm()
+    expect(resolver.getResolvedUser()?.deleted).toBe(true)
+
+    resolver.reset()
+
+    expect(resolver.getResolvedUser()).toBeNull()
+  })
+
   it('after resolve, reset() returns state to idle', async () => {
     const { resolver } = makeResolver({
       resolveUsernameResult: {
@@ -571,6 +632,35 @@ describe('TargetResolver.resolveByCandidate (TGT-05j, TGT-05i)', () => {
     expect(user).not.toBeNull()
     expect(typeof user!.id).toBe('bigint')
     expect(user!.id).toBe(42000n)
+  })
+
+  it('Plan 14-02: resolveByCandidate with contact:true surfaces via getResolvedUser()', async () => {
+    const { resolver } = makeResolver({
+      getUsersResult: {
+        '402': { firstName: 'ContactUser', accessHash: '0', contact: true },
+      },
+    })
+
+    await resolver.resolveByCandidate(402n, 0n)
+    resolver.confirm()
+
+    expect(resolver.getResolvedUser()?.contact).toBe(true)
+  })
+
+  it('Plan 14-02: resolved user omitting deleted/bot/contact defaults getResolvedUser() to false for all three', async () => {
+    const { resolver } = makeResolver({
+      getUsersResult: {
+        '403': { firstName: 'PlainUser', accessHash: '0' },
+      },
+    })
+
+    await resolver.resolveByCandidate(403n, 0n)
+    resolver.confirm()
+
+    const user = resolver.getResolvedUser()
+    expect(user?.deleted).toBe(false)
+    expect(user?.bot).toBe(false)
+    expect(user?.contact).toBe(false)
   })
 
   it('TGT-05i: generation superseded by reset() during resolveByCandidate must not emit resolved state', async () => {
