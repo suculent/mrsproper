@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-10-03T15:54:17.904Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-10-03T16:00:27.895Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 13 (add-rights-scan-semantics-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -66,6 +66,7 @@ Last activity: 2026-10-03
 | Phase 12 P01 | 5m 24s | 2 tasks | 11 files |
 | Phase 12 P03 | 359 | 2 tasks | 5 files |
 | Phase 13 P01 | 18min | 3 tasks | 13 files |
+| Phase 13 P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 13]: canAdd = creator || adminRights.inviteUsers || defaultBannedRights.inviteUsers !== true (open-permissions default)
 - [Phase 13]: Broadcast-channel 200-member channel-full override applies after the base canAdd rule, broadcast-channel branch only
 - [Phase 13]: AddGreyReason's already-member/banned-no-unban-right values are data-foundation only in 13-01; gating/sort logic ships in Phase 15
+- [Phase 13]: ChannelParticipantBanned.left===true (ban lifted / user left) maps to 'not-member'; left unset or false (still banned) maps to 'banned' (D-01, resolves Open Question 2 as a locked, tested contract)
+- [Phase 13]: Basic-group branch keeps returning only 'member'/'not-member' (never 'banned') since bans are not visible via messages.GetFullChat (D-03)
 
 ### Pending Todos
 
@@ -146,8 +149,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T15:54:17.895Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-10-03T16:00:27.891Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

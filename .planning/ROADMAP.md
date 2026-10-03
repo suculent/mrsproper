@@ -164,7 +164,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 13-02-PLAN.md — MembershipScanner banned-vs-not-member scan status split
+- [x] 13-02-PLAN.md — MembershipScanner banned-vs-not-member scan status split
 - [ ] 13-03-PLAN.md — TagExecutor layer-224 cleanup: delete tagClient.ts/tagApi.ts, consolidate to single-client loop, rewire main/index.ts
 
 **UI hint**: no
@@ -218,7 +218,7 @@ Plans:
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
-| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 1/3 | In Progress|  |
+| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 2/3 | In Progress|  |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
