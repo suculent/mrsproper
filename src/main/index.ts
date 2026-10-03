@@ -17,7 +17,6 @@ import { registerSearchChannels, emitSearchState } from './ipc/searchChannels'
 import { registerRemovalChannels, emitRemovalState } from './ipc/removalChannels'
 import { registerTagChannels, emitTagState } from './ipc/tagChannels'
 import { TagExecutor } from './telegram/TagExecutor'
-import { TagClient } from './telegram/tagClient'
 import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
 import { registerLanguageChannels } from './ipc/languageChannels'
@@ -315,37 +314,12 @@ app.whenReady().then(async () => {
   // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
   const tagAuditStore = createTagAuditStore()
 
-  // ── Wire TagExecutor (Phase 11) ───────────────────────────────────────────────
-  // CR-02 (lazy factory): define a factory rather than a pre-built TagClient instance so
-  // that each run gets a fresh TagClient that snapshots the CURRENT session (post-login).
-  // Building the client at app-startup (before sm.initialize() / login) would capture an
-  // empty session string, causing tag runs to fail to authenticate.
-  // Also sets floodSleepThreshold:0 on the inner client so FLOOD_WAITs reach the governor
-  // (consistent with the main client at line ~154) rather than being silently absorbed.
-  const tagClientFactory = () => new TagClient({
-    inner: new TelegramClient(
-      new StringSession(client.session.save() as unknown as string),
-      API_ID,
-      API_HASH,
-      {
-        connectionRetries: 5,
-        // Phase 11 D-11: floodSleepThreshold=0 forces ALL FLOOD_WAITs to throw so the
-        // shared governor can emit countdown events (matches main client policy, CR-02).
-        floodSleepThreshold: 0,
-      }
-    ) as unknown as import('./telegram/tagClient').TagClientInner,
-    governor,
-  })
+  // ── Wire TagExecutor ───────────────────────────────────────────────────────
+  // Shares the same client, governor, enumerator, resolver, and auditStore as
+  // RemovalExecutor — the whole GramJS package now speaks TL layer 229 ambiently, so no
+  // second client or layer-224 isolation is needed for tag writes (D-10, TAG-07).
   const tagExecutor = new TagExecutor({
-    tagClientFactory,
-    mainClient: client as unknown as import('./telegram/TagExecutor').TagExecutorOptions['mainClient'],
-    // Phase C: after a layer-224 tag run, the shared session is upgraded to layer 224 server-side,
-    // so the main client keeps receiving unparseable 224 responses. Reconnect it to re-send
-    // invokeWithLayer(198) and restore layer-198 parsing for subsequent enumeration/removal.
-    restoreMainClientLayer: async () => {
-      await client.disconnect()
-      await client.connect()
-    },
+    client: client as unknown as ConstructorParameters<typeof TagExecutor>[0]['client'],
     governor,
     enumerator,
     resolver,
