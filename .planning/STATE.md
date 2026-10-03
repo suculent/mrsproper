@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: executing
-stopped_at: Completed 14-10-PLAN.md
-last_updated: "2026-10-03T21:47:01.644Z"
+status: verifying
+stopped_at: Completed 14-11-PLAN.md
+last_updated: "2026-10-03T21:54:31.259Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 14
-  completed_plans: 13
-  percent: 14
+  completed_plans: 14
+  percent: 29
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 
 Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
 Plan: 11 of 11
-Status: Ready to execute
+Status: Ready for verification
 Last activity: 2026-10-03
 
 ## Performance Metrics
@@ -78,6 +78,7 @@ Last activity: 2026-10-03
 | Phase 14 P08 | 45min | 1 tasks | 1 files |
 | Phase 14 P09 | 25min | 1 tasks | 2 files |
 | Phase 14 P10 | 12min | 2 tasks | 2 files |
+| Phase 14 P11 | 25min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work:
 - [Phase 14]: AddExecutor avoids literal bigInt.zero (uses bigInt('0') instead) to satisfy T-05-04-B grep acceptance criterion while preserving identical fallback behavior
 - [Phase 14-09]: Seeded continuation outcomes exclude 'skipped' entries (not a verbatim copy) so a resumed segment reprocesses dialogs an abort left unattempted, not just unfinished — Required for the two-segment end-of-run DM test to accumulate links from both segments
 - [Phase 14]: [14-10]: resume flag for ADD_START computed server-side from auditStore.readJob() (existingJob !== null && status !== 'complete'), never accepted from renderer payload
+- [Phase 14-11]: getDmText closure reads getCachedTemplate() first, falling back to DEFAULT_TEMPLATE_CS/EN by the language stored at launch (D-15)
+- [Phase 14-11]: Used Parameters<typeof createContactService>[0]['client'] instead of ConstructorParameters since createContactService is a factory function, not a class
 
 ### Pending Todos
 
@@ -176,8 +179,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T21:47:01.640Z
-Stopped at: Completed 14-10-PLAN.md
+Last session: 2026-10-03T21:54:20.504Z
+Stopped at: Completed 14-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

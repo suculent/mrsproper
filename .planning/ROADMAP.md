@@ -47,7 +47,7 @@ in one templated direct message.
 - [x] **Phase 13: Add Rights & Scan Semantics (Foundation)** — `canAdd` rights flag, add-mode grey (completed 2026-10-03)
   reasons (incl. broadcast channels), TagExecutor layer-224 cleanup
 
-- [ ] **Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit** — invite/add dispatch,
+- [x] **Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit** — invite/add dispatch, (completed 2026-10-03)
   unban-first, expiring invite links + single templated DM, typed outcomes, `add-job.json`
   checkpoint/resume
 
@@ -214,7 +214,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 14-11-PLAN.md — main/index.ts + preload/index.ts wiring, targetChannels.ts TARGET_RESET extension
+- [x] 14-11-PLAN.md — main/index.ts + preload/index.ts wiring, targetChannels.ts TARGET_RESET extension
 
 **UI hint**: no
 
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 10/11 | In Progress|  |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete   | 2026-10-03 |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>
