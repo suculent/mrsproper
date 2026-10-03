@@ -27,7 +27,7 @@
 
 import bigInt from 'big-integer'
 import { Api } from 'telegram'
-import type { ScanState, MembershipResultDTO, AdminDialogDTO } from '@shared/groupTypes'
+import type { ScanState, MembershipResultDTO, AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { RateLimitGovernor } from './governor'
 import type { GroupEnumerator } from './GroupEnumerator'
 
@@ -131,8 +131,7 @@ export class MembershipScanner {
 
       let status: MembershipResultDTO['status']
       try {
-        const isMember = await this._checkMembership(dialog, inputUser, resolved)
-        status = isMember ? 'member' : 'not-member'
+        status = await this._checkMembership(dialog, inputUser, resolved)
       } catch (_err) {
         // Per-group failure isolation: mark as failed, continue scan
         status = 'failed'
@@ -204,8 +203,7 @@ export class MembershipScanner {
 
     let status: MembershipResultDTO['status']
     try {
-      const isMember = await this._checkMembership(dialog, inputUser, resolved)
-      status = isMember ? 'member' : 'not-member'
+      status = await this._checkMembership(dialog, inputUser, resolved)
     } catch (_err) {
       status = 'failed'
     }
@@ -231,18 +229,20 @@ export class MembershipScanner {
    *
    * Dispatch:
    *   - Supergroup/channel: channels.GetParticipant
-   *     - USER_NOT_PARTICIPANT error → false (not a member)
-   *     - ChannelParticipantLeft / ChannelParticipantBanned → false (RESEARCH Pitfall 1)
-   *     - Any other participant type → true
+   *     - USER_NOT_PARTICIPANT error → 'not-member'
+   *     - ChannelParticipantBanned with left unset/false → 'banned'; with left===true → 'not-member' (D-01)
+   *     - ChannelParticipantLeft → 'not-member' (RESEARCH Pitfall 1)
+   *     - Any other participant type → 'member'
    *   - Basic group: messages.GetFullChat
-   *     - Scan participants array by .userId.toString() === target id
+   *     - Scan participants array by .userId.toString() === target id → 'member' | 'not-member'
+   *     - Bans are never visible via this API path (D-03) — 'banned' is never returned here
    *   - Unexpected errors are re-thrown (outer scan loop catches → status=failed)
    */
   private async _checkMembership(
     dialog: AdminDialogDTO,
     inputUser: Api.InputPeerUser,
     resolved: { id: bigint; accessHash: bigint }
-  ): Promise<boolean> {
+  ): Promise<MembershipStatus> {
     const entity = this._enumerator.getDialogEntity(dialog.id)
 
     if (dialog.type === 'supergroup' || dialog.type === 'broadcast-channel') {
@@ -276,14 +276,20 @@ export class MembershipScanner {
         const participant = result.participant
         // RESEARCH Pitfall 1: check for non-member participant subtypes before declaring member
         const className = participant?.className ?? ''
-        if (className === 'ChannelParticipantLeft' || className === 'ChannelParticipantBanned') {
-          return false
+        if (className === 'ChannelParticipantBanned') {
+          // D-01: left===true means the ban was lifted and the user left/was removed from
+          // view — map to 'not-member'. left unset/false means still banned — 'banned'.
+          const isLeft = (participant as { left?: boolean }).left === true
+          return isLeft ? 'not-member' : 'banned'
         }
-        return true
+        if (className === 'ChannelParticipantLeft') {
+          return 'not-member'
+        }
+        return 'member'
       } catch (err) {
         // USER_NOT_PARTICIPANT → not a member (not an error)
         if ((err as { errorMessage?: string })?.errorMessage === 'USER_NOT_PARTICIPANT') {
-          return false
+          return 'not-member'
         }
         // Re-throw other errors — outer loop marks as failed
         throw err
@@ -319,10 +325,11 @@ export class MembershipScanner {
 
       const participants = result.fullChat?.participants?.participants ?? []
       const targetIdStr = resolved.id.toString()
-      return participants.some(p => p.userId?.toString() === targetIdStr)
+      // D-03: basic groups never surface bans via this API — 'member' | 'not-member' only.
+      return participants.some(p => p.userId?.toString() === targetIdStr) ? 'member' : 'not-member'
     }
 
-    // Unknown type — return false (safe default)
-    return false
+    // Unknown type — return 'not-member' (safe default)
+    return 'not-member'
   }
 }
