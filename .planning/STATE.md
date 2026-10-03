@@ -5,7 +5,7 @@ milestone_name: Member Tag Action
 status: Awaiting next milestone
 stopped_at: Completed 11-tagexecutor-11-02-PLAN.md
 last_updated: "2026-06-20T21:18:11.621Z"
-last_activity: 2026-06-20 — Milestone v1.6 completed and archived
+last_activity: 2026-10-03 — Completed quick task 261003-jni: Move GramJS client to TL layer 229
 progress:
   total_phases: 5
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 Phase: Milestone v1.6 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-20 — Milestone v1.6 completed and archived
+Last activity: 2026-10-03 — Completed quick task 261003-jni: Move GramJS client to TL layer 229
 
 ## Performance Metrics
 
@@ -100,9 +100,15 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 9: Main client auto-reconnect during the layer-224 patch window is the one real risk — must guard (mutex or "only open tagClient when idle" assertion); see spec §4.3
+- (Resolved 2026-10-03 by quick 261003-jni) Layer-224 patch window no longer exists — whole package runs at layer 229. Follow-up: TagExecutor still carries the two-phase/restoreMainClientLayer logic and stale layer-224 comments; remove in the next milestone.
 - Phase 9: Tag max length and allowed charset not yet measured — deferred to Phase 9 via the proven probe path; results feed Phase 12 input validation
 - Phase 12: Exact `editChatParticipantRank` RPC error strings (e.g. `CHAT_ADMIN_REQUIRED` vs `RIGHT_FORBIDDEN`) need live verification in Phase 11 — `TagErrorCode` candidates in spec §4.2 are provisional
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261003-jni | Move GramJS client to TL layer 229 (schema swap via postinstall regeneration) | 2026-10-03 | c90a39a | [261003-jni-move-gramjs-client-to-tl-layer-229-schem](./quick/261003-jni-move-gramjs-client-to-tl-layer-229-schem/) |
 
 ## Deferred Items
 
