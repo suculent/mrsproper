@@ -151,7 +151,7 @@ describe('scan — supergroup/channel membership', () => {
     }
   })
 
-  it('status=banned when GetParticipant returns ChannelParticipantBanned with left unset', async () => {
+  it('status=member when GetParticipant returns ChannelParticipantBanned with left unset (restricted but present)', async () => {
     const dialog = makeDialog('100', 'supergroup')
     const { scanner, states } = makeScanner({
       dialogs: [dialog],
@@ -164,11 +164,11 @@ describe('scan — supergroup/channel membership', () => {
     expect(complete).toBeDefined()
     if (complete?.step === 'complete') {
       const result = complete.results.find(r => r.dialogId === '100')
-      expect(result?.status).toBe('banned')
+      expect(result?.status).toBe('member')
     }
   })
 
-  it('status=not-member when GetParticipant returns ChannelParticipantBanned with left=true (D-01 polarity)', async () => {
+  it('status=banned when GetParticipant returns ChannelParticipantBanned with left=true (D-01 polarity: kicked, cannot rejoin)', async () => {
     const dialog = makeDialog('100', 'supergroup')
     const { scanner, states } = makeScanner({
       dialogs: [dialog],
@@ -181,7 +181,7 @@ describe('scan — supergroup/channel membership', () => {
     expect(complete).toBeDefined()
     if (complete?.step === 'complete') {
       const result = complete.results.find(r => r.dialogId === '100')
-      expect(result?.status).toBe('not-member')
+      expect(result?.status).toBe('banned')
     }
   })
 })

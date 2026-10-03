@@ -277,10 +277,12 @@ export class MembershipScanner {
         // RESEARCH Pitfall 1: check for non-member participant subtypes before declaring member
         const className = participant?.className ?? ''
         if (className === 'ChannelParticipantBanned') {
-          // D-01: left===true means the ban was lifted and the user left/was removed from
-          // view — map to 'not-member'. left unset/false means still banned — 'banned'.
+          // D-01 (revised 2026-10-03): TL `channelParticipantBanned.left` = "whether the
+          // user has left the group".
+          //   left=true  → kicked, NOT in the group, cannot rejoin (Add mode needs unban-first) → 'banned'
+          //   left=false → restricted but STILL a participant → 'member'
           const isLeft = (participant as { left?: boolean }).left === true
-          return isLeft ? 'not-member' : 'banned'
+          return isLeft ? 'banned' : 'member'
         }
         if (className === 'ChannelParticipantLeft') {
           return 'not-member'
