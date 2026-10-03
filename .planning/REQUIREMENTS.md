@@ -16,7 +16,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Contacts
 
-- [ ] **ADD-05**: While Add mode is active the target card shows a pre-checked "Add to contacts" / "Přidat do kontaktů" checkbox; on target confirmation the target is added to the admin's Telegram contacts if not already one; unchecked means skip, and the privacy fallback then goes straight to invite links
+- [x] **ADD-05**: While Add mode is active the target card shows a pre-checked "Add to contacts" / "Přidat do kontaktů" checkbox; on target confirmation the target is added to the admin's Telegram contacts if not already one; unchecked means skip, and the privacy fallback then goes straight to invite links
 
 ### Execution
 
@@ -79,7 +79,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-02 | Phase 13 | Complete |
 | ADD-03 | Phase 13 | Complete |
 | ADD-04 | Phase 13 | Complete |
-| ADD-05 | Phase 15 | Pending |
+| ADD-05 | Phase 15 | Complete |
 | ADD-06 | Phase 14 | Complete |
 | ADD-07 | Phase 14 | Complete |
 | ADD-08 | Phase 14 | Complete |

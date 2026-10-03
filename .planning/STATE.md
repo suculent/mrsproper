@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-10-03T20:32:32.960Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-10-03T20:40:40.716Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
-  completed_plans: 4
+  completed_plans: 5
   percent: 14
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -69,6 +69,7 @@ Last activity: 2026-10-03
 | Phase 13 P02 | 5min | 2 tasks | 2 files |
 | Phase 13 P03 | 11min | 3 tasks | 8 files |
 | Phase 14 P01 | 2min | 3 tasks | 3 files |
+| Phase 14 P02 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 13-03]: D-11 test uses an RPC-shaped error with an unrecognized errorMessage (not a bare no-errorMessage Error) to actually exercise _classifyTagError's UNKNOWN fallthrough, since classifyRpcError maps no-errorMessage errors to NETWORK/retry
 - [Phase 14]: AddJobFile/AddState carry dmStatus — net-new field, no RemovalState/TagState precedent
 - [Phase 14]: ADD-09 wording aligned: privacy-blocked covers not-mutual-contact/privacy-restricted and the broadcast/supergroup direct-add cap per D-07/D-12; failed codes list includes a basic-group member-cap case instead
+- [Phase ?]: [14-02]: Extended mock resolveUsernameResult/resolvePhoneResult/getUsersResult with optional deleted/bot/contact fields (default false) for TargetResolver flag-passthrough tests
+- [Phase ?]: [14-02]: AddChatUser mock error config fires only on the first recorded call per chatId, enabling the D-03 fwd_limit 1000->100 retry sequence to be asserted in later AddExecutor tests
 
 ### Pending Todos
 
@@ -155,8 +158,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T20:32:32.956Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-10-03T20:40:40.712Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
