@@ -2,34 +2,21 @@
  * TagExecutor — throttled, generation-guarded, tag-write state machine.
  *
  * Mirrors RemovalExecutor's state machine, generation-token guard (D-15), abort semantics,
- * per-group checkpoint ordering, and PEER_FLOOD hard-stop behavior. The per-group write is
- * `tagClient.invoke(makeEditChatParticipantRankRequest(...))` over an isolated layer-224 connection.
- *
- * TWO-PHASE LAYER ISOLATION (root-cause fix for the live "Spojení bylo přerušeno" failure):
- *   A layer-224 connection on the SHARED session upgrades the whole session to layer 224 server-side.
- *   While it is open, the MAIN layer-198 client's responses come back 224-encoded and GramJS (198)
- *   cannot parse them (TypeNotFoundError → misclassified NETWORK). Therefore:
- *     - Phase A: run ALL main-client reads (GetParticipant already-admin checks, basic-group detection)
- *                BEFORE opening the tagClient — session is still 198, responses parse fine.
- *     - Phase B: open the layer-224 tagClient and issue ONLY editChatParticipantRank writes
- *                (their unparseable 224 responses are swallowed in TagClient.invoke).
- *     - Phase C: disconnect the tagClient and restore the main client to layer 198
- *                (restoreMainClientLayer) so subsequent enumeration/removal works again.
- *
- * Critical constraints (enforced):
- *   - No main-client request is issued while the layer-224 tagClient is connected.
- *   - tagClient.invoke() is already governor-wrapped — do NOT double-wrap in governor.run().
- *   - GetParticipant pre-flight goes through main client + governor.run() (Phase A only).
- *   - _classifyTagError() re-throws on hard-stop FIRST (Pitfall 1).
- *   - Generation guard #2 runs BEFORE auditStore.checkpoint() (Pitfall 7).
- *   - tagClient.disconnect() + restoreMainClientLayer() in finally — all terminal paths.
- *   - Only SHIPPED TagErrorCode values used (no TAG_USER_NOT_PARTICIPANT, TAG_RANK_INVALID, TAG_CHANNEL_PRIVATE).
- *   - bigInt(resolved.accessHash.toString()) — never bigInt.zero for target (T-05-04-B).
+ * per-group checkpoint ordering, and PEER_FLOOD hard-stop behavior. The per-group write issues
+ * `Api.messages.EditChatParticipantRank` directly on the single shared main client through
+ * `governor.run()` — no second client, no connect/disconnect lifecycle, and no TL-layer
+ * mutation (D-10). The whole GramJS package now speaks TL layer 229 ambiently, so the
+ * layer-224 two-phase isolation this class previously required is no longer needed.
  *
  * Security:
  *   - T-05-04-B: target identity read from resolver.getResolvedUser() only — never from execute() args.
  *   - T-11-05: PEER_FLOOD hard-stops the run; remaining groups left pending (resumable).
  *   - T-11-06: All D-15 guard checkpoints replicated; guard #2 BEFORE checkpoint (Pitfall 7).
+ *   - Only SHIPPED TagErrorCode values used (no TAG_USER_NOT_PARTICIPANT, TAG_RANK_INVALID, TAG_CHANNEL_PRIVATE).
+ *   - bigInt(resolved.accessHash.toString()) — never bigInt.zero for target (T-05-04-B).
+ *   - D-11: a parse failure on the EditChatParticipantRank write is NOT swallowed as success —
+ *     any thrown error falls straight into _classifyTagError, which already falls through to
+ *     UNKNOWN for unrecognized errors. No "unparseable response = success" tolerance exists.
  */
 
 import bigInt from 'big-integer'
@@ -41,42 +28,18 @@ import type { GroupEnumerator } from './GroupEnumerator'
 import type { TagAuditStore } from '../storage/tagAuditStore'
 import { classifyRpcError } from './operationErrors'
 import type { GovernorEvent } from '@shared/opTypes'
-import { makeEditChatParticipantRankRequest } from './tagApi'
-import type { TagClient } from './tagClient'
 
-// ── Precheck result (Phase A output, consumed by Phase B) ────────────────────
-type Precheck =
-  // basic-group or already-admin — recorded as a skipped outcome, no write
-  | { kind: 'skip'; outcome: TagGroupOutcome }
-  // precheck RPC error (non-hard-stop) — recorded as a failed outcome, no write
-  | { kind: 'failed'; outcome: TagGroupOutcome }
-  // eligible for the tag write — carries the prebuilt input peers
-  | { kind: 'write'; inputPeer: Api.InputPeerChannel; inputUser: Api.InputPeerUser }
+// ── Injectable client interface ────────────────────────────────────────────
+
+export interface TagExecutorClient {
+  invoke(request: unknown): Promise<unknown>
+}
 
 // ── Constructor options ─────────────────────────────────────────────────────
 
 export interface TagExecutorOptions {
-  /**
-   * Factory that constructs a fresh TagClient (snapshotting the CURRENT session) at each
-   * run start. Using a factory rather than a pre-built instance fixes two bugs (CR-02):
-   *   1. Session snapshot: calling new TagClient() at app-startup captures an empty session
-   *      (before login). The factory is called inside execute(), post-login, so the session
-   *      is always populated.
-   *   2. floodSleepThreshold: the factory is the right place to set floodSleepThreshold:0
-   *      on the inner TelegramClient so FLOOD_WAITs reach the governor rather than being
-   *      silently absorbed by GramJS.
-   * The returned TagClient is ephemeral: connect → use → disconnect per run.
-   */
-  tagClientFactory: () => TagClient
-  /** Main layer-198 client — for the already-admin GetParticipant check (Phase A read only). */
-  mainClient: { invoke(request: unknown): Promise<unknown> }
-  /**
-   * Phase C: restore the main client's connection to layer 198 after the layer-224 tag run.
-   * Opening the tagClient upgrades the shared session to 224 server-side; without this the
-   * main client keeps receiving unparseable 224 responses. Wired in main/index.ts to reconnect
-   * the main client (re-sends invokeWithLayer(198)). Optional — omitted in unit tests.
-   */
-  restoreMainClientLayer?: () => Promise<void>
+  /** The single shared main TelegramClient (real or mock). */
+  client: TagExecutorClient
   /** Shared account-wide RateLimitGovernor — all Telegram calls must go through it. */
   governor: RateLimitGovernor
   /** GroupEnumerator — provides dialog list and entity map. */
@@ -92,9 +55,7 @@ export interface TagExecutorOptions {
 // ── TagExecutor ─────────────────────────────────────────────────────────────
 
 export class TagExecutor {
-  private readonly _tagClientFactory: () => TagClient
-  private readonly _mainClient: { invoke(request: unknown): Promise<unknown> }
-  private readonly _restoreMainClientLayer?: () => Promise<void>
+  private readonly _client: TagExecutorClient
   private readonly _governor: RateLimitGovernor
   private readonly _enumerator: GroupEnumerator
   private readonly _resolver: { getResolvedUser(): { id: bigint; accessHash: bigint; name?: string } | null }
@@ -115,13 +76,9 @@ export class TagExecutor {
   private _abortController: AbortController | null = null
   /** True while a tag run is active — gates flood-tick forwarding (T-06-02-04). */
   private _runActive = false
-  /** Reconnect-race mutex (CONTEXT §4.3): true during tagClient.connect() call window. */
-  private _connectingTagClient = false
 
   constructor(options: TagExecutorOptions) {
-    this._tagClientFactory = options.tagClientFactory
-    this._mainClient = options.mainClient
-    this._restoreMainClientLayer = options.restoreMainClientLayer
+    this._client = options.client
     this._governor = options.governor
     this._enumerator = options.enumerator
     this._resolver = options.resolver
@@ -187,14 +144,7 @@ export class TagExecutor {
     const targetName = resolved.name ?? '' // T-05-04-B: identity always from resolver
     const ctx = { tag: params.tag, targetId, targetName, total }
 
-    // Reconnect-race idle assertion (CONTEXT §4.3): bail if a connect is already in flight.
-    if (this._connectingTagClient) {
-      this._runActive = false
-      this._emit({ ...this._currentState, step: 'idle', floodWaitRemaining: null })
-      return
-    }
-
-    // Initialize the durable job up front so abort/hard-stop during Phase A is checkpointed.
+    // Initialize the durable job up front so abort/hard-stop mid-run is checkpointed.
     const jobId = new Date().toISOString()
     const job: TagJobFile = {
       schemaVersion: 1,
@@ -223,140 +173,76 @@ export class TagExecutor {
       floodWaitRemaining: null,
     })
 
-    let tagClient: TagClient | null = null
-    let tagClientOpened = false
-
-    try {
-      // ───────── PHASE A: pre-scan on the MAIN client (session still layer 198) ─────────
-      // No layer-224 connection is open yet, so GetParticipant responses parse correctly.
-      const prechecks = new Map<string, Precheck>()
-      for (const dialog of selectedDialogs) {
-        // Generation/abort guard during pre-scan
-        if (gen !== this._generation || signal.aborted) {
-          this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
-          return
-        }
-        try {
-          prechecks.set(dialog.id, await this._precheckGroup(dialog, resolved))
-        } catch (err) {
-          // PEER_FLOOD (hard-stop) MUST come first (Pitfall 1) — no tagClient opened yet.
-          const classified = classifyRpcError(err)
-          if (classified.disposition === 'hard-stop') {
-            this._emitHardStopped(outcomes, ctx)
-            return
-          }
-          prechecks.set(dialog.id, { kind: 'failed', outcome: this._classifyTagError(err, dialog.id) })
-        }
-      }
-
-      // ───────── PHASE B: open the layer-224 tagClient and issue writes only ─────────
-      this._connectingTagClient = true
-      tagClient = this._tagClientFactory()
-      await tagClient.connect()
-      tagClientOpened = true
-      this._connectingTagClient = false
-
-      for (const dialog of selectedDialogs) {
-        // Generation guard #1: top of loop
-        if (gen !== this._generation || signal.aborted) {
-          this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
-          return
-        }
-
-        this._emit({
-          step: 'running',
-          tag: params.tag,
-          targetId,
-          targetName,
-          progress: { processed: outcomes.length, total },
-          outcomes: [...outcomes],
-          currentGroupId: dialog.id,
-          floodWaitRemaining: null,
-        })
-
-        const pre = prechecks.get(dialog.id)
-        let outcome: TagGroupOutcome
-        if (!pre || pre.kind === 'skip' || pre.kind === 'failed') {
-          // Skipped (basic-group / already-admin) or precheck failure — no write, no API call.
-          outcome = pre ? pre.outcome : this._classifyTagError(new Error('missing precheck'), dialog.id)
-        } else {
-          // Eligible: issue editChatParticipantRank. tagClient.invoke() is already governor-wrapped.
-          try {
-            await tagClient.invoke(
-              makeEditChatParticipantRankRequest(pre.inputPeer, pre.inputUser, params.tag)
-            )
-            outcome = { dialogId: dialog.id, status: 'done', timestamp: new Date().toISOString() }
-          } catch (err) {
-            // PEER_FLOOD check MUST come first (Pitfall 1)
-            const classified = classifyRpcError(err)
-            if (classified.disposition === 'hard-stop') {
-              // Hard-stop: remaining groups left pending (NOT skipped); failed group not checkpointed.
-              this._emitHardStopped(outcomes, ctx)
-              return
-            }
-            outcome = this._classifyTagError(err, dialog.id)
-          }
-        }
-
-        // Generation guard #2: BEFORE checkpoint (Pitfall 7 — gen can change during await)
-        if (gen !== this._generation || signal.aborted) {
-          this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
-          return
-        }
-
-        // Checkpoint the outcome (BEFORE pacing sleep)
-        this._auditStore.checkpoint(dialog.id, outcome)
-        outcomes.push(outcome)
-
-        // Inter-group pacing: 2s base + up to 1s jitter (fires AFTER outcome checkpointed)
-        await new Promise<void>(r => setTimeout(r, 2000 + Math.random() * 1000))
-
-        // Generation guard #3: after pacing sleep
-        if (gen !== this._generation || signal.aborted) {
-          this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
-          return
-        }
-      }
-
-      // Generation guard #4: post-loop, before emitting complete. (finally still resets flags.)
+    for (const dialog of selectedDialogs) {
+      // Generation/abort guard: top of loop
       if (gen !== this._generation || signal.aborted) {
+        this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
         return
       }
 
-      const completedAt = new Date().toISOString()
-      this._auditStore.setStatus('complete', completedAt)
-      this._runActive = false
       this._emit({
-        step: 'complete',
+        step: 'running',
         tag: params.tag,
         targetId,
         targetName,
         progress: { processed: outcomes.length, total },
         outcomes: [...outcomes],
-        summary: this._buildSummary(outcomes, completedAt),
+        currentGroupId: dialog.id,
         floodWaitRemaining: null,
       })
-    } finally {
-      // CR-01: always clear mutex + run-active so future runs are never wedged.
-      this._connectingTagClient = false
-      this._runActive = false
-      // Phase C: tear down the layer-224 connection and restore the main client to layer 198.
-      // Only needed when we actually opened the tagClient (Phase A failures never went to 224).
-      if (tagClientOpened && tagClient) {
-        try {
-          await tagClient.disconnect()
-        } catch {
-          /* best-effort teardown */
+
+      let outcome: TagGroupOutcome
+      try {
+        outcome = await this._tagGroup(dialog, resolved, params.tag)
+      } catch (err) {
+        // PEER_FLOOD check MUST come first (Pitfall 1)
+        const classified = classifyRpcError(err)
+        if (classified.disposition === 'hard-stop') {
+          // Hard-stop: remaining groups left pending (NOT skipped); failed group not checkpointed.
+          this._emitHardStopped(outcomes, ctx)
+          return
         }
-        if (this._restoreMainClientLayer) {
-          try {
-            await this._restoreMainClientLayer()
-          } catch {
-            /* best-effort layer restore — main client will renegotiate on its next reconnect */
-          }
-        }
+        outcome = this._classifyTagError(err, dialog.id)
+      }
+
+      // Generation guard: BEFORE checkpoint (Pitfall 7 — gen can change during await)
+      if (gen !== this._generation || signal.aborted) {
+        this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
+        return
+      }
+
+      // Checkpoint the outcome (BEFORE pacing sleep)
+      this._auditStore.checkpoint(dialog.id, outcome)
+      outcomes.push(outcome)
+
+      // Inter-group pacing: 2s base + up to 1s jitter (fires AFTER outcome checkpointed)
+      await new Promise<void>(r => setTimeout(r, 2000 + Math.random() * 1000))
+
+      // Generation guard: after pacing sleep
+      if (gen !== this._generation || signal.aborted) {
+        this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
+        return
       }
     }
+
+    // Generation guard: post-loop, before emitting complete.
+    if (gen !== this._generation || signal.aborted) {
+      return
+    }
+
+    const completedAt = new Date().toISOString()
+    this._auditStore.setStatus('complete', completedAt)
+    this._runActive = false
+    this._emit({
+      step: 'complete',
+      tag: params.tag,
+      targetId,
+      targetName,
+      progress: { processed: outcomes.length, total },
+      outcomes: [...outcomes],
+      summary: this._buildSummary(outcomes, completedAt),
+      floodWaitRemaining: null,
+    })
   }
 
   /**
@@ -393,25 +279,23 @@ export class TagExecutor {
   // ── Private helpers ─────────────────────────────────────────────────────────
 
   /**
-   * Phase A pre-check for a single dialog — MAIN client only (no layer-224 connection open).
+   * Tag a single dialog using the correct mechanic.
    *   - basic-group: skip with TAG_UNSUPPORTED_BASIC_GROUP (no API call)
-   *   - supergroup/broadcast-channel: GetParticipant (governor-wrapped, main client);
-   *       ChannelParticipantAdmin → skip with TAG_TARGET_IS_ADMIN; otherwise eligible for the write.
-   * Builds the InputPeerChannel + InputPeerUser used later by the Phase B write.
+   *   - supergroup/broadcast-channel: GetParticipant precheck (governor-wrapped, shared client);
+   *       ChannelParticipantAdmin → skip with TAG_TARGET_IS_ADMIN; otherwise issue
+   *       EditChatParticipantRank (governor-wrapped, shared client).
    * May throw (RPC error) — the caller classifies it (hard-stop vs per-group failure).
    */
-  private async _precheckGroup(
+  private async _tagGroup(
     dialog: AdminDialogDTO,
-    resolved: { id: bigint; accessHash: bigint }
-  ): Promise<Precheck> {
+    resolved: { id: bigint; accessHash: bigint },
+    tag: string
+  ): Promise<TagGroupOutcome> {
     const timestamp = new Date().toISOString()
 
     // basic-group skip — detect from AdminDialogDTO.type (no API call)
     if (dialog.type === 'basic-group') {
-      return {
-        kind: 'skip',
-        outcome: { dialogId: dialog.id, status: 'skipped', errorCode: 'TAG_UNSUPPORTED_BASIC_GROUP', timestamp },
-      }
+      return { dialogId: dialog.id, status: 'skipped', errorCode: 'TAG_UNSUPPORTED_BASIC_GROUP', timestamp }
     }
 
     // Build InputPeerChannel / InputChannel from the enumerator entity map
@@ -434,22 +318,27 @@ export class TagExecutor {
       accessHash: bigInt(resolved.accessHash.toString()),
     })
 
-    // Already-admin pre-flight via the MAIN client + governor (NOT tagClient — and Phase A only,
-    // so the session is still layer 198 and the response parses correctly).
+    // Already-admin pre-flight via the shared client + governor.
     const participantResult = (await this._governor.run(() =>
-      this._mainClient.invoke(
+      this._client.invoke(
         new Api.channels.GetParticipant({ channel: inputChannel, participant: inputUser })
       )
     )) as { participant?: { className?: string } }
 
     if (participantResult?.participant?.className === 'ChannelParticipantAdmin') {
-      return {
-        kind: 'skip',
-        outcome: { dialogId: dialog.id, status: 'skipped', errorCode: 'TAG_TARGET_IS_ADMIN', timestamp },
-      }
+      return { dialogId: dialog.id, status: 'skipped', errorCode: 'TAG_TARGET_IS_ADMIN', timestamp }
     }
 
-    return { kind: 'write', inputPeer, inputUser }
+    // Eligible: issue EditChatParticipantRank on the shared client + governor.
+    // D-11: no catch here — any thrown error (including an unparseable response) propagates
+    // to the caller's try/catch and is classified by _classifyTagError (falls through to UNKNOWN).
+    await this._governor.run(() =>
+      this._client.invoke(
+        new Api.messages.EditChatParticipantRank({ peer: inputPeer, participant: inputUser, rank: tag })
+      )
+    )
+
+    return { dialogId: dialog.id, status: 'done', timestamp }
   }
 
   /**
@@ -542,7 +431,7 @@ export class TagExecutor {
       return { dialogId, status: 'failed', errorCode: 'NETWORK', timestamp }
     }
 
-    // (4) UNKNOWN fallthrough
+    // (4) UNKNOWN fallthrough — also covers an unparseable/unrecognized response (D-11)
     return { dialogId, status: 'failed', errorCode: 'UNKNOWN', timestamp }
   }
 
