@@ -200,6 +200,57 @@ export interface MockClientConfig {
    * the mapped errorMessage for the matching channelId — mirrors removeErrorDialogIds's shape.
    */
   tagErrorDialogIds?: Record<string, string>
+
+  // ── Phase 14: AddExecutor mock controls (D-07, D-10, D-11, D-13) ────────
+  /** Maps channelId → errorMessage. InviteToChannel throws with the mapped errorMessage. */
+  inviteToChannelErrorDialogIds?: Record<string, string>
+  /**
+   * Maps channelId → missing-invitee config. InviteToChannel's response includes the
+   * target in `missingInvitees` for the matching channelId (D-07 privacy-block detection).
+   */
+  inviteToChannelMissingInviteeDialogIds?: Record<string, { premiumWouldAllowInvite?: boolean }>
+  /**
+   * Maps chatId → errorMessage. AddChatUser throws ONLY on the FIRST recorded call for
+   * that chatId — a second call with a different fwdLimit succeeds (D-03 fwd_limit retry).
+   */
+  addChatUserErrorDialogIds?: Record<string, string>
+  /** Maps chatId → missing-invitee config, same shape as inviteToChannelMissingInviteeDialogIds. */
+  addChatUserMissingInviteeDialogIds?: Record<string, { premiumWouldAllowInvite?: boolean }>
+  /** Maps peerId → exported invite link result. Default link: `https://t.me/+mocklink<peerId>`. */
+  exportChatInviteResult?: Record<string, { link: string; expireDate?: number }>
+  /** peerIds for which ExportChatInvite throws LINK_NOT_MODIFIED (D-12: link export itself refused). */
+  exportChatInviteErrorPeerIds?: string[]
+  /** If set, SendMessage throws this single errorMessage (e.g. USER_PRIVACY_RESTRICTED). */
+  sendMessageError?: string
+  /** If set, AddContact throws this errorMessage. */
+  addContactError?: string
+
+  /**
+   * Records each InviteToChannel call for addExecutor.test.ts assertions.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  inviteToChannelCalls?: Array<{ channelId: string; userIds: string[] }>
+  /**
+   * Records EVERY AddChatUser call including retries, so a test can assert the
+   * D-03 fwd_limit retry sequence (e.g. [0].fwdLimit === 1000, [1].fwdLimit === 100).
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  addChatUserCalls?: Array<{ chatId: string; fwdLimit: number }>
+  /**
+   * Records each ExportChatInvite call.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  exportChatInviteCalls?: Array<{ peerId: string; usageLimit: number; expireDate: number; title: string }>
+  /**
+   * Records each SendMessage call.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  sendMessageCalls?: Array<{ peerId: string; message: string }>
+  /**
+   * Records each AddContact call.
+   * Initialized to [] by the factory — do not pass in config; read after execute().
+   */
+  addContactCalls?: Array<{ firstName: string; lastName: string; phone: string }>
 }
 
 const DEFAULT_IDENTITY = {
@@ -219,10 +270,21 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
   config.editBannedCalls = []
   config.deleteChatUserCalls = []
   config.editChatParticipantRankCalls = []
+  // Phase 14: initialize AddExecutor call-recording arrays (always reset per factory call)
+  config.inviteToChannelCalls = []
+  config.addChatUserCalls = []
+  config.exportChatInviteCalls = []
+  config.sendMessageCalls = []
+  config.addContactCalls = []
   // Expose on the returned client for test assertions (read after execute)
   const _editBannedCalls = config.editBannedCalls
   const _deleteChatUserCalls = config.deleteChatUserCalls
   const _editChatParticipantRankCalls = config.editChatParticipantRankCalls
+  const _inviteToChannelCalls = config.inviteToChannelCalls
+  const _addChatUserCalls = config.addChatUserCalls
+  const _exportChatInviteCalls = config.exportChatInviteCalls
+  const _sendMessageCalls = config.sendMessageCalls
+  const _addContactCalls = config.addContactCalls
 
   const sessionStr = config.sessionString ?? 'mock-session-string'
 
@@ -468,6 +530,94 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
         return {}  // success
       }
 
+      // ── Phase 14: channels.InviteToChannel — supergroup/broadcast direct add (D-02) ──
+      if (ctorName === 'InviteToChannel' || (request as { className?: string })?.className === 'channels.InviteToChannel') {
+        const channelId = (request as { channel?: { channelId?: { toString(): string } } })
+          .channel?.channelId?.toString() ?? ''
+        const userIds = ((request as { users?: Array<{ userId?: { toString(): string } }> }).users ?? [])
+          .map((u) => u.userId?.toString() ?? '')
+        _inviteToChannelCalls.push({ channelId, userIds })
+        if (config.inviteToChannelErrorDialogIds?.[channelId]) {
+          const msg = config.inviteToChannelErrorDialogIds[channelId]!
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        if (config.inviteToChannelMissingInviteeDialogIds?.[channelId]) {
+          return {
+            updates: {},
+            missingInvitees: [{
+              userId: bigInt('0'),
+              premiumWouldAllowInvite: config.inviteToChannelMissingInviteeDialogIds[channelId]!.premiumWouldAllowInvite ?? false,
+            }],
+          }
+        }
+        return { updates: {}, missingInvitees: [] }
+      }
+
+      // ── Phase 14: messages.AddChatUser — basic group direct add (D-02, D-03) ────────
+      if (ctorName === 'AddChatUser' || (request as { className?: string })?.className === 'messages.AddChatUser') {
+        const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
+        const fwdLimit = (request as { fwdLimit?: number }).fwdLimit ?? 0
+        // Record EVERY call (including retries) so tests can assert the D-03 retry sequence.
+        _addChatUserCalls.push({ chatId, fwdLimit })
+        const callsForChat = _addChatUserCalls.filter((c) => c.chatId === chatId)
+        if (config.addChatUserErrorDialogIds?.[chatId] && callsForChat.length === 1) {
+          const msg = config.addChatUserErrorDialogIds[chatId]!
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        if (config.addChatUserMissingInviteeDialogIds?.[chatId]) {
+          return {
+            updates: {},
+            missingInvitees: [{
+              userId: bigInt('0'),
+              premiumWouldAllowInvite: config.addChatUserMissingInviteeDialogIds[chatId]!.premiumWouldAllowInvite ?? false,
+            }],
+          }
+        }
+        return { updates: {}, missingInvitees: [] }
+      }
+
+      // ── Phase 14: messages.ExportChatInvite — privacy-block link fallback (D-10, D-11) ──
+      if (ctorName === 'ExportChatInvite' || (request as { className?: string })?.className === 'messages.ExportChatInvite') {
+        const peer = (request as { peer?: { channelId?: { toString(): string }; chatId?: { toString(): string } } }).peer
+        const peerId = peer?.channelId?.toString() ?? peer?.chatId?.toString() ?? ''
+        const usageLimit = (request as { usageLimit?: number }).usageLimit ?? 0
+        const expireDate = (request as { expireDate?: number }).expireDate ?? 0
+        const title = (request as { title?: string }).title ?? ''
+        _exportChatInviteCalls.push({ peerId, usageLimit, expireDate, title })
+        if (config.exportChatInviteErrorPeerIds?.includes(peerId)) {
+          throw Object.assign(new Error('LINK_NOT_MODIFIED'), { errorMessage: 'LINK_NOT_MODIFIED' })
+        }
+        return {
+          link: config.exportChatInviteResult?.[peerId]?.link ?? `https://t.me/+mocklink${peerId}`,
+          expireDate: config.exportChatInviteResult?.[peerId]?.expireDate ?? expireDate,
+        }
+      }
+
+      // ── Phase 14: messages.SendMessage — final DM with invite links (D-13) ──────────
+      if (ctorName === 'SendMessage' || (request as { className?: string })?.className === 'messages.SendMessage') {
+        const peerId = (request as { peer?: { userId?: { toString(): string } } }).peer?.userId?.toString() ?? ''
+        const message = (request as { message?: string }).message ?? ''
+        _sendMessageCalls.push({ peerId, message })
+        if (config.sendMessageError) {
+          const msg = config.sendMessageError
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        return {}
+      }
+
+      // ── Phase 14: contacts.AddContact — confirm-time contact add (D-08) ─────────────
+      if (ctorName === 'AddContact' || (request as { className?: string })?.className === 'contacts.AddContact') {
+        const firstName = (request as { firstName?: string }).firstName ?? ''
+        const lastName = (request as { lastName?: string }).lastName ?? ''
+        const phone = (request as { phone?: string }).phone ?? ''
+        _addContactCalls.push({ firstName, lastName, phone })
+        if (config.addContactError) {
+          const msg = config.addContactError
+          throw Object.assign(new Error(msg), { errorMessage: msg })
+        }
+        return {}
+      }
+
       // messages.GetFullChat — basic group membership (GRP-01)
       if (ctorName === 'GetFullChat' || (request as { className?: string })?.className === 'messages.GetFullChat') {
         const chatId = (request as { chatId?: { toString(): string } }).chatId?.toString() ?? ''
@@ -558,6 +708,12 @@ export function createMockTelegramClient(config: MockClientConfig = {}) {
     editBannedCalls: _editBannedCalls,
     deleteChatUserCalls: _deleteChatUserCalls,
     editChatParticipantRankCalls: _editChatParticipantRankCalls,
+    // ── Phase 14: AddExecutor call-recording accessors ─────────────────────
+    inviteToChannelCalls: _inviteToChannelCalls,
+    addChatUserCalls: _addChatUserCalls,
+    exportChatInviteCalls: _exportChatInviteCalls,
+    sendMessageCalls: _sendMessageCalls,
+    addContactCalls: _addContactCalls,
   }
 
   return client
