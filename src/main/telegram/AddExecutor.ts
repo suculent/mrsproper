@@ -39,11 +39,22 @@
  * group) is always failed(ADD_CHANNEL_FULL) with no link attempt — basic groups have no
  * invite-link concept in this flow.
  *
- * SCOPE (this plan, 14-08): fresh-job execute() path only. Continuation-based resume (D-20),
- * the end-of-run DM (D-13/D-14), and the add-log append (D-17/D-18) are Plan 14-09's scope —
- * execute() always calls initJob() with a fresh jobId here; Plan 14-09 replaces that block
- * with the resume-aware branch and inserts its DM/log steps between the loop's natural end
- * and the final 'complete' emission.
+ * D-20 (continuation-based resume, Plan 14-09): execute() checks the on-disk job via
+ * auditStore.readJob(); when params.resume is true AND that job is non-complete AND its
+ * targetId + dialogId set (sameDialogIdSet) match this call, the SAME jobId and its seeded
+ * outcomes are reused (no initJob() call) — otherwise a fresh job is minted exactly as
+ * before. 'skipped' outcomes left behind by a prior abort/hard-stop are excluded from the
+ * seeded set so the resumed segment actually reprocesses them.
+ *
+ * D-13/D-14 (end-of-run DM, Plan 14-09): once the loop reaches 'complete' (never on
+ * stopped/hard-stopped), any privacy-blocked link older than 5 days is regenerated, then
+ * exactly one messages.SendMessage carries every accumulated link across every segment.
+ * A privacy/block refusal sets dmStatus:'refused' without clearing the outcomes/links;
+ * zero links means dmStatus:'not-needed' and no SendMessage call.
+ *
+ * D-17/D-18 (add-log append, Plan 14-09): addLogStore.appendBlock() is called exactly once
+ * per terminal 'complete', never on stopped/hard-stopped, with isFollowUp set from the D-20
+ * continuation decision.
  *
  * Security:
  *   - T-05-04-B: target identity read from resolver.getResolvedUser() only — never from
@@ -60,12 +71,13 @@
  */
 
 import bigInt from 'big-integer'
+import { randomBytes } from 'node:crypto'
 import { Api } from 'telegram'
-import type { AddState, AddGroupOutcome, AddJobFile, AddSummary } from '@shared/addTypes'
+import type { AddState, AddGroupOutcome, AddJobFile, AddSummary, AddDmStatus, AddLogBlockEntry } from '@shared/addTypes'
 import type { AdminDialogDTO } from '@shared/groupTypes'
 import type { RateLimitGovernor } from './governor'
 import type { GroupEnumerator } from './GroupEnumerator'
-import type { AddAuditStore } from '../storage/addAuditStore'
+import { type AddAuditStore, sameDialogIdSet } from '../storage/addAuditStore'
 import { classifyRpcError } from './operationErrors'
 import type { GovernorEvent } from '@shared/opTypes'
 
@@ -110,9 +122,9 @@ export interface AddExecutorOptions {
   resolver: { getResolvedUser(): ResolvedAddUser | null }
   /** AddAuditStore — durable job-file persistence. */
   auditStore: AddAuditStore
-  /** Add-log store — duck-typed placeholder; Plan 14-09 wires appendBlock() into the run. */
-  addLogStore: { appendBlock(entry: unknown): void }
-  /** DM text renderer — accepted and stored only; unused by this plan's code paths. */
+  /** Add-log store — appendBlock() is called once per terminal 'complete' (D-17/D-18). */
+  addLogStore: { appendBlock(entry: AddLogBlockEntry): void }
+  /** DM text renderer — builds the end-of-run DM body from the target name + links (D-15). */
   getDmText: (vars: { name: string; links: string }) => string
   /** Called whenever AddState changes. Wired to win.webContents.send in production. */
   onStateChange: (state: AddState) => void
@@ -127,7 +139,7 @@ export class AddExecutor {
   private readonly _scanner: { getState(): { step: string; results?: Array<{ dialogId: string; status: string }> } }
   private readonly _resolver: { getResolvedUser(): ResolvedAddUser | null }
   private readonly _auditStore: AddAuditStore
-  private readonly _addLogStore: { appendBlock(entry: unknown): void }
+  private readonly _addLogStore: { appendBlock(entry: AddLogBlockEntry): void }
   private readonly _getDmText: (vars: { name: string; links: string }) => string
   private readonly _emit: (state: AddState) => void
 
@@ -158,11 +170,6 @@ export class AddExecutor {
       this._currentState = state
       options.onStateChange(state)
     }
-    // _addLogStore/_getDmText are stored for Plan 14-09's end-of-run DM/add-log steps —
-    // unused by this plan's code paths (see class doc SCOPE note). Referenced here so
-    // noUnusedLocals does not flag the fields while they await their Plan 14-09 call sites.
-    void this._addLogStore
-    void this._getDmText
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -183,8 +190,8 @@ export class AddExecutor {
    * Execute the add run across the specified dialog IDs.
    *
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — never from
-   * params. THIS PLAN'S SCOPE: always starts a fresh job (initJob() unconditionally); the
-   * continuation branch (D-20, `params.resume`) is Plan 14-09's scope.
+   * params. D-20: a matching on-disk job (same targetId + dialogId set) is continued when
+   * `params.resume` is true; otherwise a fresh job is started via initJob().
    */
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
     const gen = ++this._generation
@@ -254,29 +261,56 @@ export class AddExecutor {
       return
     }
 
-    // FRESH JOB INIT (this plan's scope — Plan 14-09 replaces this with the D-20 branch).
-    const jobId = new Date().toISOString()
-    const job: AddJobFile = {
-      schemaVersion: 1,
-      jobId,
-      targetId,
-      targetName,
-      targetAccessHash: resolved.accessHash.toString(),
-      dialogIds: params.dialogIds,
-      outcomes: [],
-      dmStatus: 'pending',
-      startedAt: jobId,
-      status: 'running',
+    // D-20 CONTINUATION-AWARE JOB INIT: a matching on-disk job (resume:true, same targetId,
+    // same dialogId set via sameDialogIdSet) reuses its jobId/outcomes instead of minting a
+    // fresh job — required so the end-of-run DM (D-13) and add-log follow-up block (D-18)
+    // can reference the SAME lineage across a stop/resume cycle.
+    const existing = this._auditStore.readJob()
+    const isContinuation =
+      params.resume === true &&
+      existing !== null &&
+      existing.status !== 'complete' &&
+      existing.targetId === targetId &&
+      sameDialogIdSet(existing.dialogIds, params.dialogIds)
+
+    let jobId: string
+    let outcomes: AddGroupOutcome[]
+    if (isContinuation) {
+      jobId = existing!.jobId
+      // 'skipped' entries only mark dialogs the PREVIOUS segment never actually attempted
+      // (abort/hard-stop guard fill-in) — they are eligible for reprocessing this segment,
+      // so they are excluded from the seeded outcomes and from the already-finished set
+      // used to compute dialogsToProcess below.
+      outcomes = existing!.outcomes.filter((o) => o.status !== 'skipped')
+    } else {
+      jobId = new Date().toISOString()
+      outcomes = []
+      const job: AddJobFile = {
+        schemaVersion: 1,
+        jobId,
+        targetId,
+        targetName,
+        targetAccessHash: resolved.accessHash.toString(),
+        dialogIds: params.dialogIds,
+        outcomes: [],
+        dmStatus: 'pending',
+        startedAt: jobId,
+        status: 'running',
+      }
+      this._auditStore.initJob(job)
     }
-    this._auditStore.initJob(job)
-    const outcomes: AddGroupOutcome[] = []
+
+    // A resumed run must not reprocess a group it already finished (D-20), but `total`
+    // (captured above, before this filter) still reflects the whole job for progress.
+    const finishedIds = new Set(outcomes.map((o) => o.dialogId))
+    const dialogsToProcess = selectedDialogs.filter((d) => !finishedIds.has(d.id))
 
     this._emit({
       step: 'running',
       targetId,
       targetName,
-      progress: { processed: 0, total },
-      outcomes: [],
+      progress: { processed: outcomes.length, total },
+      outcomes: [...outcomes],
       floodWaitRemaining: null,
       dmStatus: 'pending',
     })
@@ -287,7 +321,7 @@ export class AddExecutor {
 
     const ctx = { targetId, targetName, total }
 
-    for (const dialog of selectedDialogs) {
+    for (const dialog of dialogsToProcess) {
       // Abort-first-then-generation guard: top of loop.
       if (signal.aborted) {
         this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
@@ -358,12 +392,70 @@ export class AddExecutor {
     }
     if (gen !== this._generation) return
 
+    // D-13/D-14: end-of-run DM — attempted exactly once, only on 'complete', aggregating
+    // links from every segment (seeded-from-disk plus this segment's).
+    const linkedOutcomes = outcomes.filter((o) => o.status === 'privacy-blocked' && o.link)
+    let dmStatus: AddDmStatus = 'pending'
+
+    if (linkedOutcomes.length === 0) {
+      // D-13: no DM when the run produced zero links.
+      dmStatus = 'not-needed'
+    } else {
+      // Regenerate any link older than 5 days before sending (D-13).
+      for (const o of linkedOutcomes) {
+        const ageMs = Date.now() - new Date(o.timestamp).getTime()
+        if (ageMs > 432000 * 1000) {
+          const dialogForLink = groupsState.dialogs.find((d) => d.id === o.dialogId)
+          if (dialogForLink) {
+            try {
+              const regenerated = await this._buildPrivacyBlockedOutcome(
+                dialogForLink,
+                resolved,
+                targetName,
+                o.premiumWouldAllow ?? false,
+                o.reason ?? 'privacy'
+              )
+              o.link = regenerated.link
+              o.timestamp = regenerated.timestamp
+              this._auditStore.checkpoint(o.dialogId, o)
+            } catch {
+              // Link regeneration failed — keep the stale link; the DM still includes it.
+            }
+          }
+        }
+      }
+
+      const links = linkedOutcomes.map((o) => o.link).join('\n')
+      const text = this._getDmText({ name: targetName, links })
+      const inputPeerUser = new Api.InputPeerUser({
+        userId: bigInt(resolved.id.toString()),
+        accessHash: bigInt(resolved.accessHash.toString()),
+      })
+      const randomId = bigInt(randomBytes(8).toString('hex'), 16)
+
+      try {
+        await this._governor.run(() =>
+          this._client.invoke(new Api.messages.SendMessage({ peer: inputPeerUser, message: text, randomId }))
+        )
+        dmStatus = 'sent'
+      } catch (err) {
+        const msg = (err as { errorMessage?: string })?.errorMessage ?? ''
+        if (
+          ['USER_PRIVACY_RESTRICTED', 'USER_IS_BLOCKED', 'YOU_BLOCKED_USER', 'PRIVACY_PREMIUM_REQUIRED'].includes(msg)
+        ) {
+          dmStatus = 'refused'
+        } else {
+          // PEER_FLOOD / FLOOD_WAIT / NETWORK propagate as a genuine run failure, not a
+          // dmStatus value.
+          throw err
+        }
+      }
+    }
+
     const completedAt = new Date().toISOString()
-    // Plan 14-09 inserts its DM/add-log steps between here and this emission — it does not
-    // remove this setStatus('complete') call, which keeps the job file terminal even before
-    // the DM logic lands on top.
-    this._auditStore.setStatus('complete', completedAt)
+    this._auditStore.setStatus('complete', completedAt, dmStatus)
     this._runActive = false
+
     this._emit({
       step: 'complete',
       targetId,
@@ -372,7 +464,21 @@ export class AddExecutor {
       outcomes: [...outcomes],
       summary: this._buildSummary(outcomes, completedAt),
       floodWaitRemaining: null,
-      dmStatus: 'not-needed',
+      dmStatus,
+    })
+
+    // D-17/D-18: one add-log block per run, written ONLY when the run reaches 'complete'.
+    this._addLogStore.appendBlock({
+      jobId,
+      isFollowUp: isContinuation,
+      targetId,
+      targetName,
+      addedDialogs: outcomes.filter((o) => o.status === 'done').map((o) => ({ dialogId: o.dialogId })),
+      linkedDialogs: linkedOutcomes.map((o) => ({ dialogId: o.dialogId, link: o.link! })),
+      // dmStatus is always resolved to 'sent' | 'refused' | 'not-needed' by this point —
+      // every code path above that assigns it excludes 'pending' (TS narrows accordingly).
+      dmStatus,
+      timestamp: completedAt,
     })
   }
 

@@ -26,7 +26,7 @@
  */
 
 import { z } from 'zod'
-import type { AddJobFile, AddGroupOutcome } from '@shared/addTypes'
+import type { AddJobFile, AddGroupOutcome, AddDmStatus } from '@shared/addTypes'
 
 // ── Dependency types ────────────────────────────────────────────────────────
 
@@ -69,10 +69,12 @@ export interface AddAuditStore {
   checkpoint(dialogId: string, outcome: AddGroupOutcome): void
 
   /**
-   * Update the job's status (and optional completedAt), then atomically re-write.
+   * Update the job's status (and optional completedAt/dmStatus), then atomically re-write.
    * Used by the executor when transitioning to 'complete' | 'stopped' | 'hard-stopped'.
+   * dmStatus is passed on the 'complete' transition (Plan 14-09) so the persisted job file
+   * reflects the end-of-run DM outcome (D-13/D-14) alongside status/completedAt.
    */
-  setStatus(status: AddJobFile['status'], completedAt?: string): void
+  setStatus(status: AddJobFile['status'], completedAt?: string, dmStatus?: AddDmStatus): void
 
   /**
    * Read and Zod-validate the job file.
@@ -210,7 +212,7 @@ export function createAddAuditStore(deps: AddAuditStoreDeps = {}): AddAuditStore
       writeAtomic(_currentJob)
     },
 
-    setStatus(status: AddJobFile['status'], completedAt?: string): void {
+    setStatus(status: AddJobFile['status'], completedAt?: string, dmStatus?: AddDmStatus): void {
       if (!_currentJob) {
         const onDisk = this.readJob()
         if (!onDisk) throw new Error('AddAuditStore.setStatus: no active job')
@@ -220,6 +222,7 @@ export function createAddAuditStore(deps: AddAuditStoreDeps = {}): AddAuditStore
         ..._currentJob,
         status,
         ...(completedAt !== undefined ? { completedAt } : {}),
+        ...(dmStatus !== undefined ? { dmStatus } : {}),
       }
       writeAtomic(_currentJob)
     },
