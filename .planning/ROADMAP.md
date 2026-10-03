@@ -202,7 +202,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 14-08-PLAN.md — AddExecutor.ts: core dispatch, unban-first, privacy-block+link, error classification (GREEN-A)
+- [x] 14-08-PLAN.md — AddExecutor.ts: core dispatch, unban-first, privacy-block+link, error classification (GREEN-A)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -252,6 +252,6 @@ Plans:
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
-| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 7/11 | In Progress|  |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 8/11 | In Progress|  |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
 </content>

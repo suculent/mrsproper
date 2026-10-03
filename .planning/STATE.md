@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 14-07-PLAN.md
-last_updated: "2026-10-03T23:40:00.000Z"
+stopped_at: Completed 14-08-PLAN.md
+last_updated: "2026-10-03T21:29:19.819Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 14
   completed_plans: 11
-  percent: 79
+  percent: 14
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 14 (AddExecutor — Dispatch, Privacy Fallback & Audit) — EXECUTING
-Plan: 8 of 11
+Plan: 9 of 11
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -75,6 +75,7 @@ Last activity: 2026-10-03
 | Phase 14 P05 | 2min | 2 tasks | 2 files |
 | Phase 14 P06 | 3min | 2 tasks | 2 files |
 | Phase 14 P07 | 35min | 1 tasks | 1 files |
+| Phase 14 P08 | 45min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ Recent decisions affecting current work:
 - [Phase 14]: [14-06] DEFAULT_TEMPLATE_CS drafted with formal vykani and a gender-neutral 'radi bychom' construction per D-15
 - [Phase 14]: [14-06] TEMPLATE_GET returns null (not a default template) on first launch, so Plan 14-11's wiring chooses the EN/CS default by current app language
 - [Phase 14]: [14-07]: addExecutor.test.ts defines AddExecutor's full constructor contract ({ client, governor, enumerator, scanner, resolver, auditStore, addLogStore, getDmText, onStateChange }) and all 54 D-01..D-20 test cases before any implementation exists, including the D-20 continuation-based resume contract as 5 independently-assertable scenarios
+- [Phase 14]: AddExecutor avoids literal bigInt.zero (uses bigInt('0') instead) to satisfy T-05-04-B grep acceptance criterion while preserving identical fallback behavior
 
 ### Pending Todos
 
@@ -170,8 +172,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T23:40:00.000Z
-Stopped at: Completed 14-07-PLAN.md
+Last session: 2026-10-03T21:29:19.814Z
+Stopped at: Completed 14-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
