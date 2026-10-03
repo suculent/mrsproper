@@ -39,7 +39,7 @@ function makeScanner(config: {
   dialogs: AdminDialogDTO[]
   notMemberDialogIds?: string[]
   basicGroupParticipants?: Record<string, string[]>
-  participantOverrides?: Record<string, { className: string }>
+  participantOverrides?: Record<string, { className: string; left?: boolean }>
 }) {
   const mockClient = createMockTelegramClient({
     notMemberDialogIds: config.notMemberDialogIds ?? [],
@@ -151,11 +151,28 @@ describe('scan — supergroup/channel membership', () => {
     }
   })
 
-  it('isMember=false when GetParticipant returns ChannelParticipantBanned', async () => {
+  it('status=banned when GetParticipant returns ChannelParticipantBanned with left unset', async () => {
     const dialog = makeDialog('100', 'supergroup')
     const { scanner, states } = makeScanner({
       dialogs: [dialog],
       participantOverrides: { '100': { className: 'ChannelParticipantBanned' } },
+    })
+
+    await scanner.scan()
+
+    const complete = states.find(s => s.step === 'complete')
+    expect(complete).toBeDefined()
+    if (complete?.step === 'complete') {
+      const result = complete.results.find(r => r.dialogId === '100')
+      expect(result?.status).toBe('banned')
+    }
+  })
+
+  it('status=not-member when GetParticipant returns ChannelParticipantBanned with left=true (D-01 polarity)', async () => {
+    const dialog = makeDialog('100', 'supergroup')
+    const { scanner, states } = makeScanner({
+      dialogs: [dialog],
+      participantOverrides: { '100': { className: 'ChannelParticipantBanned', left: true } },
     })
 
     await scanner.scan()
@@ -205,6 +222,24 @@ describe('scan — basic group membership', () => {
     if (complete?.step === 'complete') {
       const result = complete.results.find(r => r.dialogId === '200')
       expect(result?.status).toBe('not-member')
+    }
+  })
+
+  it('status is never banned for basic-group scans even when target is absent (D-03)', async () => {
+    const dialog = makeDialog('201', 'basic-group')
+    const { scanner, states } = makeScanner({
+      dialogs: [dialog],
+      basicGroupParticipants: { '201': ['10', '11', '12'] },
+    })
+
+    await scanner.scan()
+
+    const complete = states.find(s => s.step === 'complete')
+    expect(complete).toBeDefined()
+    if (complete?.step === 'complete') {
+      const result = complete.results.find(r => r.dialogId === '201')
+      expect(result?.status).toBe('not-member')
+      expect(result?.status).not.toBe('banned')
     }
   })
 })
