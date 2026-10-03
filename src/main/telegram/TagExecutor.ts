@@ -204,6 +204,14 @@ export class TagExecutor {
         // PEER_FLOOD check MUST come first (Pitfall 1)
         const classified = classifyRpcError(err)
         if (classified.disposition === 'hard-stop') {
+          // The write may have rejected AFTER the user pressed Stop (or after a newer run
+          // superseded us). The user's explicit abort wins over the hard-stop; a superseded
+          // run must not emit anything at all. Same split as the in-loop guards.
+          if (signal.aborted) {
+            this._markRemainingSkippedAndStop(selectedDialogs, outcomes, ctx)
+            return
+          }
+          if (gen !== this._generation) return
           // Hard-stop: remaining groups left pending (NOT skipped); failed group not checkpointed.
           this._emitHardStopped(outcomes, ctx)
           return

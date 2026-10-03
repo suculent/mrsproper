@@ -511,6 +511,55 @@ describe('TagExecutor — abort (Stop tag run)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// TAG-03 — abort during an in-flight write that then hard-stops (PEER_FLOOD)
+// ---------------------------------------------------------------------------
+
+describe('TagExecutor — abort wins over a PEER_FLOOD that lands after Stop', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('ends stopped (not hard-stopped) and marks remaining groups skipped when the write rejects with PEER_FLOOD after abortExecution()', async () => {
+    const dialogs = [makeDialog('7001', 'supergroup'), makeDialog('7002', 'supergroup')]
+    const dialogIds = ['7001', '7002']
+    const auditStore = makeTagAuditStore(dialogIds)
+    const { executor, mockClient, states } = makeTagExecutor({ dialogs, auditStore })
+
+    // Wrap the harness dispatch: the first write aborts the run while in flight, then
+    // rejects with PEER_FLOOD — the hard-stop must not override the user's Stop.
+    const defaultInvoke = mockClient.invoke.getMockImplementation()!
+    mockClient.invoke.mockImplementation(async (request: unknown) => {
+      const ctorName = (request as { constructor?: { name?: string } })?.constructor?.name ?? ''
+      const className = (request as { className?: string })?.className ?? ''
+      if (ctorName === 'EditChatParticipantRank' || className === 'messages.EditChatParticipantRank') {
+        executor.abortExecution()
+        throw Object.assign(new Error('PEER_FLOOD'), { errorMessage: 'PEER_FLOOD' })
+      }
+      return defaultInvoke(request)
+    })
+
+    const execPromise = executor.execute({ dialogIds, tag: 'dev' })
+    await vi.runAllTimersAsync()
+    await execPromise
+
+    const finalState = states[states.length - 1]
+    expect(finalState.step).toBe('stopped')
+    expect(states.map(s => s.step)).not.toContain('hard-stopped')
+
+    // Abort semantics: remaining groups are marked skipped, job status is 'stopped'.
+    expect(auditStore.setStatusCalls.map(c => c.status)).toEqual(['stopped'])
+    const g2 = auditStore.checkpointCalls.find(c => c.dialogId === '7002')
+    expect(g2?.outcome.status).toBe('skipped')
+    // The aborted group itself is not recorded as done.
+    const g1 = auditStore.checkpointCalls.find(c => c.dialogId === '7001')
+    expect(g1?.outcome.status ?? 'skipped').toBe('skipped')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // TAG-03 — Generation guard (D-15)
 // ---------------------------------------------------------------------------
 
