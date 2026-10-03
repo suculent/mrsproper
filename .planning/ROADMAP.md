@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1–8 (shipped 2026-06-13) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.6 Member Tag Action** — Phases 9–12 (shipped 2026-06-20) — see [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
+- 🚧 **v1.7 Add Mode** — Phases 13–15 (in progress)
 
 ## Phases
 
@@ -35,6 +36,22 @@ Full detail archived in [milestones/v1.6-ROADMAP.md](milestones/v1.6-ROADMAP.md)
 - [x] **Phase 12: Renderer — Action Picker, Tag Input & Results** (4/4 plans) — completed 2026-06-20
 
 </details>
+
+### 🚧 v1.7 Add Mode (In Progress)
+
+**Milestone Goal:** Let the admin add the resolved target to every selected group they are not yet
+in, with the same safety, throttling and reporting as removal — direct invite/add where possible,
+unban-first for banned targets, and a privacy-block fallback of unique expiring invite links sent
+in one templated direct message.
+
+- [ ] **Phase 13: Add Rights & Scan Semantics (Foundation)** — `canAdd` rights flag, add-mode grey
+  reasons (incl. broadcast channels), TagExecutor layer-224 cleanup
+- [ ] **Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit** — invite/add dispatch,
+  unban-first, expiring invite links + single templated DM, typed outcomes, `add-job.json`
+  checkpoint/resume
+- [ ] **Phase 15: Renderer — Add Mode, Contacts, Template & Reporting** — mode switch, inverted
+  checklist, add-to-contacts checkbox, DM template editing/preview, review/run/report wiring,
+  add-log export, en/cs strings
 
 ## Phase Details
 
@@ -105,6 +122,44 @@ Plans:
 - [x] 12-04-PLAN.md — GroupRow tagStatus slot + GroupsPane tag progress/results + AppShell wiring
 **UI hint**: yes
 
+### Phase 13: Add Rights & Scan Semantics (Foundation)
+**Goal**: The main process can tell, for every enumerated dialog, whether the target can be added there and why not — including broadcast channels when the admin holds the invite right — and the dead layer-224 isolation code is gone from `TagExecutor`, with no renderer changes yet
+**Depends on**: Phase 12 (existing codebase; Add Mode is additive, no shipped Remove/Tag path changes)
+**Requirements**: ADD-02, ADD-03, ADD-04, TAG-07
+**Success Criteria** (what must be TRUE):
+  1. Every `AdminDialogDTO` carries a `canAdd` boolean computed in `GroupEnumerator` from creator status, the `inviteUsers` admin right, or default permissions allowing invites — the renderer never derives this itself
+  2. A broadcast channel where the admin holds the invite right reports `canAdd: true` even though it keeps `canAct: false` for removal (Remove mode is unaffected); a broadcast channel without the invite right reports `canAdd: false`
+  3. The membership/rights data available to the renderer distinguishes, per dialog, "already a member" from "not a member, no invite right" so Add mode can grey a row with a cause-specific reason instead of a generic one
+  4. `TagExecutor` contains no two-phase layer isolation logic, no `restoreMainClientLayer` calls, and no stale layer-224 comments; the existing `tagExecutor.test.ts` suite passes unmodified in behavior (tag writes still work end-to-end at the now-default TL layer 229)
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 14: AddExecutor — Dispatch, Privacy Fallback & Audit
+**Goal**: An add run invites the target into every selected group through the correct Telegram mechanic, lifts bans first, falls back to unique expiring invite links with a single templated DM when privacy blocks a direct add, and checkpoints/resumes exactly like the removal and tag executors
+**Depends on**: Phase 13
+**Requirements**: ADD-06, ADD-07, ADD-08, ADD-09, ADD-10, ADD-11
+**Success Criteria** (what must be TRUE):
+  1. For each selected supergroup/broadcast-channel `AddExecutor` issues `channels.InviteToChannel`, and for each selected basic group it issues `messages.AddChatUser` — both routed through the shared governor with FLOOD_WAIT countdown, PEER_FLOOD hard-stop, and ~3s inter-group pacing
+  2. A group where the target is currently banned has the ban lifted before the invite/add call is issued, in the same governor-throttled run
+  3. A privacy-blocked group yields a unique, single-use invite link that expires 5 days after creation; at run end every link generated across the run is sent to the target in exactly one direct message, with a distinct reported outcome if that DM itself is refused by the target's privacy settings (the links are still retained for the admin)
+  4. Every per-group outcome is one of `done | already-member | privacy-blocked | failed(code) | skipped`, checkpointed to `add-job.json` as it happens; relaunching with an incomplete job detects it, and resuming a stopped or hard-stopped run continues from the last checkpoint
+  5. TDD tests mirror `removalExecutor.test.ts` / `tagExecutor.test.ts` coverage: per-group dispatch (both mechanics), unban-first, link generation + expiry, checkpoint + resume, PEER_FLOOD hard-stop, FLOOD_WAIT via the governor
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 15: Renderer — Add Mode, Contacts, Template & Reporting
+**Goal**: The admin can switch into Add mode, review an inverted checklist, opt in/out of adding the target to contacts, edit and preview the invite-link DM template, confirm, watch live progress, read the per-group report, and export the add log — fully in English and Czech
+**Depends on**: Phase 14
+**Requirements**: ADD-01, ADD-05, ADD-12, ADD-13, ADD-14, ADD-15, ADD-16
+**Success Criteria** (what must be TRUE):
+  1. A Remove/Tag/Add mode switch is visible on the groups pane before the checklist is reviewed; switching modes resets the checklist selection and determines which action (Kick/Ban, Tag, Add) the review screen offers
+  2. In Add mode the checklist inverts — groups the target is not in and the admin can invite into are actionable and pre-checked, while groups they're already in or where the admin lacks the invite right are greyed with a cause-specific reason — and the target card shows a pre-checked "Add to contacts" / "Přidat do kontaktů" checkbox that, when unchecked, routes privacy-blocked groups straight to links
+  3. The user can edit the invite-link DM template (default template provided in English and Czech, with placeholders for the target's name and the link list); the edited template persists across runs
+  4. The review screen shows the add consequence line, the exact group list, and the exact rendered DM text (reflecting the current template) before one explicit confirmation is required to start the run; target identity is sourced from the main process only, never passed up from the renderer
+  5. Live per-group progress appears during an add run, a per-group results report (with retry per failed group) appears afterward, and the admin can export the add log to a plain-text file via a save dialog — every new string in this phase exists in both English and Czech (formal vykání, 3-form plurals)
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -122,3 +177,7 @@ Plans:
 | 10. Shared Types, IPC & Audit Wiring | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 11. TagExecutor | v1.6 | 3/3 | Complete    | 2026-06-20 |
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
+| 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 0/0 | Not started | - |
+| 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 0/0 | Not started | - |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 0/0 | Not started | - |
+</content>

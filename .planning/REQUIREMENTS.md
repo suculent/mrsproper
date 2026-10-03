@@ -75,29 +75,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ADD-01 | — | Pending |
-| ADD-02 | — | Pending |
-| ADD-03 | — | Pending |
-| ADD-04 | — | Pending |
-| ADD-05 | — | Pending |
-| ADD-06 | — | Pending |
-| ADD-07 | — | Pending |
-| ADD-08 | — | Pending |
-| ADD-09 | — | Pending |
-| ADD-10 | — | Pending |
-| ADD-11 | — | Pending |
-| ADD-12 | — | Pending |
-| ADD-13 | — | Pending |
-| ADD-14 | — | Pending |
-| ADD-15 | — | Pending |
-| ADD-16 | — | Pending |
-| TAG-07 | — | Pending |
+| ADD-01 | Phase 15 | Pending |
+| ADD-02 | Phase 13 | Pending |
+| ADD-03 | Phase 13 | Pending |
+| ADD-04 | Phase 13 | Pending |
+| ADD-05 | Phase 15 | Pending |
+| ADD-06 | Phase 14 | Pending |
+| ADD-07 | Phase 14 | Pending |
+| ADD-08 | Phase 14 | Pending |
+| ADD-09 | Phase 14 | Pending |
+| ADD-10 | Phase 14 | Pending |
+| ADD-11 | Phase 14 | Pending |
+| ADD-12 | Phase 15 | Pending |
+| ADD-13 | Phase 15 | Pending |
+| ADD-14 | Phase 15 | Pending |
+| ADD-15 | Phase 15 | Pending |
+| ADD-16 | Phase 15 | Pending |
+| TAG-07 | Phase 13 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-03 at milestone v1.7 kickoff*
+*Last updated: 2026-10-03 — roadmap drafted: Phase 13 (Add Rights & Scan Semantics), Phase 14 (AddExecutor), Phase 15 (Renderer)*
+</content>

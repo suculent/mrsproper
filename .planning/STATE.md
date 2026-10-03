@@ -6,8 +6,8 @@ status: planning
 last_updated: "2026-10-03T14:04:01.545Z"
 last_activity: 2026-10-03
 progress:
-  total_phases: 0
-  completed_phases: 0
+  total_phases: 15
+  completed_phases: 12
   total_plans: 0
   completed_plans: 0
   percent: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Milestone complete
+**Current focus:** v1.7 Add Mode — roadmap drafted (Phases 13–15), awaiting plan-phase
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 (Add Rights & Scan Semantics) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-03 — Milestone v1.7 started
+Status: Roadmap approved pending; ready for `/gsd:plan-phase 13`
+Last activity: 2026-10-03 — ROADMAP.md drafted for v1.7 Add Mode (Phases 13-15)
 
 ## Performance Metrics
 
@@ -45,6 +45,9 @@ Last activity: 2026-10-03 — Milestone v1.7 started
 | 10 | 4 | - | - |
 | 11 | 3 | - | - |
 | 12 | 0 | - | - |
+| 13 | TBD | - | - |
+| 14 | TBD | - | - |
+| 15 | TBD | - | - |
 
 **Recent Trend:**
 
@@ -89,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 12 Plan 01
 - [Phase ?]: Phase 12 Plan 01
 - [Phase ?]: Phase 12 Plan 03 decisions
+- [v1.7 roadmap]: GramJS now runs at TL layer 229 everywhere (quick 261003-jni) — Phase 13's TAG-07 cleanup removes the layer-224 isolation hack from TagExecutor since it is no longer needed for tag writes
+- [v1.7 roadmap]: No new TL layer/connection work is needed for Add Mode — `channels.InviteToChannel` / `messages.AddChatUser` are already covered at layer 229, so the milestone compresses to 3 phases (Foundation → AddExecutor → Renderer) instead of the 4-phase Tag pattern (which needed a dedicated API/connection phase)
+- [v1.7 roadmap]: Contact-adding (ADD-05) and the add-log export (ADD-14) are mapped to the Renderer phase (15) since their observable success criteria require the UI (checkbox, save dialog) even though supporting main-process calls are implemented alongside AddExecutor in Phase 14
 
 ### Pending Todos
 
@@ -99,9 +105,10 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- (Resolved 2026-10-03 by quick 261003-jni) Layer-224 patch window no longer exists — whole package runs at layer 229. Follow-up: TagExecutor still carries the two-phase/restoreMainClientLayer logic and stale layer-224 comments; remove in the next milestone.
+- (Resolved 2026-10-03 by quick 261003-jni) Layer-224 patch window no longer exists — whole package runs at layer 229. Follow-up: TagExecutor still carries the two-phase/restoreMainClientLayer logic and stale layer-224 comments; removal is now scoped as TAG-07 in Phase 13.
 - Phase 9: Tag max length and allowed charset not yet measured — deferred to Phase 9 via the proven probe path; results feed Phase 12 input validation
 - Phase 12: Exact `editChatParticipantRank` RPC error strings (e.g. `CHAT_ADMIN_REQUIRED` vs `RIGHT_FORBIDDEN`) need live verification in Phase 11 — `TagErrorCode` candidates in spec §4.2 are provisional
+- Phase 14: Exact RPC error strings for `channels.InviteToChannel` / `messages.AddChatUser` (no rights, not mutual contact, target in too many channels, previously kicked, deleted/bot, direct-add cap) need live verification during implementation — `AddErrorCode` candidates in REQUIREMENTS.md ADD-09 are provisional pending real-API confirmation
 
 ### Quick Tasks Completed
 
@@ -134,10 +141,12 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-06-20T17:18:32.051Z
-Stopped at: Completed 11-tagexecutor-11-02-PLAN.md
+Last session: 2026-10-03T14:04:01.545Z
+Stopped at: ROADMAP.md drafted for v1.7 Add Mode (Phases 13-15); REQUIREMENTS.md traceability filled
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Review and approve .planning/ROADMAP.md (Phases 13-15) and .planning/REQUIREMENTS.md traceability
+- Then run `/gsd:plan-phase 13` to begin Phase 13 (Add Rights & Scan Semantics)
+</content>
