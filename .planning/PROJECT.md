@@ -35,6 +35,16 @@ broadcast channels included, 200-member channel cap); `MembershipScanner` distin
 from `not-member`; `TagExecutor` is a single-client loop (layer-224 isolation code and
 `tagClient.ts`/`tagApi.ts` deleted). Main-process/data layer only, no renderer changes yet.
 
+**2026-10-03 Phase 14 complete (v1.7 engine):** `AddExecutor` adds the target to every selected
+dialog via `channels.InviteToChannel` / `messages.AddChatUser` through the shared governor, lifts
+bans first, falls back to single-use 5-day invite links on privacy blocks, and sends one templated
+DM at run end (refusal reported as a distinct status, links retained). Per-group outcomes checkpoint
+to `add-job.json` with continuation-based resume (same job id across stop/resume); a plain-text
+`add-log.txt` records each run. Contact-add service, EN/CS DM template store and the full `ADD_*`
+IPC surface are wired in main and exposed on the preload bridge. Code review surfaced seven
+control-flow issues (duplicate outcomes on resume, DM failure wedging the run, PEER_FLOOD swallowed
+during link export); all fixed with regression tests. 501 tests green. Renderer UI is Phase 15.
+
 ## Current Milestone: v1.7 Add Mode
 
 **Goal:** Let the admin add the resolved target to every selected group they are not yet in, with
@@ -165,4 +175,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 — Phase 13 (Add Rights & Scan Semantics foundation) complete; v1.7 Add Mode continues with Phase 14.*
+*Last updated: 2026-10-03 — Phase 14 (AddExecutor engine) complete; v1.7 Add Mode continues with Phase 15 (renderer UI).*
