@@ -244,7 +244,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 15-06-PLAN.md — preload bridge (exportAddLog, writeClipboardText) + clipboardClient.ts
-- [ ] 15-11-PLAN.md — TargetCard.tsx Add-to-contacts checkbox + failure notice
+- [x] 15-11-PLAN.md — TargetCard.tsx Add-to-contacts checkbox + failure notice
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -282,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 6/13 | In Progress|  |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 7/13 | In Progress|  |
 </content>
