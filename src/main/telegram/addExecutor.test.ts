@@ -178,6 +178,8 @@ function makeExecutor(config: {
   auditStore?: InstrumentedAddAuditStore
   addLogStore?: { appendBlockCalls: AddLogBlockEntry[]; appendBlock: (entry: AddLogBlockEntry) => void }
   getDmText?: (vars: { name: string; links: string }) => string
+  /** D-03: simulate a relaunch — resolver has no resolved user. */
+  resolverNull?: boolean
 }) {
   const mockClient = createMockTelegramClient(config.mockConfig ?? {})
   const governor = new RateLimitGovernor({ client: mockClient as never })
@@ -192,7 +194,7 @@ function makeExecutor(config: {
 
   const stubResolver = {
     getResolvedUser: () =>
-      config.resolved ?? {
+      config.resolverNull ? null : config.resolved ?? {
         id: BigInt('99'),
         accessHash: BigInt('12345'),
         name: 'Jan Novák',
@@ -1636,5 +1638,100 @@ describe('AddExecutor — retryGroup (mirrors RemovalExecutor.retryGroup)', () =
     await Promise.all([p, retryPromise])
 
     expect(mockClient.inviteToChannelCalls.filter((c) => c.channelId === '18003')).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AddExecutor — relaunch resume with null resolver (D-03), dialogIds state (D-16), titles (D-14)
+// ---------------------------------------------------------------------------
+
+describe('AddExecutor — relaunch resume (D-03, D-14, D-16)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('null resolver + resume:true + matching stopped job: runs, reuses jobId, never calls initJob', async () => {
+    const dialogs = [makeDialog('20001', 'supergroup'), makeDialog('20002', 'supergroup')]
+    const dialogIds = ['20001', '20002']
+    const auditStore = makeAddAuditStore(dialogIds, {
+      jobId: 'OLD-JOB-ID',
+      targetId: '99',
+      targetAccessHash: '777',
+      dialogIds,
+      outcomes: [{ dialogId: '20001', status: 'done', timestamp: new Date().toISOString() }],
+      status: 'stopped',
+    })
+    const { executor, states, mockClient } = makeExecutor({ dialogs, auditStore, resolverNull: true })
+
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(auditStore._job?.jobId).toBe('OLD-JOB-ID')
+    expect(states[states.length - 1]!.step).toBe('complete')
+    expect(mockClient.inviteToChannelCalls.length).toBe(1)
+  })
+
+  it('null resolver + resume:false: idle, initJob never called, no invoke calls', async () => {
+    const dialogs = [makeDialog('20003', 'supergroup')]
+    const dialogIds = ['20003']
+    const auditStore = makeAddAuditStore(dialogIds, { dialogIds, status: 'stopped' })
+    const { executor, states, mockClient } = makeExecutor({ dialogs, auditStore, resolverNull: true })
+
+    await executor.execute({ dialogIds, resume: false })
+
+    expect(states[states.length - 1]!.step).toBe('idle')
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(mockClient.inviteToChannelCalls).toHaveLength(0)
+  })
+
+  it('null resolver + resume:true but a mismatched dialog-id set: idle, initJob never called', async () => {
+    const dialogs = [makeDialog('20004', 'supergroup'), makeDialog('20005', 'supergroup')]
+    const auditStore = makeAddAuditStore(['20004'], { dialogIds: ['20004'], status: 'stopped' })
+    const { executor, states, mockClient } = makeExecutor({ dialogs, auditStore, resolverNull: true })
+
+    await executor.execute({ dialogIds: ['20004', '20005'], resume: true })
+
+    expect(states[states.length - 1]!.step).toBe('idle')
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(mockClient.inviteToChannelCalls).toHaveLength(0)
+  })
+
+  it('emitted running and complete states carry dialogIds equal to params.dialogIds', async () => {
+    const dialogs = [makeDialog('20006', 'supergroup')]
+    const dialogIds = ['20006']
+    const { executor, states } = makeExecutor({ dialogs })
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    const running = states.find((s) => s.step === 'running')!
+    expect(running.dialogIds).toEqual(dialogIds)
+    expect(states[states.length - 1]!.step).toBe('complete')
+    expect(states[states.length - 1]!.dialogIds).toEqual(dialogIds)
+  })
+
+  it('D-14: appendBlock entries carry the group title from the enumerator list', async () => {
+    const dialogs = [makeDialog('20007', 'supergroup'), makeDialog('20008', 'supergroup')]
+    const dialogIds = ['20007', '20008']
+    const addLogStore = makeAddLogStore()
+    const { executor } = makeExecutor({
+      dialogs,
+      addLogStore,
+      mockConfig: { inviteToChannelMissingInviteeDialogIds: { '20008': {} } },
+    })
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    const block = addLogStore.appendBlockCalls[0]!
+    expect(block.addedDialogs[0]).toMatchObject({ dialogId: '20007', title: 'Group 20007' })
+    expect(block.linkedDialogs[0]).toMatchObject({ dialogId: '20008', title: 'Group 20008' })
   })
 })
