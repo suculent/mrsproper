@@ -271,10 +271,14 @@ Plans:
 **Goal:** Close the two blockers from the v1.7 milestone audit (.planning/v1.7-MILESTONE-AUDIT.md): the stop/relaunch → Resume path must continue the same add job from its checkpoint (full dialog-id set on resume, skipped outcomes reprocessed, target rebuilt from the job file after relaunch), and Add mode must render the inverted checklist when the target is in none of the admin's groups. Also assign or remove the orphaned `banned-no-unban-right` grey reason and clear the audit's small tech-debt items (add-log titles, default-template language alignment, 14-VALIDATION status).
 **Requirements**: ADD-08, ADD-02 (ADD-11, ADD-14, ADD-07 partial)
 **Depends on:** Phase 15
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16 to break down)
+- [ ] 16-01-PLAN.md — Main resume path: target rebuilt from job file, add-log titles, AddState.dialogIds, shared resume helpers, cross-process test
+- [ ] 16-02-PLAN.md — DM language read at render time, Change-target disabled during any run, docs housekeeping
+- [ ] 16-03-PLAN.md — Renderer resume: full dialog-id set, skipped resumable, enumeration-gated Resume button
+- [ ] 16-04-PLAN.md — canUnban DTO boolean + Add predicate + fixtures
+- [ ] 16-05-PLAN.md — Add empty state, Tag empty body, banned-no-unban-right row rendering, job-scoped queued status
 
 ## Progress
 
