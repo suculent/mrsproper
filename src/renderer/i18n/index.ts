@@ -20,6 +20,8 @@ import csRemoval from './locales/cs/removal.json'
 import csShell from './locales/cs/shell.json'
 import enTag from './locales/en/tag.json'
 import csTag from './locales/cs/tag.json'
+import enAdd from './locales/en/add.json'
+import csAdd from './locales/cs/add.json'
 
 export const resources = {
   en: {
@@ -30,6 +32,7 @@ export const resources = {
     removal: enRemoval,
     shell: enShell,
     tag: enTag,
+    add: enAdd,
   },
   cs: {
     auth: csAuth,
@@ -39,6 +42,7 @@ export const resources = {
     removal: csRemoval,
     shell: csShell,
     tag: csTag,
+    add: csAdd,
   },
 } as const
 

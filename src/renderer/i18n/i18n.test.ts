@@ -13,7 +13,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 
 import i18n, { initI18n, resources } from '@renderer/i18n'
 
-const NAMESPACES = ['auth', 'target', 'groups', 'wizard', 'removal', 'shell', 'tag'] as const
+const NAMESPACES = ['auth', 'target', 'groups', 'wizard', 'removal', 'shell', 'tag', 'add'] as const
 
 describe('i18n initialization', () => {
   beforeAll(async () => {
@@ -25,7 +25,7 @@ describe('i18n initialization', () => {
     expect(i18n.language).toBe('en')
   })
 
-  it('all namespaces load: auth, target, groups, wizard, removal, shell, tag — both en and cs', () => {
+  it('all namespaces load: auth, target, groups, wizard, removal, shell, tag, add — both en and cs', () => {
     for (const ns of NAMESPACES) {
       expect(i18n.hasResourceBundle('en', ns), `en/${ns} missing`).toBe(true)
       expect(i18n.hasResourceBundle('cs', ns), `cs/${ns} missing`).toBe(true)
