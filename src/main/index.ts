@@ -27,6 +27,7 @@ import { createAddAuditStore } from './storage/addAuditStore'
 import { createAddLogStore } from './storage/addLogStore'
 import { createContactService } from './telegram/contactService'
 import { registerAddChannels, emitAddState } from './ipc/addChannels'
+import { registerClipboardChannels } from './ipc/clipboardChannels'
 import {
   registerTemplateChannels,
   renderTemplate,
@@ -389,8 +390,17 @@ app.whenReady().then(async () => {
     onStateChange: (state) => emitAddState(currentWin, state),
   })
   addExecutorRef = addExecutor
-  registerAddChannels(currentWin, addExecutor, enumerator, addAuditStore, contactService, () => sm.getState())
+  registerAddChannels(
+    currentWin,
+    addExecutor,
+    enumerator,
+    addAuditStore,
+    contactService,
+    addLogStore,
+    () => sm.getState()
+  )
   registerTemplateChannels()
+  registerClipboardChannels(() => sm.getState())
 
   // Phase 6: assign executorRef so governor.onEvent can call _handleGovernorEvent
   executorRef = executor

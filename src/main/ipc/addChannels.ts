@@ -32,7 +32,7 @@
  * omits since Tag has no retryGroup).
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 import { z } from 'zod'
 import type { GroupEnumerator } from '../telegram/GroupEnumerator'
 import {
@@ -43,6 +43,7 @@ import {
   ADD_STATE,
   ADD_GET_JOB,
   ADD_DISCARD_JOB,
+  ADD_EXPORT_LOG,
   TARGET_ADD_CONTACT,
 } from '@shared/channels'
 import type { AddState, AddJobFile, AddJobFileSafe } from '@shared/addTypes'
@@ -66,6 +67,14 @@ export interface AddExecutorLike {
 
 export interface ContactServiceLike {
   addIfMissing(): Promise<{ ok: boolean; code?: string }>
+}
+
+// ── AddLogStoreLike interface ────────────────────────────────────────────────
+// Minimal structural type (not a full import) to avoid a circular dependency with
+// addLogStore.ts — only the path accessor the ADD_EXPORT_LOG handler needs.
+
+export interface AddLogStoreLike {
+  getLogPath(): string
 }
 
 // ── Zod schemas for inbound payloads ─────────────────────────────────────────
@@ -108,6 +117,7 @@ const AddRetryGroupSchema = z.object({
  * @param enumerator     The GroupEnumerator instance (for dialog-map security gate)
  * @param auditStore     The AddAuditStore instance (for resume computation + job-dialogId gate + getJob/discardJob)
  * @param contactService The ContactServiceLike instance (for target:addContact)
+ * @param addLogStore    The AddLogStoreLike instance (for the ADD_EXPORT_LOG source path)
  * @param getAuthState   Function returning the current AuthState (allows testing without SessionManager)
  */
 export function registerAddChannels(
@@ -116,10 +126,9 @@ export function registerAddChannels(
   enumerator: GroupEnumerator,
   auditStore: AddAuditStore,
   contactService: ContactServiceLike,
+  addLogStore: AddLogStoreLike,
   getAuthState: () => { step: string }
 ): void {
-  // Suppress unused warning — win used by emitAddState wired in main/index.ts
-  void win
 
   // ── Handle: add:start ────────────────────────────────────────────────────
   // Four-layer security gate chain (mirrors tagChannels.ts's TAG_START exactly), followed by
@@ -247,6 +256,31 @@ export function registerAddChannels(
     } catch {
       return { ok: false }
     }
+  })
+
+  // ── Handle: add:exportLog ─────────────────────────────────────────────────
+  // D-20: opens a native save dialog and copies add-log.txt to the chosen path. The source
+  // path always comes from addLogStore.getLogPath() (fixed, main-computed); the destination
+  // always comes from dialog.showSaveDialog's return value — the renderer supplies neither
+  // (T-15-02).
+  ipcMain.handle(ADD_EXPORT_LOG, async () => {
+    // Dynamic import (not require) — vi.mock('node:fs', ...) only intercepts the ESM/
+    // dynamic-import module graph in this test runner, not a literal CommonJS require() call.
+    const { copyFileSync, existsSync } = await import('node:fs')
+    const logPath = addLogStore.getLogPath()
+    if (!existsSync(logPath)) {
+      return { ok: false as const, reason: 'no-log' as const }
+    }
+    const targetWin = BrowserWindow.getFocusedWindow() ?? win
+    const { canceled, filePath } = await dialog.showSaveDialog(targetWin, {
+      defaultPath: 'mrproper-add-log.txt',
+      filters: [{ name: 'Text', extensions: ['txt'] }],
+    })
+    if (canceled || !filePath) {
+      return { ok: false as const, reason: 'canceled' as const }
+    }
+    copyFileSync(logPath, filePath)
+    return { ok: true as const }
   })
 }
 

@@ -19,6 +19,12 @@
  *   13. target:addContact — resolves to the contactService result on success
  *   14. target:addContact — resolves to { ok: false } (never throws) when addIfMissing rejects
  *   15. target:addContact — unauthenticated returns { ok: false } without calling contactService
+ *   16. ADD_EXPORT_LOG — existsSync=false returns { ok: false, reason: 'no-log' } without
+ *       calling showSaveDialog
+ *   17. ADD_EXPORT_LOG — existsSync=true, showSaveDialog resolves { canceled: true } returns
+ *       { ok: false, reason: 'canceled' } without calling copyFileSync
+ *   18. ADD_EXPORT_LOG — existsSync=true, showSaveDialog resolves { canceled: false, filePath }
+ *       calls copyFileSync(logPath, filePath) and returns { ok: true }
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -33,6 +39,7 @@ import { registerAddChannels, emitAddState } from './addChannels'
 type IpcHandler = (_event: unknown, payload: unknown) => Promise<unknown>
 
 const capturedHandlers: Record<string, IpcHandler> = {}
+const showSaveDialogMock = vi.fn()
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -40,7 +47,18 @@ vi.mock('electron', () => ({
       capturedHandlers[channel] = handler
     },
   },
-  BrowserWindow: vi.fn(),
+  BrowserWindow: Object.assign(vi.fn(), { getFocusedWindow: vi.fn(() => null) }),
+  dialog: {
+    showSaveDialog: (...args: unknown[]) => showSaveDialogMock(...args),
+  },
+}))
+
+const copyFileSyncMock = vi.fn()
+const existsSyncMock = vi.fn()
+
+vi.mock('node:fs', () => ({
+  copyFileSync: (...args: unknown[]) => copyFileSyncMock(...args),
+  existsSync: (...args: unknown[]) => existsSyncMock(...args),
 }))
 
 // ---------------------------------------------------------------------------
@@ -122,6 +140,13 @@ function makeMockContactService(impl?: () => Promise<{ ok: boolean; code?: strin
   }
 }
 
+/** Create a mock AddLogStore with a controllable path returned from getLogPath(). */
+function makeMockAddLogStore(path = '/fake/add-log.txt') {
+  return {
+    getLogPath: vi.fn(() => path),
+  }
+}
+
 /** Create a getAuthState function that returns a specified step. */
 function makeGetAuthState(step: string) {
   return vi.fn(() => ({ step }))
@@ -150,6 +175,7 @@ describe('addChannels — ADD_START Zod validation', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -181,6 +207,7 @@ describe('addChannels — ADD_START security gates', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -211,6 +238,7 @@ describe('addChannels — ADD_START security gates', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -234,6 +262,7 @@ describe('addChannels — ADD_START security gates', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -257,6 +286,7 @@ describe('addChannels — ADD_START security gates', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -282,6 +312,7 @@ describe('addChannels — ADD_START security gates', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -317,6 +348,7 @@ describe('addChannels — ADD_ABORT', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -350,6 +382,7 @@ describe('addChannels — ADD_RETRY_GROUP', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -373,6 +406,7 @@ describe('addChannels — ADD_RETRY_GROUP', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -412,6 +446,7 @@ describe('addChannels — ADD_GET_STATE', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -443,6 +478,7 @@ describe('addChannels — ADD_GET_JOB', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -464,6 +500,7 @@ describe('addChannels — ADD_GET_JOB', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -502,6 +539,7 @@ describe('addChannels — ADD_DISCARD_JOB', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -535,6 +573,7 @@ describe('addChannels — target:addContact', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -559,6 +598,7 @@ describe('addChannels — target:addContact', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -579,6 +619,7 @@ describe('addChannels — target:addContact', () => {
       enumerator as never,
       auditStore as never,
       contactService as never,
+      makeMockAddLogStore() as never,
       getAuthState
     )
 
@@ -586,6 +627,99 @@ describe('addChannels — target:addContact', () => {
 
     expect(contactService.addIfMissing).not.toHaveBeenCalled()
     expect(result).toEqual({ ok: false })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ADD_EXPORT_LOG — save dialog + copyFileSync (D-20, T-15-02)
+// ---------------------------------------------------------------------------
+
+describe('addChannels — ADD_EXPORT_LOG', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+    showSaveDialogMock.mockReset()
+    copyFileSyncMock.mockReset()
+    existsSyncMock.mockReset()
+  })
+
+  it('16. ADD_EXPORT_LOG — existsSync=false returns { ok: false, reason: "no-log" } without calling showSaveDialog', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockAuditStore()
+    const contactService = makeMockContactService()
+    const addLogStore = makeMockAddLogStore('/fake/add-log.txt')
+    const getAuthState = makeGetAuthState('authorized')
+    existsSyncMock.mockReturnValue(false)
+
+    registerAddChannels(
+      win as never,
+      executor as never,
+      enumerator as never,
+      auditStore as never,
+      contactService as never,
+      addLogStore as never,
+      getAuthState
+    )
+
+    const result = await capturedHandlers['add:exportLog']({}, undefined)
+
+    expect(showSaveDialogMock).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: false, reason: 'no-log' })
+  })
+
+  it('17. ADD_EXPORT_LOG — existsSync=true, showSaveDialog canceled returns { ok: false, reason: "canceled" } without calling copyFileSync', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockAuditStore()
+    const contactService = makeMockContactService()
+    const addLogStore = makeMockAddLogStore('/fake/add-log.txt')
+    const getAuthState = makeGetAuthState('authorized')
+    existsSyncMock.mockReturnValue(true)
+    showSaveDialogMock.mockResolvedValue({ canceled: true, filePath: undefined })
+
+    registerAddChannels(
+      win as never,
+      executor as never,
+      enumerator as never,
+      auditStore as never,
+      contactService as never,
+      addLogStore as never,
+      getAuthState
+    )
+
+    const result = await capturedHandlers['add:exportLog']({}, undefined)
+
+    expect(copyFileSyncMock).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: false, reason: 'canceled' })
+  })
+
+  it('18. ADD_EXPORT_LOG — existsSync=true, showSaveDialog resolves a filePath calls copyFileSync(logPath, filePath) and returns { ok: true }', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockAuditStore()
+    const contactService = makeMockContactService()
+    const addLogStore = makeMockAddLogStore('/fake/add-log.txt')
+    const getAuthState = makeGetAuthState('authorized')
+    existsSyncMock.mockReturnValue(true)
+    showSaveDialogMock.mockResolvedValue({ canceled: false, filePath: '/chosen/path.txt' })
+
+    registerAddChannels(
+      win as never,
+      executor as never,
+      enumerator as never,
+      auditStore as never,
+      contactService as never,
+      addLogStore as never,
+      getAuthState
+    )
+
+    const result = await capturedHandlers['add:exportLog']({}, undefined)
+
+    expect(copyFileSyncMock).toHaveBeenCalledWith('/fake/add-log.txt', '/chosen/path.txt')
+    expect(result).toEqual({ ok: true })
   })
 })
 
