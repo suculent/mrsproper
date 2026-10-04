@@ -308,4 +308,4 @@ Plans:
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 14/14 | Complete   | 2026-10-04 |
-| 16. Close gap: ADD-08 resume path and ADD-02 empty state | v1.7 | 5/5 | Complete   | 2026-10-04 |
+| 16. Close gap: ADD-08 resume path and ADD-02 empty state | v1.7 | 5/5 | Complete    | 2026-10-04 |
