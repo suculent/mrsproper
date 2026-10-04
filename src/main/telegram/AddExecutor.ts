@@ -156,6 +156,10 @@ export class AddExecutor {
   private _abortController: AbortController | null = null
   /** True while an add run is active — gates flood-tick forwarding. */
   private _runActive = false
+  /** Target rebuilt/resolved for the active run; lets retryGroup work after a relaunch resume. */
+  private _resolvedTarget: ResolvedAddUser | null = null
+  /** Dialog ids of the active job, merged into emitted AddState (D-16). */
+  private _jobDialogIds: string[] | null = null
 
   constructor(options: AddExecutorOptions) {
     this._client = options.client
@@ -167,6 +171,9 @@ export class AddExecutor {
     this._addLogStore = options.addLogStore
     this._getDmText = options.getDmText
     this._emit = (state) => {
+      if (this._jobDialogIds !== null && state.dialogIds === undefined && state.step !== 'idle') {
+        state = { ...state, dialogIds: this._jobDialogIds }
+      }
       this._currentState = state
       options.onStateChange(state)
     }
@@ -190,7 +197,8 @@ export class AddExecutor {
    * Execute the add run across the specified dialog IDs.
    *
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — never from
-   * params. D-20: a matching on-disk job (same targetId + dialogId set) is continued when
+   * params. On a relaunch resume (resolver null, resume:true, matching non-complete job) the
+   * target is rebuilt from add-job.json inside main only (D-03). D-20: a matching on-disk job (same targetId + dialogId set) is continued when
    * `params.resume` is true; otherwise a fresh job is started via initJob().
    */
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
@@ -200,7 +208,27 @@ export class AddExecutor {
     const signal = this._abortController.signal
 
     // T-05-04-B: read target from resolver, never from params
-    const resolved = this._resolver.getResolvedUser()
+    const existing = this._auditStore.readJob()
+    let resolved: ResolvedAddUser | null = this._resolver.getResolvedUser()
+    if (
+      resolved === null &&
+      params.resume === true &&
+      existing !== null &&
+      existing.status !== 'complete' &&
+      sameDialogIdSet(existing.dialogIds, params.dialogIds)
+    ) {
+      try {
+        resolved = {
+          id: BigInt(existing.targetId),
+          accessHash: BigInt(existing.targetAccessHash),
+          name: existing.targetName,
+          deleted: false,
+          bot: false,
+        }
+      } catch {
+        resolved = null
+      }
+    }
     if (resolved === null) {
       this._runActive = false
       this._emit({ ...this._currentState, step: 'idle', floodWaitRemaining: null })
@@ -213,6 +241,9 @@ export class AddExecutor {
       this._emit({ ...this._currentState, step: 'idle', floodWaitRemaining: null })
       return
     }
+
+    this._resolvedTarget = resolved
+    this._jobDialogIds = [...params.dialogIds]
 
     const selectedDialogs = params.dialogIds
       .map((id) => groupsState.dialogs.find((d) => d.id === id))
@@ -265,7 +296,6 @@ export class AddExecutor {
     // same dialogId set via sameDialogIdSet) reuses its jobId/outcomes instead of minting a
     // fresh job — required so the end-of-run DM (D-13) and add-log follow-up block (D-18)
     // can reference the SAME lineage across a stop/resume cycle.
-    const existing = this._auditStore.readJob()
     const isContinuation =
       params.resume === true &&
       existing !== null &&
@@ -492,14 +522,17 @@ export class AddExecutor {
       dmStatus,
     })
 
+    // D-14: group titles from the enumerator list (dialogId stays the printed fallback).
+    const titleOf = (id: string): string | undefined => groupsState.dialogs.find((d) => d.id === id)?.title
+
     // D-17/D-18: one add-log block per run, written ONLY when the run reaches 'complete'.
     this._addLogStore.appendBlock({
       jobId,
       isFollowUp: isContinuation,
       targetId,
       targetName,
-      addedDialogs: outcomes.filter((o) => o.status === 'done').map((o) => ({ dialogId: o.dialogId })),
-      linkedDialogs: linkedOutcomes.map((o) => ({ dialogId: o.dialogId, link: o.link! })),
+      addedDialogs: outcomes.filter((o) => o.status === 'done').map((o) => ({ dialogId: o.dialogId, title: titleOf(o.dialogId) })),
+      linkedDialogs: linkedOutcomes.map((o) => ({ dialogId: o.dialogId, link: o.link!, title: titleOf(o.dialogId) })),
       // dmStatus is always resolved to 'sent' | 'refused' | 'not-needed' by this point —
       // every code path above that assigns it excludes 'pending' (TS narrows accordingly).
       dmStatus,
@@ -520,6 +553,8 @@ export class AddExecutor {
       this._abortController = null
     }
     if (this._currentState.step !== 'running' && this._currentState.step !== 'stopping') {
+      this._resolvedTarget = null
+      this._jobDialogIds = null
       this._emit({
         step: 'idle',
         targetId: '',
@@ -546,7 +581,7 @@ export class AddExecutor {
 
     const gen = this._generation
 
-    const resolved = this._resolver.getResolvedUser()
+    const resolved = this._resolver.getResolvedUser() ?? this._resolvedTarget
     if (resolved === null) return
 
     const groupsState = this._enumerator.getState()

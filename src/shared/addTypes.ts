@@ -112,6 +112,11 @@ export interface AddState {
    * for Add mode because of the link-fallback + single-DM-at-completion design.
    */
   dmStatus?: AddDmStatus
+  /**
+   * Dialog ids of the run's job (non-secret group ids only). Set by main so the renderer
+   * only renders run status for rows that belong to the job (D-16). Never carries identity.
+   */
+  dialogIds?: string[]
 }
 
 /**
