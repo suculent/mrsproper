@@ -1,4 +1,11 @@
 {
+  "modeSwitch": {
+    "remove": "Odebrat",
+    "tag": "Označit",
+    "add": "Přidat"
+  },
+  "modeSwitchAria": "Zvolte Odebrat, Označit nebo Přidat",
+  "modeSwitchDisabledTooltip": "Během spuštění nelze přepnout režim",
   "greyReason": {
     "not-creator": "Členy mohou odebírat pouze zakladatelé skupiny",
     "no-ban-right": "Nemáte právo k zákazu v této skupině",

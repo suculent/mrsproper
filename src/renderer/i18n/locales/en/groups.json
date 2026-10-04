@@ -1,4 +1,11 @@
 {
+  "modeSwitch": {
+    "remove": "Remove",
+    "tag": "Tag",
+    "add": "Add"
+  },
+  "modeSwitchAria": "Choose Remove, Tag, or Add",
+  "modeSwitchDisabledTooltip": "Can't switch modes during a run",
   "greyReason": {
     "not-creator": "Only group creators can remove members here",
     "no-ban-right": "You don't have the ban right in this group",
