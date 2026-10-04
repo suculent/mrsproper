@@ -30,35 +30,23 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { TEMPLATE_GET, TEMPLATE_SET } from '@shared/channels'
+import { DM_TEMPLATE_MAX_LENGTH } from '@shared/dmTemplate'
 
-// ── Pure render function (D-15) ────────────────────────────────────────────
-// Single-brace regex only: {{ }} i18next double-brace syntax is left untouched
-// because each pattern requires exactly one literal '{' and one literal '}'
-// around the placeholder name — there is no greedy cross-matching into/out of
-// a doubled brace pair.
+// ── Pure render function + defaults (D-15) ──────────────────────────────────
+// Relocated to src/shared/dmTemplate.ts (Plan 15-01) so the renderer's Add review
+// screen DM preview (Plan 15-10) can import the exact same byte-identical rendering
+// logic (D-13). Re-exported here so every existing import of these three symbols
+// (main/index.ts, templateChannels.test.ts) keeps working with zero call-site changes.
 
-export function renderTemplate(template: string, vars: { name: string; links: string }): string {
-  // WR-03: single pass over BOTH placeholders. vars.name is the add target's own Telegram
-  // display name — fully attacker/target-controlled. Two sequential .replace() calls would
-  // let a name containing the literal substring "{links}" get inserted by the first call and
-  // then re-matched and substituted by the second, corrupting the rendered DM. A single regex
-  // with a callback never re-scans substituted content.
-  return template.replace(/\{name\}|\{links\}/g, (m) => (m === '{name}' ? vars.name : vars.links))
-}
-
-// ── Built-in defaults (used when no template is yet persisted) ─────────────
-
-export const DEFAULT_TEMPLATE_EN =
-  "Hi {name}! I'd like to add you to a few groups, but your privacy settings are blocking a direct invite. Here are single-use invite links instead (each one expires in 5 days):\n\n{links}"
-
-export const DEFAULT_TEMPLATE_CS =
-  'Dobrý den, {name}, rádi bychom Vás přidali do několika skupin, ale Vaše nastavení soukromí brání přímému pozvání. Zde jsou jednorázové pozvánkové odkazy (každý platí 5 dní):\n\n{links}'
+export { renderTemplate, DEFAULT_TEMPLATE_EN, DEFAULT_TEMPLATE_CS } from '@shared/dmTemplate'
 
 // ── Zod schema for inbound TEMPLATE_SET payload ─────────────────────────────
-// T-14-07: length-bounded 1-4000 chars — any value outside that range throws
-// ZodError before the store is touched.
+// T-14-07: length-bounded 1-DM_TEMPLATE_MAX_LENGTH chars — any value outside that
+// range throws ZodError before the store is touched. The bound itself lives in
+// src/shared/dmTemplate.ts (single source of truth, T-15-04) so it cannot drift
+// apart from the renderer's validateDmTemplate.
 
-const TemplateSetSchema = z.object({ template: z.string().min(1).max(4000) })
+const TemplateSetSchema = z.object({ template: z.string().min(1).max(DM_TEMPLATE_MAX_LENGTH) })
 
 // ── ESM-safe lazy store factory ──────────────────────────────────────────────
 // electron-store 11.x is ESM-only; dynamic import is the only valid load path.
