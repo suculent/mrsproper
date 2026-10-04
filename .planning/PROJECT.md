@@ -45,6 +45,20 @@ IPC surface are wired in main and exposed on the preload bridge. Code review sur
 control-flow issues (duplicate outcomes on resume, DM failure wedging the run, PEER_FLOOD swallowed
 during link export); all fixed with regression tests. 501 tests green. Renderer UI is Phase 15.
 
+**2026-10-04 Phase 15 complete (v1.7 renderer):** Add mode is live in the UI — mode switch, inverted
+checklist, add-to-contacts checkbox, DM template editor/preview, Add review screen, run/report rows,
+add-log export and the resume dialog.
+
+**2026-10-04 Phase 16 complete (v1.7 audit gap closure):** the stop/relaunch → Resume path now
+continues the same add job (renderer sends the full dialog-id set, skipped groups are reprocessed,
+main rebuilds the target from `add-job.json` after a relaunch); Add mode shows the inverted checklist
+whenever any row is actionable and a cause-aware "Nothing to add" state only when none is; a
+main-computed `canUnban` boolean greys banned rows the admin cannot unban before a run starts; the
+DM default language is read at render time; add-log entries carry group titles; "Change target" is
+disabled during any run. 661 tests green. Human UAT of the relaunch-resume flow and the en/cs
+empty-state wording is pending (`16-HUMAN-UAT.md`). v1.7 Add Mode is feature-complete pending that UAT
+and the milestone audit re-run.
+
 ## Current Milestone: v1.7 Add Mode
 
 **Goal:** Let the admin add the resolved target to every selected group they are not yet in, with
@@ -175,4 +189,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 — Phase 14 (AddExecutor engine) complete; v1.7 Add Mode continues with Phase 15 (renderer UI).*
+*Last updated: 2026-10-04 — Phase 16 (v1.7 audit gap closure) complete; all v1.7 phases executed, human UAT pending before milestone close.*
