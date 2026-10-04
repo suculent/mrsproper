@@ -105,3 +105,7 @@ The `add` namespace and `modeSwitch` keys are fully registered and verified (i18
 ---
 *Phase: 15-renderer-add-mode-contacts-template-reporting*
 *Completed: 2026-10-04*
+
+## Self-Check: PASSED
+
+All 8 created/modified files confirmed present on disk; all 4 commit hashes (55ab897, d143422, 1eaf9f2, c0669da) confirmed in `git log`.
