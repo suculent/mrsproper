@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: verifying
-stopped_at: "Phase 15 executed; verification human_needed — run /gsd:verify-work 15"
-last_updated: "2026-10-04T02:23:45.461Z"
+status: executing
+stopped_at: Completed 15-14-PLAN.md
+last_updated: "2026-10-04T15:17:36.307Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 27
-  completed_plans: 27
+  total_plans: 28
+  completed_plans: 28
   percent: 43
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 15 — Renderer — Add Mode, Contacts, Template & Reporting
+**Current focus:** Phase 15 — renderer-add-mode-contacts-template-reporting
 
 ## Current Position
 
-Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 13 of 13
-Status: Phase complete — ready for verification
+Phase: 15 (renderer-add-mode-contacts-template-reporting) — EXECUTING
+Plan: 2 of 14
+Status: Ready to execute
 Last activity: 2026-10-04
 
 ## Performance Metrics
@@ -92,6 +92,7 @@ Last activity: 2026-10-04
 | Phase 15 P10 | 25min | 3 tasks | 3 files |
 | Phase 15 P12 | 8min | 2 tasks | 2 files |
 | Phase 15 P13 | 20min | 2 tasks | 3 files |
+| Phase 15 P14 | 18min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,8 @@ Recent decisions affecting current work:
 - [Phase 15]: AddResumeJobDialog clones TagResumeJobDialog exactly; SettingsMenu export entry clears its no-log message on every menu reopen instead of using a toast system
 - [Phase ?]: Split AppShell's conflated action state into mode (session-only) + severity (persisted) per D-02
 - [Phase ?]: Deleted the deprecated activeAction/action/onActionChange bridge props from GroupsPane/ReviewScreen once AppShell wired the real values
+- [Phase 15-14]: isGreyedVisual reuses isActionable for Add mode; addGreyReasonKey derives already-member in the renderer — Keeps GroupRow's grey-visual treatment mode-aware without duplicating isActionableForMode, and fixes the always-null already-member addGreyReason gap
+- [Phase 15-14]: groupsStore._activeMode set only inside recomputeCheckedForMode — Fixes the hardcoded 'remove' literal in the first-scan-complete pre-check rebuild with zero new call sites
 
 ### Pending Todos
 
@@ -212,9 +215,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T02:23:45.456Z
-Stopped at: Phase 15 executed; verification human_needed — run /gsd:verify-work 15
-Resume file: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-HUMAN-UAT.md
+Last session: 2026-10-04T15:17:36.301Z
+Stopped at: Completed 15-14-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
