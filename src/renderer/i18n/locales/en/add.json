@@ -91,5 +91,6 @@
   "resumeBody": "{{x}} of {{n}} groups were processed before the run stopped. Resuming continues from the first unprocessed group.",
   "resumeDestructive": "Resume adding",
   "resumeDestructiveAria": "Resume add job",
+  "resumeLoadingGroups": "Loading your groups…",
   "resumeNeutral": "Discard job"
 }

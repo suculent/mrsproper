@@ -3,8 +3,9 @@
 // (add is non-destructive, same as tag), addActions.startAdd instead of tagActions.startTag.
 // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the add job.
 //
-// Divergence (D-15/D-21): addActions.startAdd takes ONLY the remaining dialog ids — no second
-// "tag"-like argument, unlike tagActions.startTag(job.tag, remainingDialogIds).
+// Resume sends the WHOLE job.dialogIds (not the remaining subset): AddExecutor's continuation
+// gate compares the full dialog-id set (Phase 14 D-20) and reuses prior outcomes itself.
+// Resume stays disabled until groups are loaded (D-04) and the dialog closes only once a run started.
 
 import React, { useCallback } from 'react'
 import {
@@ -19,12 +20,15 @@ import { Button } from '@renderer/components/ui/button'
 import { useTranslation } from 'react-i18next'
 import type { AddJobFileSafe } from '@shared/addTypes'
 import { addActions } from '@renderer/store/addStore'
+import { countProcessedOutcomes, getResumeDialogIds } from '@shared/addResume'
+import { getResumeDialogState } from './resumeDialogState'
 
 interface AddResumeJobDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   job: AddJobFileSafe
   onResume?: () => void
+  groupsLoaded: boolean
 }
 
 export function AddResumeJobDialog({
@@ -32,26 +36,25 @@ export function AddResumeJobDialog({
   onOpenChange,
   job,
   onResume,
+  groupsLoaded,
 }: AddResumeJobDialogProps): React.JSX.Element {
   const { t } = useTranslation('add')
-  const processedCount = job.outcomes.length
+  const processedCount = countProcessedOutcomes(job)
   const totalCount = job.dialogIds.length
-
-  // Remaining dialog IDs = those not yet in outcomes (unprocessed groups)
-  const remainingDialogIds = job.dialogIds.filter(
-    (id) => !job.outcomes.find((o) => o.dialogId === id)
-  )
+  const { resumeDisabled, showLoadingHint } = getResumeDialogState(groupsLoaded)
 
   const handleDiscard = useCallback(() => {
     void addActions.discardJob()
     onOpenChange(false)
   }, [onOpenChange])
 
-  const handleResume = useCallback(() => {
-    void addActions.startAdd(remainingDialogIds)
-    onOpenChange(false)
-    onResume?.()
-  }, [remainingDialogIds, onOpenChange, onResume])
+  const handleResume = useCallback(async () => {
+    const started = await addActions.startAdd(getResumeDialogIds(job))
+    if (started) {
+      onOpenChange(false)
+      onResume?.()
+    }
+  }, [job, onOpenChange, onResume])
 
   return (
     // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the job.
@@ -71,6 +74,10 @@ export function AddResumeJobDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {showLoadingHint && (
+          <p className="text-label text-muted-foreground">{t('resumeLoadingGroups')}</p>
+        )}
+
         <DialogFooter className="flex-row justify-end gap-2 sm:gap-2">
           {/* Discard — autofocus (safe default — prevents accidental resume) */}
           <Button
@@ -84,7 +91,8 @@ export function AddResumeJobDialog({
           {/* Resume adding — variant=default (add is non-destructive per D-21) */}
           <Button
             variant="default"
-            onClick={handleResume}
+            onClick={() => void handleResume()}
+            disabled={resumeDisabled}
             aria-label={t('resumeDestructiveAria')}
           >
             {t('resumeDestructive')}

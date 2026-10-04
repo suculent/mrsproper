@@ -99,5 +99,6 @@
   "resumeBody": "Bylo zpracováno {{x}} z {{n}} skupin před zastavením. Pokračování začíná od první nezpracované skupiny.",
   "resumeDestructive": "Pokračovat v přidávání",
   "resumeDestructiveAria": "Pokračovat v úloze přidávání",
+  "resumeLoadingGroups": "Načítám vaše skupiny…",
   "resumeNeutral": "Zrušit úlohu"
 }

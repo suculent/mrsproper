@@ -21,6 +21,7 @@ import { useSearchStore } from '../store/searchStore'
 import { useRemovalStore } from '../store/removalStore'
 import { useTagStore } from '../store/tagStore'
 import { useAddStore } from '../store/addStore'
+import { useGroupsStore } from '../store/groupsStore'
 import { severityClient } from '../ipc/severityClient'
 
 interface AppShellProps {
@@ -98,6 +99,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   // ---------------------------------------------------------------------------
 
   const { state: add, pendingJob: pendingAddJob } = useAddStore()
+  const { groups: groupsState } = useGroupsStore()
 
   // Add auto-advance run→report — CRITICAL: gate on mode === 'add' to prevent
   // cross-contamination with removal/tag auto-advance (RESEARCH Pitfall 3)
@@ -198,6 +200,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           open={addResumeOpen}
           onOpenChange={() => {}}
           job={pendingAddJob}
+          groupsLoaded={groupsState.step === 'loaded'}
           onResume={() => { setMode('add'); setStage('run') }}
         />
       )}
