@@ -17,7 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { GroupRow } from './GroupRow'
+import { GroupRow, type GroupRowProps } from './GroupRow'
 import type { AdminDialogDTO } from '@shared/groupTypes'
 import type { GroupMode } from './modeRules'
 
@@ -153,5 +153,108 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
     expect(getWrapperClasses(html)).toContain('opacity-50')
     expect(html).toContain('greyReason.no-ban-right')
     expect(html).toContain('groupTypeLabel.supergroup')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Gap-closure coverage for the Add-mode subline (15-08 Task 2, ADD-13 / D-18).
+// Same static-render + raw-key approach as above. Covers what the plan only verified via
+// `npx tsc --build`: the privacy-blocked Copy button, the premiumWouldAllow hint, the failed
+// row's Add-specific retry link, and that a done row renders neither.
+// ---------------------------------------------------------------------------
+
+type AddRunProps = Pick<
+  GroupRowProps,
+  'addStatus' | 'addErrorCode' | 'addLink' | 'premiumWouldAllow' | 'onRetryAdd'
+>
+
+function renderAddRun(extra: AddRunProps): string {
+  const dialog: AdminDialogDTO = {
+    id: '2001',
+    title: 'Add Run Group',
+    avatar: null,
+    memberCount: 42,
+    type: 'supergroup',
+    canAct: true,
+    greyReason: null,
+    canAdd: true,
+    addGreyReason: null,
+  }
+  return renderToStaticMarkup(
+    <GroupRow
+      dialog={dialog}
+      membershipStatus="not-member"
+      isChecked={true}
+      onToggle={() => {}}
+      onRetry={() => {}}
+      activeMode="add"
+      {...extra}
+    />
+  )
+}
+
+// Returns the opening tags of every <button> in the markup.
+function getButtonOpenTags(html: string): string[] {
+  return [...html.matchAll(/<button\b[^>]*>/g)].map((m) => m[0])
+}
+
+describe('GroupRow — Add-mode run subline (15-08 / ADD-13 / D-18)', () => {
+  it('privacy-blocked row: renders "Invite link created" with a Copy link button and no Premium hint', () => {
+    const html = renderAddRun({
+      addStatus: 'privacy-blocked',
+      addLink: 'https://t.me/+abc',
+      premiumWouldAllow: false,
+    })
+
+    expect(html).toContain('rowStatus.linkCreated')
+    // The Copy control must be a real <button> whose accessible name is the copyLink key.
+    expect(html).toMatch(/<button\b[^>]*>(?:(?!<\/button>)[\s\S])*rowStatus\.copyLink/)
+    expect(html).not.toContain('rowStatus.premiumHint')
+    // Nothing from the failed branch leaks in.
+    expect(html).not.toContain('retryRowLabel')
+    expect(html).not.toContain('retryAddAria')
+  })
+
+  it('privacy-blocked row with premiumWouldAllow=true: additionally renders the Premium hint', () => {
+    const html = renderAddRun({
+      addStatus: 'privacy-blocked',
+      addLink: 'https://t.me/+abc',
+      premiumWouldAllow: true,
+    })
+
+    expect(html).toContain('rowStatus.copyLink')
+    expect(html).toContain('rowStatus.premiumHint')
+  })
+
+  it('failed row: renders the typed error key and the Add-specific retry link (not the scan/remove retry)', () => {
+    const html = renderAddRun({
+      addStatus: 'failed',
+      addErrorCode: 'ADD_NO_RIGHTS',
+      onRetryAdd: () => {},
+    })
+
+    expect(html).toContain('rowError.ADD_NO_RIGHTS')
+    expect(html).toContain('retryRowLabel')
+    // The retry control is a <button> carrying the Add-specific aria-label.
+    const retryButtons = getButtonOpenTags(html).filter((tag) => tag.includes('aria-label="retryAddAria"'))
+    expect(retryButtons).toHaveLength(1)
+    // Must be the Add retry, not the scan-failed retry (groups namespace) or a Copy button.
+    expect(html).not.toContain('retryScanAria')
+    expect(html).not.toContain('retryScanLabel')
+    expect(html).not.toContain('rowStatus.copyLink')
+    expect(html).not.toContain('rowStatus.premiumHint')
+  })
+
+  it('done row: renders the done status with no Copy button and no retry link', () => {
+    const html = renderAddRun({ addStatus: 'done' })
+
+    expect(html).toContain('rowStatus.done')
+    expect(html).not.toContain('rowStatus.copyLink')
+    expect(html).not.toContain('rowStatus.linkCreated')
+    expect(html).not.toContain('rowStatus.premiumHint')
+    expect(html).not.toContain('retryRowLabel')
+    expect(html).not.toContain('retryAddAria')
+    // A finished row has no interactive controls at all.
+    expect(getButtonOpenTags(html)).toHaveLength(0)
   })
 })
