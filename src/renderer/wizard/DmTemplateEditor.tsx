@@ -17,7 +17,9 @@ import { DM_TEMPLATE_MAX_LENGTH } from '@shared/dmTemplate'
 interface DmTemplateEditorProps {
   value: string
   onSave: (next: string) => void
-  onReset: () => void
+  /** CR-03: returns the new default template string so the open editor's draft can be
+   * re-seeded from it directly, instead of from the stale closed-over `value` prop. */
+  onReset: () => string
 }
 
 // ---------------------------------------------------------------------------
@@ -44,9 +46,11 @@ export function DmTemplateEditor({ value, onSave, onReset }: DmTemplateEditorPro
   }, [draft, onSave])
 
   const handleReset = useCallback(() => {
-    onReset()
-    setDraft(value)
-  }, [onReset, value])
+    // CR-03: seed the draft from the new default onReset() just computed/persisted, not from
+    // the stale closed-over `value` prop (the parent's state update hasn't re-rendered yet).
+    const next = onReset()
+    setDraft(next)
+  }, [onReset])
 
   return (
     <div className="flex flex-col gap-2">

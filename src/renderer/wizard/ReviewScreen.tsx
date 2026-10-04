@@ -527,9 +527,12 @@ export function ReviewScreen(props: ReviewScreenProps): React.JSX.Element {
               void templateClient.setDmTemplate(next)
             }}
             onReset={() => {
+              // CR-03: return the new default so DmTemplateEditor can re-seed its open draft
+              // from it directly, instead of from the stale `value` prop closure.
               const def = i18n.language === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN
               setCurrentTemplate(def)
               void templateClient.setDmTemplate(def)
+              return def
             }}
           />
         </div>
