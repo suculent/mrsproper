@@ -264,3 +264,42 @@ describe('groupsStore — recomputeCheckedForMode no-op guards', () => {
     expect(useGroupsStore().checkedDialogIds).toEqual(new Set())
   })
 })
+
+// ---------------------------------------------------------------------------
+// (f) First scan-complete while Add mode is already active uses the Add rule (15-14, must_haves #5)
+// ---------------------------------------------------------------------------
+
+describe('groupsStore — first scan-complete rebuild while Add mode is already active (15-14)', () => {
+  it('uses the Add partition rule, not a hardcoded Remove rule, when recomputeCheckedForMode("add") ran during scanning', async () => {
+    const { useGroupsStore, groupsActions, mockClient } = await loadFreshStore()
+    useGroupsStore()
+
+    const dialogs = [
+      makeDialog({ id: '1', canAct: true, canAdd: false }), // will resolve to 'member' — Remove-actionable only
+      makeDialog({ id: '2', canAct: false, canAdd: true }), // will resolve to 'not-member' — Add-actionable only
+    ]
+    const onGroupsState = mockClient.onGroupsState.mock.calls[0][0] as (s: GroupsState) => void
+    onGroupsState({ step: 'loaded', dialogs })
+
+    const onScanState = mockClient.onScanState.mock.calls[0][0] as (s: ScanState) => void
+
+    // Scan is still in progress; the user switches to Add mode, which records the active mode.
+    onScanState({
+      step: 'scanning',
+      progress: { checked: 1, total: 2 },
+      results: [{ dialogId: '1', status: 'member' }],
+    })
+    groupsActions.recomputeCheckedForMode('add')
+
+    // First-ever 'complete' emission, with Add mode already active.
+    onScanState({
+      step: 'complete',
+      results: [
+        { dialogId: '1', status: 'member' },
+        { dialogId: '2', status: 'not-member' },
+      ],
+    })
+
+    expect(useGroupsStore().checkedDialogIds).toEqual(new Set(['2']))
+  })
+})
