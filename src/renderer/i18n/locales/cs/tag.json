@@ -35,6 +35,7 @@
   "confirmDispatching": "Spouštím…",
   "progressLabel": "Označuji {{name}} ve skupině {{x}} z {{n}}…",
   "stopLabel": "Zastavit označování",
+  "stopTagAria": "Zastavit běh označování",
   "stoppingLabel": "Zastavuji…",
   "floodWaitSubline": "Telegram nás požádal, abychom zpomalili — automaticky pokračujeme.",
   "peerFloodBanner": "Telegram označil tento účet za příliš aktivní. Počkejte několik hodin před pokračováním — váš postup je uložen a úloha může pokračovat od místa, kde se zastavila.",

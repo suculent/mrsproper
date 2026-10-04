@@ -29,6 +29,7 @@
   "confirmDispatching": "Starting…",
   "progressLabel": "Tagging {{name}} in group {{x}} of {{n}}…",
   "stopLabel": "Stop tagging",
+  "stopTagAria": "Stop the tagging run",
   "stoppingLabel": "Stopping…",
   "floodWaitSubline": "Telegram asked us to slow down — resuming automatically.",
   "peerFloodBanner": "Telegram has flagged this account for too many actions. Wait a few hours before resuming — your progress is saved and the job can continue from where it stopped.",

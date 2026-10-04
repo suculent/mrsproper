@@ -43,6 +43,7 @@
   "confirmDisabledInvalidTarget": "Can't add a deleted account or bot.",
   "progressLabel": "Adding {{name}} to group {{x}} of {{n}}…",
   "stopLabel": "Stop adding",
+  "stopAddAria": "Stop the adding run",
   "stoppingLabel": "Stopping…",
   "floodWaitSubline": "Telegram asked us to slow down — resuming automatically.",
   "peerFloodBanner": "Telegram has flagged this account for too many actions. Wait a few hours before resuming — your progress is saved and the job can continue from where it stopped.",

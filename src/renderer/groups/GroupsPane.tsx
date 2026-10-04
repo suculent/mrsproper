@@ -344,7 +344,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                 className="text-label text-muted-foreground hover:text-foreground"
                 onClick={() => void tagActions.abortTag()}
                 disabled={isStopping}
-                aria-label={tG('stopRemovalAria')}
+                aria-label={tT('stopTagAria')}
               >
                 {isStopping ? (
                   <>
@@ -472,7 +472,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                 className="text-label text-muted-foreground hover:text-foreground"
                 onClick={() => void addActions.abortAdd()}
                 disabled={isStopping}
-                aria-label={tG('stopRemovalAria')}
+                aria-label={tAdd('stopAddAria')}
               >
                 {isStopping ? (
                   <>
