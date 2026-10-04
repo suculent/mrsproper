@@ -1,0 +1,181 @@
+// UI mirror of AddState fed by IPC subscriptions.
+// Uses React useSyncExternalStore pattern with ref-counted subscription lifecycle.
+// Mirrors src/renderer/store/tagStore.ts's module shape, plus retryGroup borrowed from
+// src/renderer/store/removalStore.ts (lines 131-137) — Add needs per-group retry (ADD-13/D-17),
+// unlike Tag. AddState carries no extra classification field beyond step/outcomes
+// (unlike RemovalState's ban/kick field), so no such field is mirrored here either.
+// cachedSnapshot guard below is MANDATORY — prevents "Maximum update depth exceeded"
+// React re-render loop (Pitfall 2, documented in tagStore.ts and 15-RESEARCH.md).
+//
+// Divergence from tagStore/removalStore (T-15-07): addActions.startAdd(dialogIds) takes a
+// SINGLE argument — no second classification-like parameter, and no argument-order flip.
+// addClient.startAdd(dialogIds) and addActions.startAdd(dialogIds) are identical in shape.
+
+import { useSyncExternalStore } from 'react'
+import type { AddState, AddJobFileSafe } from '@shared/addTypes'
+import { addClient } from '../ipc/addClient'
+
+type Listener = () => void
+
+let currentState: AddState = {
+  step: 'idle',
+  targetId: '',
+  targetName: '',
+  progress: { processed: 0, total: 0 },
+  outcomes: [],
+}
+let pendingJob: AddJobFileSafe | null = null
+
+const listeners = new Set<Listener>()
+
+function notify(): void {
+  for (const l of listeners) l()
+}
+
+function setState(next: AddState): void {
+  currentState = next
+  notify()
+}
+
+// Subscriptions are started once when the first component subscribes.
+// The unsubscribe function is stored so it can be called on cleanup.
+let addStateSub: (() => void) | null = null
+let refCount = 0
+
+function startSubscriptions(): void {
+  if (refCount > 0) return
+  refCount++
+
+  addStateSub = addClient.onAddState((s: AddState) => {
+    setState(s)
+  })
+
+  // Bootstrap current state from main on first subscription.
+  // Only apply if no push-state has arrived since we registered the listener
+  // (push arrives first → bootstrap overwriting it would flicker state backwards).
+  addClient.getAddState().then((s: AddState) => {
+    if (currentState.step === 'idle') {
+      setState(s)
+    }
+  }).catch(console.error)
+
+  // Bootstrap pending job on first subscription — detect incomplete jobs on launch
+  // so the app can present the AddResumeJobDialog.
+  addClient.getAddJob().then((job: AddJobFileSafe | null) => {
+    if (job !== null && job.status !== 'complete') {
+      pendingJob = job
+      notify()
+    }
+  }).catch(console.error)
+}
+
+function stopSubscriptions(): void {
+  if (refCount <= 0) return  // guard against underflow
+  refCount--
+  if (refCount > 0) return
+  addStateSub?.()
+  addStateSub = null
+}
+
+// External store subscription function (for useSyncExternalStore)
+function subscribe(listener: Listener): () => void {
+  if (listeners.size === 0) startSubscriptions()
+  listeners.add(listener)
+
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) stopSubscriptions()
+  }
+}
+
+// Snapshot identity must be stable between store changes — useSyncExternalStore
+// compares snapshots with Object.is, and a fresh object every call makes React
+// see an ever-changing store ("Maximum update depth exceeded" → tree unmount).
+// CRITICAL: This cachedSnapshot guard is mandatory (Pitfall 2).
+let cachedSnapshot: { state: AddState; pendingJob: AddJobFileSafe | null } = {
+  state: currentState,
+  pendingJob,
+}
+
+function getSnapshot(): { state: AddState; pendingJob: AddJobFileSafe | null } {
+  if (cachedSnapshot.state !== currentState || cachedSnapshot.pendingJob !== pendingJob) {
+    cachedSnapshot = { state: currentState, pendingJob }
+  }
+  return cachedSnapshot
+}
+
+function getServerSnapshot(): { state: AddState; pendingJob: AddJobFileSafe | null } {
+  return getSnapshot()
+}
+
+// Hook for components to access add state and any pending incomplete job
+export function useAddStore(): { state: AddState; pendingJob: AddJobFileSafe | null } {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+}
+
+// Intent dispatchers — delegate to addClient; update store from returned state.
+// NOTE: addActions.startAdd(dialogIds) — single argument, no second classification-like
+//       parameter and no argument-order flip (T-15-07) — unlike tagActions.startTag.
+export const addActions = {
+  async startAdd(dialogIds: string[]): Promise<void> {
+    try {
+      const s = await addClient.startAdd(dialogIds)
+      setState(s)
+      // CR-05 analog: clear pendingJob on successful dispatch so AddResumeJobDialog unmounts
+      pendingJob = null
+      notify()
+    } catch (err) {
+      console.error('[addStore] startAdd:', err)
+    }
+  },
+
+  async abortAdd(): Promise<void> {
+    try {
+      const s = await addClient.abortAdd()
+      setState(s)
+    } catch (err) {
+      console.error('[addStore] abortAdd:', err)
+    }
+  },
+
+  /**
+   * Retry a single failed group (ADD-13/D-17) — borrowed from removalStore.ts's
+   * retryGroup shape. Tag has no equivalent (no per-group retry).
+   */
+  async retryGroup(dialogId: string): Promise<void> {
+    try {
+      await addClient.retryAddGroup(dialogId)
+    } catch (err) {
+      console.error('[addStore] retryGroup:', err)
+    }
+  },
+
+  async discardJob(): Promise<void> {
+    try {
+      await addClient.discardAddJob()
+      pendingJob = null
+      notify()
+    } catch (err) {
+      console.error('[addStore] discardJob:', err)
+    }
+  },
+
+  /**
+   * Resume a stopped/hard-stopped job by re-reading the disk job file for
+   * authoritative remaining groups (mirrors tagStore/removalStore resumeJobFromDisk).
+   * addActions.startAdd takes only dialogIds — no second classification argument.
+   */
+  async resumeJobFromDisk(): Promise<void> {
+    try {
+      const freshJob = await addClient.getAddJob()
+      if (!freshJob || freshJob.status === 'complete') return
+      const remaining = freshJob.dialogIds.filter(
+        (id) => !freshJob.outcomes.find((o) => o.dialogId === id)
+      )
+      if (remaining.length === 0) return
+      await addActions.startAdd(remaining)
+    } catch (err) {
+      console.error('[addStore] resumeJobFromDisk:', err)
+    }
+  },
+}
