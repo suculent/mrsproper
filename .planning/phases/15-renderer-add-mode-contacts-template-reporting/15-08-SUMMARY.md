@@ -89,3 +89,11 @@ None - no external service configuration required.
 ---
 *Phase: 15-renderer-add-mode-contacts-template-reporting*
 *Completed: 2026-10-04*
+
+## Self-Check: PASSED
+
+- FOUND: src/renderer/groups/GroupRow.tsx
+- FOUND: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-08-SUMMARY.md
+- FOUND commit: a46fadb (Task 1)
+- FOUND commit: 8399971 (Task 2)
+- FOUND commit: 284ba12 (SUMMARY.md)

@@ -249,7 +249,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 15-07-PLAN.md — addClient.ts + addStore.ts (clone of tagStore + removalStore.retryGroup)
-- [ ] 15-08-PLAN.md — GroupRow.tsx Add-mode status rendering + Copy-link button
+- [x] 15-08-PLAN.md — GroupRow.tsx Add-mode status rendering + Copy-link button
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -282,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 8/13 | In Progress|  |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 9/13 | In Progress|  |
 </content>

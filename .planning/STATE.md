@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 15-07-PLAN.md
-last_updated: "2026-10-04T01:15:40.420Z"
+stopped_at: Completed 15-08-PLAN.md
+last_updated: "2026-10-04T01:24:59.173Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 22
+  completed_plans: 23
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 9 of 13
+Plan: 10 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -87,6 +87,7 @@ Last activity: 2026-10-04
 | Phase 15 P06 | 6min | 2 tasks | 2 files |
 | Phase 15 P11 | 8min | 1 tasks | 1 files |
 | Phase 15 P07 | 10min | 2 tasks | 3 files |
+| Phase 15 P08 | 25min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 15]: [15-11]: TargetCard's checkbox block sits as a sibling before the footer div (not nested in the !isConfirmed conditional) so it renders in both resolved and confirmed Add-mode states per D-08
 - [Phase ?]: addActions.startAdd(dialogIds) takes a single argument with no order flip, unlike tagActions.startTag(tag, dialogIds) (T-15-07)
 - [Phase ?]: [15-07]: addStore.test.ts mocks react's useSyncExternalStore (groupsStore.test.ts idiom) instead of tagStore.test.ts's indirect-assertion style, to directly assert cachedSnapshot identity stability
+- [Phase 15]: [15-08]: addGreyReason renders as an unconditional sibling branch gated only by addGreyReason != null && greyReason == null -- no new isAddModeRow prop
+- [Phase 15]: [15-08]: Split the single-file GroupRow.tsx change into two atomic task commits by reverting to HEAD and re-applying each task's exact diff, since TypeScript noUnusedLocals requires Task 1 and Task 2's code to coexist to compile
 
 ### Pending Todos
 
@@ -198,8 +201,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T01:15:40.414Z
-Stopped at: Completed 15-07-PLAN.md
+Last session: 2026-10-04T01:24:59.167Z
+Stopped at: Completed 15-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
