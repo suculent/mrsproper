@@ -104,3 +104,13 @@ None - no external service configuration required.
 ---
 *Phase: 15-renderer-add-mode-contacts-template-reporting*
 *Completed: 2026-10-04*
+
+## Self-Check: PASSED
+
+- FOUND: src/renderer/groups/ModeSwitch.tsx
+- FOUND: src/renderer/groups/GroupsPane.tsx
+- FOUND: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-09-SUMMARY.md
+- FOUND commit: a32cc71 (Task 1)
+- FOUND commit: 7edc500 (Task 2)
+- FOUND commit: aad52da (Task 3)
+- FOUND commit: 409090f (SUMMARY.md)
