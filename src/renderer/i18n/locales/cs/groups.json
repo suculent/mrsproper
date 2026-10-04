@@ -44,7 +44,11 @@
       "body": "Žádné skupiny neodpovídají tomuto filtru. Zkuste jiný název."
     },
     "notInAnyHeading": "Není v žádné z vašich skupin",
-    "notInAnyBody": "{{name}} není členem žádné skupiny, ze které byste ho mohli odebrat. Možná skupinu již opustil, nebo nemáte práva k odebrání ve všech vašich skupinách."
+    "notInAnyBody": "{{name}} není členem žádné skupiny, ze které byste ho mohli odebrat. Možná skupinu již opustil, nebo nemáte práva k odebrání ve všech vašich skupinách.",
+    "notInAnyBodyTag": "{{name}} není členem žádné skupiny, ve které byste ho mohli označit.",
+    "nothingToAddHeading": "Není co přidávat",
+    "allAlreadyMember": "{{name}} už je ve všech skupinách, do kterých ho můžete pozvat.",
+    "cannotAddBody": "{{name}} nelze přidat do zbývajících skupin — chybí vám právo zvát, nebo je skupina plná."
   },
   "stopRemovalAria": "Zastavit odebírání",
   "filterPlaceholder": "Filtrovat skupiny",

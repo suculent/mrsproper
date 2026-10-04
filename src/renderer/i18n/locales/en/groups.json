@@ -43,7 +43,11 @@
       "body": "No groups match that filter. Try a different name."
     },
     "notInAnyHeading": "Not in any of your groups",
-    "notInAnyBody": "{{name}} isn't a member of any group you can remove them from. They may have already left, or you lack removal rights in all your groups."
+    "notInAnyBody": "{{name}} isn't a member of any group you can remove them from. They may have already left, or you lack removal rights in all your groups.",
+    "notInAnyBodyTag": "{{name}} isn't a member of any group you can tag them in.",
+    "nothingToAddHeading": "Nothing to add",
+    "allAlreadyMember": "{{name}} is already in every group you can invite them to.",
+    "cannotAddBody": "{{name}} can't be added to the remaining groups — you lack the invite right or the group is full."
   },
   "stopRemovalAria": "Stop the removal run",
   "filterPlaceholder": "Filter groups",

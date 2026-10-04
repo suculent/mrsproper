@@ -25,6 +25,7 @@ import { useAddStore, addActions } from '../store/addStore'
 import { addClient } from '../ipc/addClient'
 import { GroupRow } from './GroupRow'
 import { ModeSwitch } from './ModeSwitch'
+import { getAddEmptyState, isAddStatusInJob } from './addPaneState'
 import { isActionableForMode, type GroupMode } from './modeRules'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
@@ -248,6 +249,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
 
     if (!addActive) return null
 
+    // D-16: rows outside the job's dialogIds show no run status (not 'queued')
+    if (!isAddStatusInJob(dialogId, add.dialogIds)) return null
+
     const outcome = add.outcomes.find((o) => o.dialogId === dialogId)
     if (outcome) return outcome.status
 
@@ -297,16 +301,39 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       return null
     }
 
-    // Checklist mode — show "not in any" when scan complete and no actionable (member) rows
+    // Checklist mode — scan complete
     if (mode === 'checklist' && scan.step === 'complete') {
-      const memberRows = scan.results.filter((r) => r.status === 'member')
-      if (memberRows.length === 0) {
-        return (
-          <div className="px-4 py-8 flex flex-col gap-1">
-            <span className="text-label font-semibold">{tG('emptyState.notInAnyHeading', { name: targetName })}</span>
-            <span className="text-body text-muted-foreground">{tG('emptyState.notInAnyBody', { name: targetName })}</span>
-          </div>
+      if (activeMode === 'add') {
+        // D-06: Add empty state only when no row is actionable. failedCount > 0 keeps the
+        // checklist visible so verify-failed rows can still be retried (confirm at UAT).
+        const addEmpty = getAddEmptyState(
+          allDialogs,
+          (id) => scan.results.find((r) => r.dialogId === id)?.status ?? null,
+          failedCount
         )
+        if (addEmpty !== 'none') {
+          return (
+            <div className="px-4 py-8 flex flex-col gap-1">
+              <span className="text-label font-semibold">{tG('emptyState.nothingToAddHeading')}</span>
+              <span className="text-body text-muted-foreground">
+                {tG(addEmpty === 'all-member' ? 'emptyState.allAlreadyMember' : 'emptyState.cannotAddBody', { name: targetName })}
+              </span>
+            </div>
+          )
+        }
+      } else {
+        // Remove / Tag — "not in any" when no member rows
+        const memberRows = scan.results.filter((r) => r.status === 'member')
+        if (memberRows.length === 0) {
+          return (
+            <div className="px-4 py-8 flex flex-col gap-1">
+              <span className="text-label font-semibold">{tG('emptyState.notInAnyHeading', { name: targetName })}</span>
+              <span className="text-body text-muted-foreground">
+                {tG(activeMode === 'tag' ? 'emptyState.notInAnyBodyTag' : 'emptyState.notInAnyBody', { name: targetName })}
+              </span>
+            </div>
+          )
+        }
       }
     }
 
