@@ -7,11 +7,12 @@
 // D-07: failed-verify shows destructive text + inline retry button
 // Phase 5: removalStatus prop renders per-group removal status in checkbox slot + subline.
 
-import React from 'react'
-import { Check, Loader2, AlertCircle, Minus } from 'lucide-react'
+import React, { useState } from 'react'
+import { Check, Loader2, AlertCircle, Minus, Copy } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { Badge } from '@renderer/components/ui/badge'
+import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
@@ -19,6 +20,7 @@ import type { RmvErrorCode } from '@shared/removalTypes'
 import type { TagErrorCode } from '@shared/tagTypes'
 import type { AddErrorCode } from '@shared/addTypes'
 import { formatMemberCount } from '@renderer/lib/format'
+import { clipboardClient } from '../ipc/clipboardClient'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from TargetCard — avoids premature abstraction per PATTERNS.md
@@ -118,11 +120,17 @@ export function GroupRow({
   tagStatus,
   tagErrorCode,
   addStatus,
+  addErrorCode,
+  addLink,
+  premiumWouldAllow,
+  onRetryAdd,
 }: GroupRowProps): React.JSX.Element {
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
   const { t: tT } = useTranslation('tag')
   const { t: tAdd } = useTranslation('add')
+
+  const [justCopied, setJustCopied] = useState(false)
 
   const isActionable = dialog.canAct && membershipStatus === 'member'
   const isPending = membershipStatus === null || membershipStatus === 'pending'
@@ -134,6 +142,12 @@ export function GroupRow({
 
   // When a removal, tag, or add run is active for this row, disable toggle interactions
   const isRemovalActive = removalStatus != null || tagStatus != null || addStatus != null
+
+  function handleCopyLink(): void {
+    void clipboardClient.writeClipboardText(addLink ?? '')
+    setJustCopied(true)
+    setTimeout(() => setJustCopied(false), 2000)
+  }
 
   // ---------------------------------------------------------------------------
   // Checkbox slot — Phase 5 removal status branch is FIRST
@@ -402,6 +416,76 @@ export function GroupRow({
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Add-status subline — parallel to renderRemovalSubline/renderTagSubline (D-17/D-18)
+  // ---------------------------------------------------------------------------
+
+  function renderAddSubline(): React.JSX.Element | null {
+    if (addStatus == null) return null
+
+    switch (addStatus) {
+      case 'adding':
+        return (
+          <span className="text-label text-muted-foreground">{tAdd('rowStatus.adding')}</span>
+        )
+      case 'done':
+        return (
+          <span className="text-label text-muted-foreground">{tAdd('rowStatus.done')}</span>
+        )
+      case 'already-member':
+        return (
+          <span className="text-label text-muted-foreground">{tAdd('rowStatus.alreadyMember')}</span>
+        )
+      case 'privacy-blocked':
+        return (
+          <>
+            <span className="text-label text-muted-foreground inline-flex items-baseline gap-1">
+              {tAdd('rowStatus.linkCreated')}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyLink}
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="sr-only">{tAdd('rowStatus.copyLink')}</span>
+                {justCopied && <span className="ml-1" aria-hidden="true">{tAdd('rowStatus.linkCopied')}</span>}
+              </Button>
+            </span>
+            {premiumWouldAllow === true && (
+              <span className="text-label text-muted-foreground">
+                {tAdd('rowStatus.premiumHint')}
+              </span>
+            )}
+          </>
+        )
+      case 'failed': {
+        const reasonCopy = addErrorCode
+          ? tAdd(`rowError.${addErrorCode}`)
+          : tAdd('rowError.UNKNOWN')
+        return (
+          <span className="text-label text-destructive inline-flex items-baseline gap-1">
+            {reasonCopy}
+            <button
+              onClick={() => onRetryAdd?.(dialog.id)}
+              className="text-label text-primary underline-offset-2 hover:underline"
+              aria-label={tAdd('retryAddAria', { title: dialog.title })}
+            >
+              {tAdd('retryRowLabel')}
+            </button>
+          </span>
+        )
+      }
+      case 'skipped':
+        return (
+          <span className="text-label text-muted-foreground">{tAdd('rowStatus.skipped')}</span>
+        )
+      case 'queued':
+        // No subline for queued rows
+        return null
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -431,10 +515,27 @@ export function GroupRow({
         {/* Tag status subline — Phase 12 addition; renders only when tagStatus != null */}
         {renderTagSubline()}
 
+        {/* Add status subline — Phase 15 addition; renders only when addStatus != null */}
+        {renderAddSubline()}
+
+        {/* Banned-but-actionable note (D-06) — Add mode, no run active, row stays interactive */}
+        {addStatus == null && membershipStatus === 'banned' && dialog.canAdd && (
+          <span className="text-label text-muted-foreground">
+            {tAdd('rowNote.bannedWillUnban')}
+          </span>
+        )}
+
         {/* Grey reason — canAct=false, not failed-verify (D-03) — only when no removal active */}
         {!isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
           <span className="text-label text-muted-foreground">
             {tG(`greyReason.${dialog.greyReason}`)}
+          </span>
+        )}
+
+        {/* Add-mode grey reason — canAdd=false (D-08, data layer shipped Phase 13) */}
+        {addStatus == null && dialog.addGreyReason != null && dialog.greyReason == null && (
+          <span className="text-label text-muted-foreground">
+            {tG(`greyReason.${dialog.addGreyReason}`)}
           </span>
         )}
 
