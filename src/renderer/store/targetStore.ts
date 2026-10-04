@@ -10,6 +10,9 @@ import { targetClient } from '@renderer/ipc/targetClient'
 interface TargetStoreState {
   target: TargetState
   governorFloodRemaining: number // D-17: feeds the Find button countdown
+  addToContactsChecked: boolean // D-08: session-only, pre-checked by default
+  contactAddAttempted: boolean // D-09: enforces at-most-once dispatch per target
+  contactAddFailed: boolean // D-10: drives the quiet inline failure notice
 }
 
 type Listener = () => void
@@ -17,6 +20,9 @@ type Listener = () => void
 let currentState: TargetStoreState = {
   target: { step: 'idle' },
   governorFloodRemaining: 0,
+  addToContactsChecked: true,
+  contactAddAttempted: false,
+  contactAddFailed: false,
 }
 
 const listeners = new Set<Listener>()
@@ -116,9 +122,35 @@ export const targetActions = {
   async resetTarget(): Promise<void> {
     try {
       await targetClient.resetTarget()
-      setState({ target: { step: 'idle' }, governorFloodRemaining: 0 })
+      setState({
+        target: { step: 'idle' },
+        governorFloodRemaining: 0,
+        addToContactsChecked: true,
+        contactAddAttempted: false,
+        contactAddFailed: false,
+      })
     } catch (err) {
       console.error('[targetStore] resetTarget error:', err)
+    }
+  },
+
+  // D-08: session-only checkbox toggle — never touches contactAddAttempted/contactAddFailed.
+  toggleAddToContacts(checked: boolean): void {
+    setState({ addToContactsChecked: checked })
+  },
+
+  // D-09/D-10: idempotent, non-blocking contact-add dispatch. Callable from either trigger
+  // point (confirm-time or run-confirm-time) — at most one underlying bridge call per target.
+  async maybeAddToContacts(): Promise<void> {
+    if (!currentState.addToContactsChecked || currentState.contactAddAttempted) return
+    // Set the flag BEFORE awaiting so a second concurrent call sees it already set.
+    setState({ contactAddAttempted: true })
+    try {
+      const result = await targetClient.addTargetToContacts().catch(() => ({ ok: false }))
+      setState({ contactAddFailed: !result.ok })
+    } catch (err) {
+      console.error('[targetStore] maybeAddToContacts error:', err)
+      setState({ contactAddFailed: true })
     }
   },
 }
