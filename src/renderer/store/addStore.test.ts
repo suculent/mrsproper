@@ -270,7 +270,7 @@ describe('addActions.resumeJobFromDisk', () => {
     expect(mockClient.startAdd).not.toHaveBeenCalled()
   })
 
-  it('no-ops when remaining (dialogIds minus outcome ids) is empty', async () => {
+  it('no-ops when every dialog has a non-skipped outcome', async () => {
     const { addActions, mockClient } = await loadFreshStore()
     mockClient.getAddState.mockReturnValue(new Promise(() => {}))
     mockClient.getAddJob.mockResolvedValue(
@@ -288,13 +288,16 @@ describe('addActions.resumeJobFromDisk', () => {
     expect(mockClient.startAdd).not.toHaveBeenCalled()
   })
 
-  it('calls startAdd with the remaining dialogIds (not present in outcomes)', async () => {
+  it('calls startAdd with the FULL dialogIds set, not the remaining subset', async () => {
     const { addActions, mockClient } = await loadFreshStore()
     mockClient.getAddState.mockReturnValue(new Promise(() => {}))
     mockClient.getAddJob.mockResolvedValue(
       makeSafeJob({
         dialogIds: ['1', '2', '3'],
-        outcomes: [{ dialogId: '1', status: 'done', timestamp: '2026-10-04T00:00:00.000Z' }],
+        outcomes: [
+          { dialogId: '1', status: 'done', timestamp: '2026-10-04T00:00:00.000Z' },
+          { dialogId: '2', status: 'failed', timestamp: '2026-10-04T00:00:00.000Z' },
+        ],
       })
     )
     mockClient.startAdd.mockResolvedValue(makeCompletedAddState())
@@ -302,7 +305,58 @@ describe('addActions.resumeJobFromDisk', () => {
     await addActions.resumeJobFromDisk()
 
     expect(mockClient.startAdd).toHaveBeenCalledTimes(1)
-    expect(mockClient.startAdd).toHaveBeenCalledWith(['2', '3'])
+    expect(mockClient.startAdd).toHaveBeenCalledWith(['1', '2', '3'])
+  })
+
+  it('resumes with the full set when one outcome is skipped (skipped is not processed)', async () => {
+    const { addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(
+      makeSafeJob({
+        dialogIds: ['1', '2'],
+        outcomes: [
+          { dialogId: '1', status: 'done', timestamp: '2026-10-04T00:00:00.000Z' },
+          { dialogId: '2', status: 'skipped', timestamp: '2026-10-04T00:00:00.000Z' },
+        ],
+      })
+    )
+    mockClient.startAdd.mockResolvedValue(makeCompletedAddState())
+
+    await addActions.resumeJobFromDisk()
+
+    expect(mockClient.startAdd).toHaveBeenCalledWith(['1', '2'])
+  })
+})
+
+describe('addActions.startAdd — pendingJob retention (D-04)', () => {
+  it('retains pendingJob when the returned state is idle', async () => {
+    const { useAddStore, addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(makeSafeJob())
+    mockClient.startAdd.mockResolvedValue({ ...makeCompletedAddState(), step: 'idle' })
+
+    useAddStore()
+    await Promise.resolve()
+    await Promise.resolve()
+    const started = await addActions.startAdd(['1', '2', '3'])
+
+    expect(started).toBe(false)
+    expect(useAddStore().pendingJob).not.toBeNull()
+  })
+
+  it('clears pendingJob when the returned state is not idle', async () => {
+    const { useAddStore, addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(makeSafeJob())
+    mockClient.startAdd.mockResolvedValue(makeCompletedAddState())
+
+    useAddStore()
+    await Promise.resolve()
+    await Promise.resolve()
+    const started = await addActions.startAdd(['1', '2', '3'])
+
+    expect(started).toBe(true)
+    expect(useAddStore().pendingJob).toBeNull()
   })
 })
 
@@ -328,6 +382,26 @@ describe('addStore — bootstrap on first subscription', () => {
     const { useAddStore, mockClient } = await loadFreshStore()
     mockClient.getAddState.mockReturnValue(new Promise(() => {}))
     mockClient.getAddJob.mockResolvedValue(null)
+
+    useAddStore()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(useAddStore().pendingJob).toBeNull()
+  })
+
+  it('does not set pendingJob when non-skipped outcomes cover every dialog', async () => {
+    const { useAddStore, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(
+      makeSafeJob({
+        dialogIds: ['1', '2'],
+        outcomes: [
+          { dialogId: '1', status: 'done', timestamp: '2026-10-04T00:00:00.000Z' },
+          { dialogId: '2', status: 'failed', timestamp: '2026-10-04T00:00:00.000Z' },
+        ],
+      })
+    )
 
     useAddStore()
     await Promise.resolve()

@@ -14,6 +14,7 @@
 import { useSyncExternalStore } from 'react'
 import type { AddState, AddJobFileSafe } from '@shared/addTypes'
 import { addClient } from '../ipc/addClient'
+import { getResumeDialogIds, isJobFinished } from '@shared/addResume'
 
 type Listener = () => void
 
@@ -62,7 +63,7 @@ function startSubscriptions(): void {
   // Bootstrap pending job on first subscription — detect incomplete jobs on launch
   // so the app can present the AddResumeJobDialog.
   addClient.getAddJob().then((job: AddJobFileSafe | null) => {
-    if (job !== null && job.status !== 'complete') {
+    if (job !== null && job.status !== 'complete' && !isJobFinished(job)) {
       pendingJob = job
       notify()
     }
@@ -117,15 +118,22 @@ export function useAddStore(): { state: AddState; pendingJob: AddJobFileSafe | n
 // NOTE: addActions.startAdd(dialogIds) — single argument, no second classification-like
 //       parameter and no argument-order flip (T-15-07) — unlike tagActions.startTag.
 export const addActions = {
-  async startAdd(dialogIds: string[]): Promise<void> {
+  /**
+   * Returns true when a run actually started (returned state is not idle). An idle result
+   * (e.g. main could not resolve the target yet) keeps pendingJob so the resume dialog stays.
+   */
+  async startAdd(dialogIds: string[]): Promise<boolean> {
     try {
       const s = await addClient.startAdd(dialogIds)
       setState(s)
-      // CR-05 analog: clear pendingJob on successful dispatch so AddResumeJobDialog unmounts
+      if (s.step === 'idle') return false
+      // CR-05 analog: clear pendingJob once a run started so AddResumeJobDialog unmounts
       pendingJob = null
       notify()
+      return true
     } catch (err) {
       console.error('[addStore] startAdd:', err)
+      return false
     }
   },
 
@@ -162,18 +170,15 @@ export const addActions = {
 
   /**
    * Resume a stopped/hard-stopped job by re-reading the disk job file for
-   * authoritative remaining groups (mirrors tagStore/removalStore resumeJobFromDisk).
+   * the authoritative job; sends the FULL dialogIds set (D-01) (mirrors tagStore/removalStore resumeJobFromDisk).
    * addActions.startAdd takes only dialogIds — no second classification argument.
    */
   async resumeJobFromDisk(): Promise<void> {
     try {
       const freshJob = await addClient.getAddJob()
       if (!freshJob || freshJob.status === 'complete') return
-      const remaining = freshJob.dialogIds.filter(
-        (id) => !freshJob.outcomes.find((o) => o.dialogId === id)
-      )
-      if (remaining.length === 0) return
-      await addActions.startAdd(remaining)
+      if (isJobFinished(freshJob)) return
+      await addActions.startAdd(getResumeDialogIds(freshJob))
     } catch (err) {
       console.error('[addStore] resumeJobFromDisk:', err)
     }
