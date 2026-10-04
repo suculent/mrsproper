@@ -274,10 +274,18 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 16-01-PLAN.md — Main resume path: target rebuilt from job file, add-log titles, AddState.dialogIds, shared resume helpers, cross-process test
 - [ ] 16-02-PLAN.md — DM language read at render time, Change-target disabled during any run, docs housekeeping
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 16-03-PLAN.md — Renderer resume: full dialog-id set, skipped resumable, enumeration-gated Resume button
 - [ ] 16-04-PLAN.md — canUnban DTO boolean + Add predicate + fixtures
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 16-05-PLAN.md — Add empty state, Tag empty body, banned-no-unban-right row rendering, job-scoped queued status
 
 ## Progress
