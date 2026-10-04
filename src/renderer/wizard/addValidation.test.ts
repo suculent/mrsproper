@@ -102,6 +102,14 @@ describe('computeAddGroups', () => {
     const result = computeAddGroups([d1, d2], new Set(['1', '2']), new Map(), t)
     expect(result.map((r) => r.dialog.id)).toEqual(['2'])
   })
+
+  it('D-12: excludes a checked banned dialog with canUnban false, keeps one with canUnban true', () => {
+    const d1 = makeDialog({ id: '1', canUnban: false })
+    const d2 = makeDialog({ id: '2', canUnban: true })
+    const status = new Map<string, 'banned'>([['1', 'banned'], ['2', 'banned']])
+    const result = computeAddGroups([d1, d2], new Set(['1', '2']), status, t)
+    expect(result.map((r) => r.dialog.id)).toEqual(['2'])
+  })
 })
 
 // ---------------------------------------------------------------------------

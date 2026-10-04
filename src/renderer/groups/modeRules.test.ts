@@ -36,9 +36,30 @@ describe('isActionableForMode — add mode (D-05)', () => {
     expect(isActionableForMode(d, 'not-member', 'add')).toBe(true)
   })
 
-  it('true when canAdd is true and status is banned', () => {
-    const d = makeDialog({ canAdd: true })
+  it('true when canAdd and canUnban are true and status is banned', () => {
+    const d = makeDialog({ canAdd: true, canUnban: true })
     expect(isActionableForMode(d, 'banned', 'add')).toBe(true)
+  })
+
+  it('false when status is banned and canUnban is false (D-09/D-10)', () => {
+    const d = makeDialog({ canAdd: true, canUnban: false })
+    expect(isActionableForMode(d, 'banned', 'add')).toBe(false)
+  })
+
+  it('true when status is not-member even if canUnban is false', () => {
+    const d = makeDialog({ canAdd: true, canUnban: false })
+    expect(isActionableForMode(d, 'not-member', 'add')).toBe(true)
+  })
+
+  it('false when canAdd is false, banned and canUnban true', () => {
+    const d = makeDialog({ canAdd: false, canUnban: true })
+    expect(isActionableForMode(d, 'banned', 'add')).toBe(false)
+  })
+
+  it('remove/tag ignore canUnban', () => {
+    const d = makeDialog({ canAct: true, canUnban: false })
+    expect(isActionableForMode(d, 'member', 'remove')).toBe(true)
+    expect(isActionableForMode(d, 'member', 'tag')).toBe(true)
   })
 
   it('false when canAdd is false, even if status is not-member', () => {

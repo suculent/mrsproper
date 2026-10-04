@@ -5,6 +5,7 @@
 import { DM_TEMPLATE_MAX_LENGTH } from '@shared/dmTemplate'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { TranslateFn } from './tagValidation'
+import { isActionableForMode } from '../groups/modeRules'
 
 // ---------------------------------------------------------------------------
 // AddGroupAction — result of mapping a checked dialog to its add-run mechanic (D-14)
@@ -33,10 +34,11 @@ export function computeAddGroups(
   t: TranslateFn = (key) => key
 ): AddGroupAction[] {
   return dialogs
-    // WR-03: defensive re-filter on canAdd, mirroring computePlannedActions' `d.canAct` safety
-    // net on the Remove path — a dialog the target cannot actually be invited to must never
-    // reach startAdd(dialogIds), even if checkedDialogIds is stale/incorrect.
-    .filter((d) => checkedIds.has(d.id) && d.canAdd)
+    // WR-03 / D-12: defensive re-filter via the shared predicate (canAdd + banned-needs-canUnban),
+    // mirroring computePlannedActions' safety net on the Remove path — a dialog the target
+    // cannot actually be added to must never reach startAdd(dialogIds), even if checkedDialogIds
+    // is stale/incorrect.
+    .filter((d) => checkedIds.has(d.id) && isActionableForMode(d, membershipByDialogId.get(d.id) ?? 'not-member', 'add'))
     .map((d) => {
       const isBasic = d.type === 'basic-group'
       const isBanned = membershipByDialogId.get(d.id) === 'banned'
