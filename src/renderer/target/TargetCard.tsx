@@ -10,6 +10,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/ava
 import { Badge } from '@renderer/components/ui/badge'
 import { Alert, AlertDescription } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Label } from '@renderer/components/ui/label'
 import {
   Tooltip,
   TooltipContent,
@@ -94,13 +96,16 @@ function renderLastSeen(dto: LastSeenDTO, tTr: TFunction<any, any>): string {
 // ---------------------------------------------------------------------------
 
 interface TargetCardProps {
+  mode?: 'remove' | 'tag' | 'add'
   onTargetConfirmed?: () => void
   onNavigateToTarget?: () => void
 }
 
 export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | null {
+  const mode = props.mode ?? 'remove'
   const { t: tTr } = useTranslation('target')
-  const { target } = useTargetStore()
+  const { t: tA } = useTranslation('add')
+  const { target, addToContactsChecked, contactAddFailed } = useTargetStore()
   const { state: removal } = useRemovalStore()
 
   // T-05-07-B: disable Change target while removal is running or stopping
@@ -243,6 +248,26 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
           </Alert>
         )}
 
+        {/* Add to contacts checkbox + failure notice (D-08, D-09, D-10) — Add mode only,
+            both resolved and confirmed states */}
+        {mode === 'add' && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex flex-row gap-2 items-center">
+              <Checkbox
+                id="add-to-contacts"
+                checked={addToContactsChecked}
+                onCheckedChange={(checked) => targetActions.toggleAddToContacts(checked === true)}
+              />
+              <Label htmlFor="add-to-contacts">{tA('contactsCheckboxLabel')}</Label>
+            </div>
+            {contactAddFailed && (
+              <span className="text-label text-muted-foreground">
+                {tA('contactsFailedNotice')}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Footer row (D-11, D-14) */}
         <div className="mt-2 flex flex-row justify-between items-center">
           {/* Change target button (D-14) — present in both resolved and confirmed states */}
@@ -277,7 +302,11 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
           {!isConfirmed && (
             <Button
               type="button"
-              onClick={async () => { await targetActions.confirmTarget(); props.onTargetConfirmed?.() }}
+              onClick={async () => {
+                await targetActions.confirmTarget()
+                if (mode === 'add') await targetActions.maybeAddToContacts()
+                props.onTargetConfirmed?.()
+              }}
             >
               {tTr('confirmPerson')}
             </Button>
