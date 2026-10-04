@@ -750,6 +750,33 @@ describe('addChannels — ADD_EXPORT_LOG', () => {
 
     expect(result).toEqual({ ok: false, reason: 'canceled' })
   })
+
+  it('20. ADD_EXPORT_LOG — unauthenticated returns { ok: false } without calling showSaveDialog or copyFileSync (T-15-03)', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockAuditStore()
+    const contactService = makeMockContactService()
+    const addLogStore = makeMockAddLogStore('/fake/add-log.txt')
+    const getAuthState = makeGetAuthState('idle')
+    existsSyncMock.mockReturnValue(true)
+
+    registerAddChannels(
+      win as never,
+      executor as never,
+      enumerator as never,
+      auditStore as never,
+      contactService as never,
+      addLogStore as never,
+      getAuthState
+    )
+
+    const result = await capturedHandlers['add:exportLog']({}, undefined)
+
+    expect(showSaveDialogMock).not.toHaveBeenCalled()
+    expect(copyFileSyncMock).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: false })
+  })
 })
 
 // ---------------------------------------------------------------------------
