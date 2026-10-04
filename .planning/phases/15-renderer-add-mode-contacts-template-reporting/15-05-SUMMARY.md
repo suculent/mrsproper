@@ -90,3 +90,10 @@ None - no external service configuration required.
 ---
 *Phase: 15-renderer-add-mode-contacts-template-reporting*
 *Completed: 2026-10-04*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk (`src/renderer/ipc/targetClient.ts`,
+`src/renderer/store/targetStore.ts`, `src/renderer/store/targetStore.test.ts`,
+`15-05-SUMMARY.md`); all task commit hashes (13906a9, 948fd6e) and the SUMMARY commit
+(aeea7f2) verified present in `git log`.
