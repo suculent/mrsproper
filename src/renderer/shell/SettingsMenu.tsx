@@ -12,19 +12,38 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@renderer/components/ui/tooltip'
+import { addClient } from '@renderer/ipc/addClient'
 import LogoutDialog from './LogoutDialog'
 
 export default function SettingsMenu(): React.JSX.Element {
   const { t, i18n } = useTranslation('shell')
+  const { t: tAdd } = useTranslation('add')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeTheme, setActiveTheme] = useState<'light' | 'dark'>(() =>
     document.documentElement.classList.contains('dark') ? 'dark' : 'light'
   )
+  const [exportMessage, setExportMessage] = useState<'no-log' | null>(null)
 
   const handleLogoutClick = (): void => {
     setMenuOpen(false)
     setDialogOpen(true)
+  }
+
+  // D-20: "Export add log…" reachable from the Settings menu without having just run an add.
+  // Calls the same ADD_EXPORT_LOG bridge used by the report-stage button (Plan 15-09).
+  const handleExportLog = async (): Promise<void> => {
+    setMenuOpen(false)
+    try {
+      const result = await addClient.exportAddLog()
+      if (!result.ok && result.reason === 'no-log') {
+        setExportMessage('no-log')
+      } else {
+        setExportMessage(null)
+      }
+    } catch (err) {
+      console.error('Failed to export add log', err)
+    }
   }
 
   const handleLanguageSelect = async (lang: 'en' | 'cs'): Promise<void> => {
@@ -64,7 +83,11 @@ export default function SettingsMenu(): React.JSX.Element {
                 aria-label={t('settingsLabel')}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
+                onClick={() => {
+                  // D-20: clear any stale "No add log yet" message on next open.
+                  setExportMessage(null)
+                  setMenuOpen((v) => !v)
+                }}
                 // ≥44px hit target (D-16/UI-SPEC App shell layout)
                 className="h-11 w-11"
               >
@@ -177,6 +200,23 @@ export default function SettingsMenu(): React.JSX.Element {
                     <span className="w-4" aria-hidden="true" />
                   )}
                 </button>
+
+                <div className="border-t border-border my-1" role="separator" />
+
+                {/* ── Export add log (D-20: reachable without having just run an add) ── */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void handleExportLog()}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors"
+                >
+                  {tAdd('exportLogButton')}
+                </button>
+                {exportMessage === 'no-log' && (
+                  <div className="px-3 pb-1 text-label text-muted-foreground">
+                    {tAdd('exportLogNoLogYet')}
+                  </div>
+                )}
 
                 <div className="border-t border-border my-1" role="separator" />
 
