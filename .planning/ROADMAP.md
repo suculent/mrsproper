@@ -55,6 +55,9 @@ in one templated direct message.
   checklist, add-to-contacts checkbox, DM template editing/preview, review/run/report wiring,
   add-log export, en/cs strings
 
+- [ ] **Phase 16: Close gap: ADD-08 resume path and ADD-02 empty state** — audit closure: resume
+  continuation contract, Add-mode empty state, orphaned grey reason, tech-debt items
+
 ## Phase Details
 
 ### Phase 9: Tag API & Layer-224 Connection
@@ -263,6 +266,16 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 16: Close gap: ADD-08 resume path and ADD-02 empty state
+
+**Goal:** Close the two blockers from the v1.7 milestone audit (.planning/v1.7-MILESTONE-AUDIT.md): the stop/relaunch → Resume path must continue the same add job from its checkpoint (full dialog-id set on resume, skipped outcomes reprocessed, target rebuilt from the job file after relaunch), and Add mode must render the inverted checklist when the target is in none of the admin's groups. Also assign or remove the orphaned `banned-no-unban-right` grey reason and clear the audit's small tech-debt items (add-log titles, default-template language alignment, 14-VALIDATION status).
+**Requirements**: ADD-08, ADD-02 (ADD-11, ADD-14, ADD-07 partial)
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -283,4 +296,4 @@ Plans:
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 14/14 | Complete   | 2026-10-04 |
-</content>
+| 16. Close gap: ADD-08 resume path and ADD-02 empty state | v1.7 | 0/0 | Not started | — |

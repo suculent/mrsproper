@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: executing
+status: planning
 stopped_at: Completed 15-14-PLAN.md
-last_updated: "2026-10-04T15:17:36.307Z"
-last_activity: 2026-10-04
+last_updated: "2026-10-04T19:10:22.858Z"
+last_activity: "2026-10-04 - Completed quick task 261004-p6t: gate ADD_EXPORT_LOG on authorized session (T-15-03)"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
   total_plans: 28
   completed_plans: 28
-  percent: 43
+  percent: 38
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 15 — renderer-add-mode-contacts-template-reporting
+**Current focus:** Phase 16 — close-gap-add-08-resume-path-and-add-02-empty-state
 
 ## Current Position
 
-Phase: 15 (renderer-add-mode-contacts-template-reporting) — EXECUTING
-Plan: 2 of 14
-Status: Ready to execute
-Last activity: 2026-10-04 - Completed quick task 261004-p6t: gate ADD_EXPORT_LOG on authorized session (T-15-03)
+Phase: 16 (close-gap-add-08-resume-path-and-add-02-empty-state) — NOT PLANNED
+Plan: 0 of 0
+Status: Ready to plan
+Last activity: 2026-10-04 - v1.7 milestone audit (gaps_found); Phase 16 added for gap closure
 
 ## Performance Metrics
 
@@ -95,6 +95,10 @@ Last activity: 2026-10-04 - Completed quick task 261004-p6t: gate ADD_EXPORT_LOG
 | Phase 15 P14 | 18min | 2 tasks | 4 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 16 added: Close gap: ADD-08 resume path and ADD-02 empty state (from v1.7 milestone audit)
 
 ### Decisions
 
@@ -222,7 +226,6 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Review and approve .planning/ROADMAP.md (Phases 13-15) and .planning/REQUIREMENTS.md traceability
-- Then run `/gsd:plan-phase 13` to begin Phase 13 (Add Rights & Scan Semantics)
-
-</content>
+- v1.7 milestone audit (2026-10-04) returned gaps_found — see .planning/v1.7-MILESTONE-AUDIT.md
+- Phase 16 added to close ADD-08 (resume path) and ADD-02 (Add-mode empty state) plus audit tech debt
+- Run `/gsd:discuss-phase 16` then `/gsd:plan-phase 16`; re-run `/gsd:audit-milestone` after Phase 16 before `/gsd:complete-milestone v1.7`
