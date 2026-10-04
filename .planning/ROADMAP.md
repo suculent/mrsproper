@@ -51,7 +51,7 @@ in one templated direct message.
   unban-first, expiring invite links + single templated DM, typed outcomes, `add-job.json`
   checkpoint/resume
 
-- [ ] **Phase 15: Renderer — Add Mode, Contacts, Template & Reporting** — mode switch, inverted
+- [x] **Phase 15: Renderer — Add Mode, Contacts, Template & Reporting** — mode switch, inverted (completed 2026-10-04)
   checklist, add-to-contacts checkbox, DM template editing/preview, review/run/report wiring,
   add-log export, en/cs strings
 
@@ -259,7 +259,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 15-13-PLAN.md — AppShell.tsx mode/severity split + final wiring
+- [x] 15-13-PLAN.md — AppShell.tsx mode/severity split + final wiring
 
 **UI hint**: yes
 
@@ -282,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 12/13 | In Progress|  |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 13/13 | Complete   | 2026-10-04 |
 </content>
