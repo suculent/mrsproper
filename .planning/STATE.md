@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 15-10-PLAN.md
-last_updated: "2026-10-04T01:45:14.699Z"
+stopped_at: Completed 15-12-PLAN.md
+last_updated: "2026-10-04T01:50:27.519Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -90,6 +90,7 @@ Last activity: 2026-10-04
 | Phase 15 P08 | 25min | 2 tasks | 1 files |
 | Phase 15 P09 | 15min | 3 tasks | 2 files |
 | Phase 15 P10 | 25min | 3 tasks | 3 files |
+| Phase 15 P12 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ Recent decisions affecting current work:
 - [Phase 15]: [15-09]: GroupsPaneProps keeps the deprecated unused activeAction prop alongside the new optional activeMode/onModeChange (default 'remove') so AppShell's current call site type-checks unmodified until Plan 15-13
 - [Phase 15]: ReviewScreenProps keeps deprecated action/onActionChange alongside new optional mode/severity/onSeverityChange so AppShell's call site compiles unmodified until Plan 15-13
 - [Phase 15]: DmTemplateEditor owns its own Edit-toggle/isEditing state internally; ReviewScreen only owns the persisted/default currentTemplate value and the always-visible preview
+- [Phase 15]: AddResumeJobDialog clones TagResumeJobDialog exactly; SettingsMenu export entry clears its no-log message on every menu reopen instead of using a toast system
 
 ### Pending Todos
 
@@ -207,8 +209,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T01:45:14.695Z
-Stopped at: Completed 15-10-PLAN.md
+Last session: 2026-10-04T01:50:16.440Z
+Stopped at: Completed 15-12-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
