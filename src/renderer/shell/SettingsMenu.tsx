@@ -32,18 +32,20 @@ export default function SettingsMenu(): React.JSX.Element {
 
   // D-20: "Export add log…" reachable from the Settings menu without having just run an add.
   // Calls the same ADD_EXPORT_LOG bridge used by the report-stage button (Plan 15-09).
+  // WR-01: the menu must NOT close before the "no log" result is known, or the message
+  // (rendered inside the dropdown block) unmounts before it can ever be seen.
   const handleExportLog = async (): Promise<void> => {
-    setMenuOpen(false)
     try {
       const result = await addClient.exportAddLog()
       if (!result.ok && result.reason === 'no-log') {
         setExportMessage('no-log')
-      } else {
-        setExportMessage(null)
+        return // keep menu open so the "No add log yet" message is visible
       }
     } catch (err) {
       console.error('Failed to export add log', err)
     }
+    setExportMessage(null)
+    setMenuOpen(false)
   }
 
   const handleLanguageSelect = async (lang: 'en' | 'cs'): Promise<void> => {
