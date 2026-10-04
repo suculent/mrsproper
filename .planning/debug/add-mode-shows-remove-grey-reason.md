@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "In Add mode, greyed checklist rows show the Remove-mode grey reason text (\"no ban rights in this group\", \"channel — subscribers cannot be removed\") instead of the Add-specific grey reason."
 created: 2026-10-04T00:00:00Z
-updated: 2026-10-04T16:50:00Z
+updated: 2026-10-04T15:46:19Z
 ---
 
 ## Current Focus

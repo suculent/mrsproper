@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "In Add mode, the add run added the target to a group that was greyed out and unchecked in the checklist. Only the groups listed on the review screen should ever be acted upon."
 created: 2026-10-04T00:00:00Z
-updated: 2026-10-04T15:30:00Z
+updated: 2026-10-04T15:46:19Z
 ---
 
 ## Current Focus
