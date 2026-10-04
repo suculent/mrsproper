@@ -8,17 +8,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import i18n from '@renderer/i18n'
 import { Button } from '@renderer/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { ScrollArea } from '@renderer/components/ui/scroll-area'
-import type { AdminDialogDTO } from '@shared/groupTypes'
+import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import { removalActions } from '@renderer/store/removalStore'
 import { tagActions } from '@renderer/store/tagStore'
+import { addActions } from '@renderer/store/addStore'
 import { useGroupsStore } from '@renderer/store/groupsStore'
-import { useTargetStore } from '@renderer/store/targetStore'
+import { useTargetStore, targetActions } from '@renderer/store/targetStore'
 import { validateTagInput, computeTagGroups } from './tagValidation'
 import type { TagGroupAction } from './tagValidation'
 import { TagInput } from './TagInput'
+import { computeAddGroups } from './addValidation'
+import { DmTemplateEditor } from './DmTemplateEditor'
+import { templateClient } from '../ipc/templateClient'
+import { renderTemplate, DEFAULT_TEMPLATE_EN, DEFAULT_TEMPLATE_CS } from '@shared/dmTemplate'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from RemovalConfirmDialog.tsx per PATTERNS.md
@@ -117,8 +123,21 @@ export function computeActionableTagCount(tagGroupActions: TagGroupAction[]): nu
 // ---------------------------------------------------------------------------
 
 interface ReviewScreenProps {
-  action: 'kick' | 'ban' | 'tag'
-  onActionChange(a: 'kick' | 'ban' | 'tag'): void
+  /** Read-only — D-01 moved the Remove/Tag/Add picker to GroupsPane's ModeSwitch. */
+  mode?: 'remove' | 'tag' | 'add'
+  /** Kick/Ban severity, only rendered/consumed when mode === 'remove'. */
+  severity?: 'kick' | 'ban'
+  onSeverityChange?(s: 'kick' | 'ban'): void
+  /**
+   * @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site still
+   * type-checks (`action={action} onActionChange={handleActionChange}`); deleted by Plan 15-13.
+   */
+  action?: 'kick' | 'ban' | 'tag'
+  /**
+   * @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site still
+   * type-checks; deleted by Plan 15-13.
+   */
+  onActionChange?(a: 'kick' | 'ban' | 'tag'): void
   onConfirm(): void
   onBack(): void
 }
@@ -127,16 +146,17 @@ interface ReviewScreenProps {
 // ReviewScreen
 // ---------------------------------------------------------------------------
 
-export function ReviewScreen({
-  action,
-  onActionChange,
-  onConfirm,
-  onBack,
-}: ReviewScreenProps): React.JSX.Element {
+export function ReviewScreen(props: ReviewScreenProps): React.JSX.Element {
+  const { onConfirm, onBack } = props
+  const mode = props.mode ?? 'remove'
+  const severity = props.severity ?? 'ban'
+  const onSeverityChange = props.onSeverityChange ?? (() => {})
+
   const { t } = useTranslation('wizard')
   const { t: tR } = useTranslation('removal')
   const { t: tT } = useTranslation('tag')
-  const { groups, checkedDialogIds } = useGroupsStore()
+  const { t: tA } = useTranslation('add')
+  const { groups, checkedDialogIds, scan } = useGroupsStore()
   const { target: targetState } = useTargetStore()
 
   const [isDispatching, setIsDispatching] = useState(false)
@@ -145,6 +165,9 @@ export function ReviewScreen({
   const [tagValue, setTagValue] = useState('')
   const tagError = validateTagInput(tagValue)  // derived, not stored
   const tagInputRef = useRef<HTMLInputElement>(null)
+
+  // Add local state — the persisted/default DM template (D-11/D-13)
+  const [currentTemplate, setCurrentTemplate] = useState('')
 
   const headingRef = useRef<HTMLHeadingElement>(null)
 
@@ -155,13 +178,33 @@ export function ReviewScreen({
 
   // Reset tagValue when switching away from Tag (T-12-06 mitigation)
   useEffect(() => {
-    if (action !== 'tag') setTagValue('')
-  }, [action])
+    if (mode !== 'tag') setTagValue('')
+  }, [mode])
 
   // Focus the tag input when Tag is selected (accessibility — keyboard flow)
   useEffect(() => {
-    if (action === 'tag') tagInputRef.current?.focus()
-  }, [action])
+    if (mode === 'tag') tagInputRef.current?.focus()
+  }, [mode])
+
+  // Fetch the persisted DM template on entering Add mode, falling back to the
+  // language-appropriate default when none is saved yet (D-11/D-13).
+  useEffect(() => {
+    if (mode !== 'add') return
+    let cancelled = false
+    const defaultTemplate = i18n.language === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN
+    templateClient
+      .getDmTemplate()
+      .then((saved) => {
+        if (cancelled) return
+        setCurrentTemplate(saved !== null ? saved : defaultTemplate)
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentTemplate(defaultTemplate)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [mode])
 
   // Derive target identity data
   const targetName =
@@ -178,7 +221,6 @@ export function ReviewScreen({
     groups.step === 'loaded' ? groups.dialogs : []
 
   // Derive planned actions for kick/ban — cast t to the looser TranslateFn type
-  const severity = action === 'tag' ? 'ban' : action  // fallback unused for tag path
   const plannedActions = computePlannedActions(dialogs, checkedDialogIds, severity, t as TranslateFn)
   const actionableCount = plannedActions.length
 
@@ -196,31 +238,68 @@ export function ReviewScreen({
   // Count groups with the rejoin-cant-be-blocked warning — for kick/ban path
   const cantBlockCount = plannedActions.filter(p => p.warning === 'rejoin-cant-be-blocked').length
 
+  // Derive membership status by dialog id from the scan snapshot (for computeAddGroups'
+  // ban-lifted-first note, D-06) — available once the scan has started.
+  const membershipByDialogId = new Map<string, MembershipStatus>()
+  if (scan.step === 'scanning' || scan.step === 'complete') {
+    for (const r of scan.results) membershipByDialogId.set(r.dialogId, r.status)
+  }
+
+  // Derive add group actions for the Add review list (D-14)
+  const addGroupActions = computeAddGroups(dialogs, checkedDialogIds, membershipByDialogId, tA as TranslateFn)
+  const actionableAddCount = addGroupActions.length
+
+  // Count checked groups where canAdd is false (no invite rights) — for Add path
+  const excludedAddCount = [...checkedDialogIds].filter(id => {
+    const d = dialogs.find(d => d.id === id)
+    return d !== undefined && !d.canAdd
+  }).length
+
+  // D-16: a deleted or bot target disables the Add confirm button with an explanation.
+  const isTargetInvalidForAdd =
+    mode === 'add' &&
+    targetState.step === 'confirmed' &&
+    (targetState.target.deleted === true || targetState.target.bot === true)
+
   // Avatar data
   const avatarSrc = bytesToDataUrl(targetAvatar)
   const avatarBg = getAvatarColor(targetId)
   const initials = getInitials(targetName)
 
+  // D-13: the preview must render byte-identically to what AddExecutor actually sends.
+  const dmPreviewPlaceholderLine = tA('dmPreviewPlaceholderLine')
+  const renderedDmPreview = renderTemplate(currentTemplate, {
+    name: targetName,
+    links: dmPreviewPlaceholderLine,
+  })
+
   const handleConfirm = useCallback(async () => {
     setIsDispatching(true)
     try {
-      if (action === 'tag') {
+      if (mode === 'tag') {
         await tagActions.startTag(tagValue.trim(), actionableTagDialogIds.map(d => d.id))
+      } else if (mode === 'add') {
+        // D-15: startAdd(dialogIds) only — no identity, access hash or resume flag.
+        await addActions.startAdd(addGroupActions.map(g => g.dialog.id))
+        // D-09: idempotent — a no-op if the checkbox trigger on TargetCard already fired.
+        await targetActions.maybeAddToContacts()
       } else {
-        await removalActions.startRemoval(action, plannedActions.map(p => p.dialog.id))
+        await removalActions.startRemoval(severity, plannedActions.map(p => p.dialog.id))
       }
       onConfirm()
     } finally {
       setIsDispatching(false)
     }
-  }, [action, tagValue, actionableTagDialogIds, plannedActions, onConfirm])
+  }, [mode, severity, tagValue, actionableTagDialogIds, addGroupActions, plannedActions, onConfirm])
 
   // Determine confirm button disabled state
   const isConfirmDisabled =
     isDispatching ||
-    (action === 'tag'
+    (mode === 'tag'
       ? (tagValue.trim() === '' || tagError !== null || actionableTagCount === 0)
-      : actionableCount === 0)
+      : mode === 'add'
+        ? (actionableAddCount === 0 || isTargetInvalidForAdd)
+        : actionableCount === 0)
 
   return (
     <section
@@ -234,7 +313,7 @@ export function ReviewScreen({
         tabIndex={-1}
         className="text-heading font-semibold"
       >
-        {action === 'tag' ? tT('tagReviewTitle') : t('reviewTitle')}
+        {mode === 'tag' ? tT('tagReviewTitle') : mode === 'add' ? tA('reviewTitle') : t('reviewTitle')}
       </h2>
 
       {/* Identity block: avatar + name + @username/ID */}
@@ -259,8 +338,8 @@ export function ReviewScreen({
         </div>
       </div>
 
-      {/* Tag string display block — shown above action picker when action=tag and tagValue non-empty */}
-      {action === 'tag' && tagValue && (
+      {/* Tag string display block — shown above the severity/tag/add block when mode=tag and tagValue non-empty */}
+      {mode === 'tag' && tagValue && (
         <div className="flex flex-col gap-1">
           <span className="text-label font-semibold">{tT('tagLabel')}</span>
           <span className="bg-secondary rounded-full px-2 py-0.5 text-mono text-label text-foreground w-fit">
@@ -269,48 +348,42 @@ export function ReviewScreen({
         </div>
       )}
 
-      {/* Action picker — 3-way segmented radiogroup (Phase 12: extended from 2-way severity) */}
+      {/* Mode-gated action block: Kick/Ban toggle (remove), tag input (tag), nothing extra (add) */}
       <div className="flex flex-col gap-2">
-        <span className="text-label font-semibold">{t('severityLabel')}</span>
-        <div
-          role="radiogroup"
-          aria-label={t('actionGroupAria')}
-          className="flex rounded-md border border-border overflow-hidden"
-        >
-          <Button
-            role="radio"
-            aria-checked={action === 'kick'}
-            variant={action === 'kick' ? 'default' : 'ghost'}
-            size="sm"
-            className="rounded-none flex-1"
-            onClick={() => onActionChange('kick')}
-          >
-            {t('severityKick')}
-          </Button>
-          <Button
-            role="radio"
-            aria-checked={action === 'ban'}
-            variant={action === 'ban' ? 'default' : 'ghost'}
-            size="sm"
-            className="rounded-none flex-1 border-l border-border"
-            onClick={() => onActionChange('ban')}
-          >
-            {t('severityBan')}
-          </Button>
-          <Button
-            role="radio"
-            aria-checked={action === 'tag'}
-            variant={action === 'tag' ? 'default' : 'ghost'}
-            size="sm"
-            className="rounded-none flex-1 border-l border-border"
-            onClick={() => onActionChange('tag')}
-          >
-            {tT('actionTag')}
-          </Button>
-        </div>
+        {mode === 'remove' && (
+          <>
+            <span className="text-label font-semibold">{t('severityLabel')}</span>
+            <div
+              role="radiogroup"
+              aria-label={t('actionGroupAria')}
+              className="flex rounded-md border border-border overflow-hidden"
+            >
+              <Button
+                role="radio"
+                aria-checked={severity === 'kick'}
+                variant={severity === 'kick' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none flex-1"
+                onClick={() => onSeverityChange('kick')}
+              >
+                {t('severityKick')}
+              </Button>
+              <Button
+                role="radio"
+                aria-checked={severity === 'ban'}
+                variant={severity === 'ban' ? 'default' : 'ghost'}
+                size="sm"
+                className="rounded-none flex-1 border-l border-border"
+                onClick={() => onSeverityChange('ban')}
+              >
+                {t('severityBan')}
+              </Button>
+            </div>
+          </>
+        )}
 
-        {/* TagInput block — conditionally rendered when action=tag */}
-        {action === 'tag' && (
+        {/* TagInput block — conditionally rendered when mode=tag */}
+        {mode === 'tag' && (
           <TagInput
             value={tagValue}
             onChange={setTagValue}
@@ -321,22 +394,38 @@ export function ReviewScreen({
         )}
 
         {/* Consequence line — min-h reserves two lines of space so toggling
-            actions never causes a layout shift even if the text wraps */}
+            modes never causes a layout shift even if the text wraps */}
         <p className="text-body text-muted-foreground min-h-[2.5rem]">
-          {action !== 'tag'
-            ? tR(`severityLine${action === 'ban' ? 'Ban' : 'Kick'}`, { count: actionableCount })
-            : tT('tagConsequenceLine', { tag: tagValue, count: actionableTagCount })}
+          {mode === 'tag'
+            ? tT('tagConsequenceLine', { tag: tagValue, count: actionableTagCount })
+            : mode === 'add'
+              ? tA('consequenceLine', { name: targetName, count: actionableAddCount })
+              : tR(`severityLine${severity === 'ban' ? 'Ban' : 'Kick'}`, { count: actionableCount })}
         </p>
       </div>
 
       {/* Totals line */}
       <div className="text-body">
-        {action === 'tag' ? (
+        {mode === 'tag' ? (
           actionableTagCount === 0 ? (
             <span className="text-muted-foreground">{tT('tagTotalsEmpty')}</span>
           ) : (
             <span className="font-semibold text-foreground">
               {tT('tagTotalsTagging', { count: actionableTagCount })}
+            </span>
+          )
+        ) : mode === 'add' ? (
+          actionableAddCount === 0 ? (
+            <span className="text-muted-foreground">{tA('totalsEmpty')}</span>
+          ) : (
+            <span>
+              <span className="font-semibold text-foreground">{tA('totalsAdding', { count: actionableAddCount })}</span>
+              {excludedAddCount > 0 && (
+                <>
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="text-muted-foreground">{tA('totalsExcluded', { count: excludedAddCount })}</span>
+                </>
+              )}
             </span>
           )
         ) : (
@@ -362,11 +451,28 @@ export function ReviewScreen({
         )}
       </div>
 
-      {/* Group list — tag path shows tagGroupActions; kick/ban shows plannedActions */}
+      {/* Group list — tag path shows tagGroupActions; add path shows addGroupActions; remove shows plannedActions */}
       <ScrollArea className="max-h-[40vh] border border-border rounded-md">
-        {action === 'tag' ? (
+        {mode === 'tag' ? (
           <ul aria-label={t('tagGroupListAria')}>
             {tagGroupActions.map(({ dialog, mechanicNote }) => (
+              <li
+                key={dialog.id}
+                className="px-4 py-2 border-b border-border last:border-b-0 flex flex-col gap-1"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-label font-semibold text-foreground truncate">{dialog.title}</span>
+                  <span className="text-label text-muted-foreground shrink-0">
+                    {dialog.memberCount != null ? t('memberCount', { count: dialog.memberCount }) : ''}
+                  </span>
+                </div>
+                <span className="text-label text-muted-foreground">{mechanicNote}</span>
+              </li>
+            ))}
+          </ul>
+        ) : mode === 'add' ? (
+          <ul aria-label={tA('groupListAria', { name: targetName })}>
+            {addGroupActions.map(({ dialog, mechanicNote }) => (
               <li
                 key={dialog.id}
                 className="px-4 py-2 border-b border-border last:border-b-0 flex flex-col gap-1"
@@ -406,33 +512,75 @@ export function ReviewScreen({
         )}
       </ScrollArea>
 
+      {/* DM section (D-11/D-12/D-13) — Add mode only, between the group list and the footer */}
+      {mode === 'add' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-label font-semibold">{tA('dmSectionTitle', { name: targetName })}</span>
+          <div className="rounded-md border border-border bg-secondary p-4 text-body whitespace-pre-wrap">
+            {(() => {
+              const idx = renderedDmPreview.indexOf(dmPreviewPlaceholderLine)
+              if (idx === -1) return renderedDmPreview
+              return (
+                <>
+                  {renderedDmPreview.slice(0, idx)}
+                  <em className="italic text-muted-foreground">{dmPreviewPlaceholderLine}</em>
+                  {renderedDmPreview.slice(idx + dmPreviewPlaceholderLine.length)}
+                </>
+              )
+            })()}
+          </div>
+          <span className="text-label text-muted-foreground">{tA('dmCaption')}</span>
+          <DmTemplateEditor
+            value={currentTemplate}
+            onSave={(next) => {
+              setCurrentTemplate(next)
+              void templateClient.setDmTemplate(next)
+            }}
+            onReset={() => {
+              const def = i18n.language === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN
+              setCurrentTemplate(def)
+              void templateClient.setDmTemplate(def)
+            }}
+          />
+        </div>
+      )}
+
       {/* Footer: back + confirm */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <Button variant="outline" onClick={onBack} disabled={isDispatching}>
           {t('editSelection')}
         </Button>
 
-        <Button
-          variant={action === 'tag' ? 'default' : 'destructive'}
-          onClick={handleConfirm}
-          disabled={isConfirmDisabled}
-          aria-label={
-            action === 'tag'
-              ? tT('confirmAriaLabelTag', { name: targetName, count: actionableTagCount })
-              : t(`confirmAriaLabel${action === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
-          }
-        >
-          {isDispatching ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              {action === 'tag' ? tT('confirmDispatching') : tR('confirmDispatching')}
-            </>
-          ) : (
-            action === 'tag'
-              ? tT('confirmLabelTag', { name: targetName, count: actionableTagCount })
-              : t(`confirmLabel${action === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant={mode === 'remove' ? 'destructive' : 'default'}
+            onClick={handleConfirm}
+            disabled={isConfirmDisabled}
+            aria-label={
+              mode === 'tag'
+                ? tT('confirmAriaLabelTag', { name: targetName, count: actionableTagCount })
+                : mode === 'add'
+                  ? tA('confirmAriaLabel', { name: targetName, count: actionableAddCount })
+                  : t(`confirmAriaLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
+            }
+          >
+            {isDispatching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                {mode === 'tag' ? tT('confirmDispatching') : mode === 'add' ? tA('confirmDispatching') : tR('confirmDispatching')}
+              </>
+            ) : (
+              mode === 'tag'
+                ? tT('confirmLabelTag', { name: targetName, count: actionableTagCount })
+                : mode === 'add'
+                  ? tA('confirmLabel', { name: targetName, count: actionableAddCount })
+                  : t(`confirmLabel${severity === 'ban' ? 'Ban' : 'Kick'}`, { name: targetName, count: actionableCount })
+            )}
+          </Button>
+          {isTargetInvalidForAdd && (
+            <p className="text-label text-destructive">{tA('confirmDisabledInvalidTarget')}</p>
           )}
-        </Button>
+        </div>
       </div>
     </section>
   )
