@@ -279,8 +279,16 @@ export function registerAddChannels(
     if (canceled || !filePath) {
       return { ok: false as const, reason: 'canceled' as const }
     }
-    copyFileSync(logPath, filePath)
-    return { ok: true as const }
+    // WR-02: never throws across IPC, matching every sibling handler in this file — a
+    // permission error, a full disk, or a benign race (the log file is deleted between the
+    // existsSync check above and the user finishing the save dialog) must not reject the
+    // ipcMain.handle promise.
+    try {
+      copyFileSync(logPath, filePath)
+      return { ok: true as const }
+    } catch {
+      return { ok: false as const, reason: 'canceled' as const }
+    }
   })
 }
 

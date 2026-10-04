@@ -721,6 +721,35 @@ describe('addChannels — ADD_EXPORT_LOG', () => {
     expect(copyFileSyncMock).toHaveBeenCalledWith('/fake/add-log.txt', '/chosen/path.txt')
     expect(result).toEqual({ ok: true })
   })
+
+  it('19. ADD_EXPORT_LOG — copyFileSync throws (e.g. permission error, full disk, or a benign existsSync/dialog race) returns { ok: false, reason: "canceled" } instead of rejecting (WR-02)', async () => {
+    const win = makeMockWin()
+    const executor = makeMockExecutor()
+    const enumerator = makeMockEnumerator()
+    const auditStore = makeMockAuditStore()
+    const contactService = makeMockContactService()
+    const addLogStore = makeMockAddLogStore('/fake/add-log.txt')
+    const getAuthState = makeGetAuthState('authorized')
+    existsSyncMock.mockReturnValue(true)
+    showSaveDialogMock.mockResolvedValue({ canceled: false, filePath: '/chosen/path.txt' })
+    copyFileSyncMock.mockImplementation(() => {
+      throw new Error('EACCES: permission denied')
+    })
+
+    registerAddChannels(
+      win as never,
+      executor as never,
+      enumerator as never,
+      auditStore as never,
+      contactService as never,
+      addLogStore as never,
+      getAuthState
+    )
+
+    const result = await capturedHandlers['add:exportLog']({}, undefined)
+
+    expect(result).toEqual({ ok: false, reason: 'canceled' })
+  })
 })
 
 // ---------------------------------------------------------------------------

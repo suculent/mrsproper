@@ -541,10 +541,16 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         }
 
         async function handleExportAddLog(): Promise<void> {
-          const result = await addClient.exportAddLog()
-          if (!result.ok && result.reason === 'no-log') {
-            setExportLogMessage(tAdd('exportLogNoLogYet'))
-            setTimeout(() => setExportLogMessage(null), 4000)
+          // WR-02: the main-process handler no longer throws, but catch defensively at the
+          // call site too so a future regression there can't become an unhandled rejection.
+          try {
+            const result = await addClient.exportAddLog()
+            if (!result.ok && result.reason === 'no-log') {
+              setExportLogMessage(tAdd('exportLogNoLogYet'))
+              setTimeout(() => setExportLogMessage(null), 4000)
+            }
+          } catch (err) {
+            console.error('Failed to export add log', err)
           }
         }
 
