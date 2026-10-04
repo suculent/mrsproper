@@ -1,6 +1,6 @@
 {
   "name": "mrsproper",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Portable desktop app for bulk-removing a person from all Telegram groups",
   "author": "Matej Sychra",
   "private": true,
