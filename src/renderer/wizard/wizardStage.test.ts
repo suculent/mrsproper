@@ -56,6 +56,20 @@ describe('getNextStage — auto-advance on terminal tag step', () => {
   })
 })
 
+describe('getNextStage — auto-advance on terminal add step (D-04)', () => {
+  it('run stage: auto-advances to report when add.step is complete', () => {
+    expect(getNextStage('run', 'ADD_COMPLETE')).toBe('report')
+  })
+
+  it('run stage: auto-advances to report when add.step is stopped', () => {
+    expect(getNextStage('run', 'ADD_STOPPED')).toBe('report')
+  })
+
+  it('ADD_COMPLETE from target stage → unchanged (invalid transition guard)', () => {
+    expect(getNextStage('target', 'ADD_COMPLETE')).toBe('target')
+  })
+})
+
 describe('getNextStage — invalid event guard (SAF-02)', () => {
   it('does NOT advance to review from target (skipping groups is not a valid event)', () => {
     // TARGET_CONFIRMED from target → groups (not review)
