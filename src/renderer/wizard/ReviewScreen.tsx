@@ -128,16 +128,6 @@ interface ReviewScreenProps {
   /** Kick/Ban severity, only rendered/consumed when mode === 'remove'. */
   severity?: 'kick' | 'ban'
   onSeverityChange?(s: 'kick' | 'ban'): void
-  /**
-   * @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site still
-   * type-checks (`action={action} onActionChange={handleActionChange}`); deleted by Plan 15-13.
-   */
-  action?: 'kick' | 'ban' | 'tag'
-  /**
-   * @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site still
-   * type-checks; deleted by Plan 15-13.
-   */
-  onActionChange?(a: 'kick' | 'ban' | 'tag'): void
   onConfirm(): void
   onBack(): void
 }

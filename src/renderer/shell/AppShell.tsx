@@ -135,8 +135,9 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
       <main className={`flex flex-1 overflow-hidden${stage === 'review' ? ' flex-col w-full overflow-y-auto' : ''}`}>
         {stage === 'review' ? (
           <ReviewScreen
-            action={action}
-            onActionChange={handleActionChange}
+            mode={mode}
+            severity={severity}
+            onSeverityChange={handleSeverityChange}
             onConfirm={() => setStage('run')}
             onBack={() => setStage('groups')}
           />
@@ -150,6 +151,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
                 {search.step !== 'idle' && <CandidateList />}
                 {/* TargetCard renders when a target has been resolved/confirmed */}
                 <TargetCard
+                  mode={mode}
                   onTargetConfirmed={() => setStage('groups')}
                   onNavigateToTarget={() => setStage('target')}
                 />
@@ -162,7 +164,8 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
                 onNavigateToReview={() => setStage('review')}
                 onNavigateToTarget={() => setStage('target')}
                 stage={stage}
-                activeAction={action}
+                activeMode={mode}
+                onModeChange={setMode}
               />
             </div>
           </>
@@ -185,7 +188,17 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           open={tagResumeOpen}
           onOpenChange={() => {}}
           job={pendingTagJob}
-          onResume={() => { setAction('tag'); setStage('run') }}
+          onResume={() => { setMode('tag'); setStage('run') }}
+        />
+      )}
+
+      {/* AddResumeJobDialog — independent from removal/tag dialogs; mounts when pending add job exists */}
+      {pendingAddJob && (
+        <AddResumeJobDialog
+          open={addResumeOpen}
+          onOpenChange={() => {}}
+          job={pendingAddJob}
+          onResume={() => { setMode('add'); setStage('run') }}
         />
       )}
     </div>

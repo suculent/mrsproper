@@ -41,13 +41,9 @@ interface GroupsPaneProps {
   onNavigateToReview: () => void
   onNavigateToTarget: () => void
   stage: WizardStage
-  /** @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site
-   * (`activeAction={action}`) still type-checks; deleted by Plan 15-13. */
-  activeAction?: 'kick' | 'ban' | 'tag'
-  /** The active Remove/Tag/Add mode (D-01). Optional with a 'remove' default until
-   * Plan 15-13 wires AppShell to pass the real value. */
+  /** The active Remove/Tag/Add mode (D-01). */
   activeMode?: GroupMode
-  /** Called when the mode switch changes mode. Optional no-op until Plan 15-13. */
+  /** Called when the mode switch changes mode. */
   onModeChange?: (mode: GroupMode) => void
 }
 
@@ -73,10 +69,8 @@ function sortDialogs(dialogs: AdminDialogDTO[], sort: SortMode): AdminDialogDTO[
 
 export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const { onNavigateToReview, onNavigateToTarget } = props
-  // D-01/15-13 bridge: activeMode/onModeChange are optional with a 'remove' default so
-  // AppShell's current call site (which only passes the deprecated kick/ban/tag prop and
-  // stage) keeps type-checking until Plan 15-13 wires the real values. Never read the raw
-  // props fields directly past this point — use these two derived locals instead.
+  // D-01: AppShell always passes activeMode/onModeChange; the 'remove' default and no-op
+  // fallback below only protect callers (e.g. tests) that mount GroupsPane without them.
   const activeMode = props.activeMode ?? 'remove'
   const handleModeChange = props.onModeChange ?? (() => {})
   const { t: tG } = useTranslation('groups')
