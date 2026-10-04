@@ -11,7 +11,7 @@ requires:
 provides:
   - "MembershipScanner._checkMembership returns the full MembershipStatus discriminator ('member' | 'not-member' | 'banned') instead of a boolean"
   - "scan() and retryGroup() both surface a distinct 'banned' scan outcome identically, separate from 'not-member' (D-01)"
-  - "Documented, tested left-flag polarity contract: ChannelParticipantBanned with left unset/false = 'banned', left===true = 'not-member'"
+  - "Documented, tested left-flag polarity contract: ChannelParticipantBanned with left === true -> 'banned' (kicked/banned and absent); left unset -> 'member' (restricted but still present, actionable in Remove mode, user-confirmed intended behaviour)"
   - "Basic-group scans (messages.GetFullChat path) proven to never emit 'banned' (D-03)"
 affects: [14-add-executor, 15-add-mode-renderer]
 
@@ -28,7 +28,7 @@ key-files:
     - src/main/telegram/membershipScanner.test.ts
 
 key-decisions:
-  - "ChannelParticipantBanned.left===true (ban lifted / user left) maps to 'not-member'; left unset or false (still banned) maps to 'banned' — this resolves the plan's Open Question 2 as a locked, tested contract (D-01)"
+  - "ChannelParticipantBanned with left === true maps to 'banned' (kicked/banned and absent); left unset maps to 'member' (restricted but still present, actionable in Remove mode, user-confirmed intended behaviour) — this resolves the plan's Open Question 2 as a locked, tested contract (D-01)"
   - "Basic-group branch keeps returning only 'member'/'not-member' (never 'banned') since bans are not visible via messages.GetFullChat (D-03) — now explicit via a dedicated negative-assertion test"
 
 patterns-established:
@@ -55,7 +55,7 @@ completed: 2026-10-03
 
 ## Accomplishments
 - `_checkMembership` return type widened from `Promise<boolean>` to `Promise<MembershipStatus>`; both `scan()` and `retryGroup()` consume it directly with no boolean ternary intermediary (Pitfall 2 verified: both call sites updated together)
-- `ChannelParticipantBanned` with `left` unset/false now surfaces as `status='banned'`, distinct from `status='not-member'`; `left===true` correctly maps to `'not-member'` (D-01 polarity, documented and tested, resolving Open Question 2)
+- `ChannelParticipantBanned` with `left === true` now surfaces as `status='banned'`, distinct from `status='not-member'`; `left` unset maps to `'member'` (restricted but still present, actionable in Remove mode, user-confirmed intended behaviour; D-01 polarity, resolving Open Question 2)
 - Basic-group scans (via `messages.GetFullChat`) proven, by a new negative-assertion test, to never emit `'banned'` (D-03)
 - Remove mode's renderer comparisons (`GroupRow.tsx`'s `membershipStatus === 'member'`, `GroupsPane.tsx`'s `status === 'member' || status === null`) are non-exhaustive equality checks — verified by inspection that `'banned'` falls through to the same non-actionable path as `'not-member'` today, with zero renderer changes required (Pitfall 3 confirmed, not re-implemented)
 - Full test suite green aside from the 2 pre-existing, unrelated, environment-dependent `config.test.ts` failures (documented in 13-01's deferred-items.md)
@@ -71,10 +71,10 @@ _Both tasks were marked `tdd="true"` in the plan, but the plan's own task orderi
 
 ## Files Created/Modified
 - `src/main/telegram/MembershipScanner.ts` - `_checkMembership` return type widened to `Promise<MembershipStatus>`; `ChannelParticipantBanned` branch split by `left` flag into `'banned'`/`'not-member'`; `ChannelParticipantLeft`, `USER_NOT_PARTICIPANT`, and the basic-group/unknown-type fallbacks all updated to return string literals directly; both `scan()` and `retryGroup()` call sites simplified to `status = await this._checkMembership(...)`
-- `src/main/telegram/membershipScanner.test.ts` - Replaced the old `ChannelParticipantBanned` test (previously asserting `'not-member'`) with an assertion of `'banned'`; added a sibling test for `left: true` → `'not-member'`; added a basic-group negative-assertion test confirming `'banned'` is never emitted via that path; widened the local `participantOverrides` type to carry an optional `left` flag
+- `src/main/telegram/membershipScanner.test.ts` - Replaced the old `ChannelParticipantBanned` test (previously asserting `'not-member'`) with an assertion of `'banned'`; added a sibling test for the `left` flag polarity (`left: true` -> `'banned'`, unset -> `'member'`); added a basic-group negative-assertion test confirming `'banned'` is never emitted via that path; widened the local `participantOverrides` type to carry an optional `left` flag
 
 ## Decisions Made
-- `left===true` → `'not-member'`, `left` unset/false → `'banned'` — matches the plan's D-01 contract exactly, no deviation
+- `left === true` -> `'banned'`, `left` unset -> `'member'` — final polarity per the D-01 revision of 2026-10-03 (corrected in Phase 16)
 - Kept the basic-group branch's final line as a single ternary expression (`participants.some(...) ? 'member' : 'not-member'`) rather than introducing an intermediate boolean, per PATTERNS.md's exact recommended shape
 
 ## Deviations from Plan
