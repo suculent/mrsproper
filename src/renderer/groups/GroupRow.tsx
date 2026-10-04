@@ -21,6 +21,7 @@ import type { TagErrorCode } from '@shared/tagTypes'
 import type { AddErrorCode } from '@shared/addTypes'
 import { formatMemberCount } from '@renderer/lib/format'
 import { clipboardClient } from '../ipc/clipboardClient'
+import { isActionableForMode, type GroupMode } from './modeRules'
 
 // ---------------------------------------------------------------------------
 // Avatar color palette — duplicated from TargetCard — avoids premature abstraction per PATTERNS.md
@@ -75,6 +76,8 @@ export interface GroupRowProps {
   isChecked: boolean
   onToggle: (dialogId: string) => void
   onRetry: (dialogId: string) => void
+  /** Active Remove/Tag/Add mode (CR-01) — drives actionability + checkbox aria-label. Defaults to 'remove' so existing callers (tests, etc.) stay byte-identical. */
+  activeMode?: GroupMode
   /** Removal status for this group. null/undefined = not in a removal run. */
   removalStatus?: 'queued' | 'removing' | 'done' | 'already-gone' | 'failed' | 'skipped' | null
   /** 'basic-group-ban-fallback' annotation or null — affects done copy */
@@ -112,6 +115,7 @@ export function GroupRow({
   isChecked,
   onToggle,
   onRetry,
+  activeMode = 'remove',
   removalStatus,
   removalNote,
   onRetryRemoval,
@@ -132,7 +136,10 @@ export function GroupRow({
 
   const [justCopied, setJustCopied] = useState(false)
 
-  const isActionable = dialog.canAct && membershipStatus === 'member'
+  // CR-01: single shared predicate — never a duplicated inline rule — so this row's
+  // actionability can never silently drift from groupsStore's pre-check rebuild/GroupsPane's
+  // partition loop (modeRules.ts).
+  const isActionable = isActionableForMode(dialog, membershipStatus, activeMode)
   const isPending = membershipStatus === null || membershipStatus === 'pending'
   const isFailed = membershipStatus === 'failed'
 
@@ -289,13 +296,17 @@ export function GroupRow({
       return <div className="h-4 w-4 shrink-0 rounded animate-pulse bg-muted" />
     }
 
-    // 3. Existing isActionable branch (unchanged)
+    // 3. Existing isActionable branch — aria-label switches to the Add-mode copy (CR-01)
     if (isActionable) {
       return (
         <Checkbox
           checked={isChecked}
           onCheckedChange={() => onToggle(dialog.id)}
-          aria-label={tG('includeInRemovalAria', { title: dialog.title })}
+          aria-label={
+            activeMode === 'add'
+              ? tAdd('includeInAddAria', { title: dialog.title })
+              : tG('includeInRemovalAria', { title: dialog.title })
+          }
         />
       )
     }

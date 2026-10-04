@@ -905,6 +905,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   dialog={dialog}
                   membershipStatus={getMembershipStatus(dialog.id)}
                   isChecked={checkedDialogIds.has(dialog.id)}
+                  activeMode={activeMode}
                   onToggle={isRunActive ? () => {} : groupsActions.toggleGroup}
                   onRetry={isRunActive ? () => {} : (dialogId) => void groupsActions.retryScanGroup(dialogId)}
                   removalStatus={rowRemovalStatus}
