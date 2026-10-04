@@ -1,7 +1,9 @@
 ---
 phase: 15-renderer-add-mode-contacts-template-reporting
 verified: 2026-10-04T02:21:36Z
-status: human_needed
+human_verified: 2026-10-04T15:46:06Z
+human_uat: 15-UAT.md (11/11 passed; 1 gap found and closed by plan 15-14)
+status: passed
 score: 5/5 must-haves verified
 overrides_applied: 0
 human_verification:
@@ -41,7 +43,7 @@ human_verification:
 
 **Phase Goal:** The admin can switch into Add mode, review an inverted checklist, opt in/out of adding the target to contacts, edit and preview the invite-link DM template, confirm, watch live progress, read the per-group report, and export the add log — fully in English and Czech.
 **Verified:** 2026-10-04T02:21:36Z
-**Status:** human_needed
+**Status:** passed (human UAT complete 2026-10-04, see 15-UAT.md; gap in Add-mode grey rendering closed by 15-14)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
