@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-10-04T00:24:32.848Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-10-04T00:34:32.142Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 15
+  completed_plans: 16
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -80,6 +80,7 @@ Last activity: 2026-10-04
 | Phase 14 P10 | 12min | 2 tasks | 2 files |
 | Phase 14 P11 | 25min | 2 tasks | 5 files |
 | Phase 15 P01 | 6min | 2 tasks | 3 files |
+| Phase 15 P02 | 8min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,7 @@ Recent decisions affecting current work:
 - [Phase 14-11]: getDmText closure reads getCachedTemplate() first, falling back to DEFAULT_TEMPLATE_CS/EN by the language stored at launch (D-15)
 - [Phase 14-11]: Used Parameters<typeof createContactService>[0]['client'] instead of ConstructorParameters since createContactService is a factory function, not a class
 - [Phase 15-01]: DM_TEMPLATE_MAX_LENGTH (4000) is the single source of truth for the template length bound, consumed by templateChannels.ts's Zod schema and the renderer's validateDmTemplate (Plan 15-03)
+- [Phase ?]: [15-02]: Switched ADD_EXPORT_LOG's node:fs access from require() to await import() -- vi.mock('node:fs') only intercepts the ESM/dynamic-import graph in this Vitest setup, not a literal CommonJS require() call
 
 ### Pending Todos
 
@@ -181,8 +183,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T00:24:32.842Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-10-04T00:34:32.137Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

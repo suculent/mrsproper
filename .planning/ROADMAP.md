@@ -236,7 +236,7 @@ Plans:
 **Wave 1**
 
 - [x] 15-01-PLAN.md — src/shared/dmTemplate.ts: relocate renderTemplate + defaults, shared max-length constant
-- [ ] 15-02-PLAN.md — main-process clipboard IPC + ADD_EXPORT_LOG handler + addLogStore.getLogPath()
+- [x] 15-02-PLAN.md — main-process clipboard IPC + ADD_EXPORT_LOG handler + addLogStore.getLogPath()
 - [ ] 15-03-PLAN.md — modeRules.ts + groupsStore recompute + addValidation.ts (computeAddGroups, validateDmTemplate)
 - [ ] 15-04-PLAN.md — add i18n namespace (en/cs) + textarea.tsx primitive + groups.json modeSwitch keys
 - [ ] 15-05-PLAN.md — targetStore contact-add dispatch (addToContactsChecked/maybeAddToContacts)
@@ -282,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 1/13 | In Progress|  |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 2/13 | In Progress|  |
 </content>
