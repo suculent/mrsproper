@@ -39,7 +39,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Localization
 
-- [ ] **ADD-15**: All new UI strings exist in English and Czech (formal vykání, 3-form plurals) via the existing i18next namespaces
+- [x] **ADD-15**: All new UI strings exist in English and Czech (formal vykání, 3-form plurals) via the existing i18next namespaces
 
 ### Tag cleanup
 
@@ -89,7 +89,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-12 | Phase 15 | Complete |
 | ADD-13 | Phase 15 | Pending |
 | ADD-14 | Phase 15 | Complete |
-| ADD-15 | Phase 15 | Pending |
+| ADD-15 | Phase 15 | Complete |
 | ADD-16 | Phase 15 | Complete |
 | TAG-07 | Phase 13 | Complete |
 

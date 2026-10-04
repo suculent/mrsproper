@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-10-04T00:45:44.825Z"
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-10-04T00:52:53.982Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 17
+  completed_plans: 18
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -82,6 +82,7 @@ Last activity: 2026-10-04
 | Phase 15 P01 | 6min | 2 tasks | 3 files |
 | Phase 15 P02 | 8min | 3 tasks | 8 files |
 | Phase 15 P03 | 9min | 3 tasks | 8 files |
+| Phase 15 P04 | 12min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [15-02]: Switched ADD_EXPORT_LOG's node:fs access from require() to await import() -- vi.mock('node:fs') only intercepts the ESM/dynamic-import graph in this Vitest setup, not a literal CommonJS require() call
 - [Phase ?]: [15-03]: isActionableForMode's Add branch deliberately treats a null/pending status as non-actionable (D-05 asymmetry), while Remove/Tag treat null as actionable
 - [Phase ?]: [15-03]: addValidation.ts imports TranslateFn from tagValidation.ts rather than duplicating the type
+- [Phase 15-04]: add i18n namespace created verbatim from UI-SPEC sections 2-9; groups.json gains modeSwitch keys; i18next.d.ts needs zero edits since CustomTypeOptions.resources is structurally typed
 
 ### Pending Todos
 
@@ -186,8 +188,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T00:45:40.433Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-10-04T00:52:53.977Z
+Stopped at: Completed 15-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
