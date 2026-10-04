@@ -80,6 +80,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
       greyReason: 'no-ban-right',
       canAdd: true,
       addGreyReason: null,
+      canUnban: true,
     }
 
     const html = render(dialog, 'not-member', true, 'add')
@@ -104,6 +105,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
       greyReason: 'broadcast-channel',
       canAdd: false,
       addGreyReason: 'no-invite-right',
+      canUnban: true,
     }
 
     const html = render(dialog, 'not-member', false, 'add')
@@ -123,6 +125,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
       greyReason: null,
       canAdd: true,
       addGreyReason: null,
+      canUnban: true,
     }
 
     const html = render(dialog, 'member', false, 'add')
@@ -146,6 +149,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
       greyReason: 'no-ban-right',
       canAdd: true,
       addGreyReason: null,
+      canUnban: true,
     }
 
     const html = render(dialog, 'not-member', false, 'remove')
@@ -179,6 +183,7 @@ function renderAddRun(extra: AddRunProps): string {
     greyReason: null,
     canAdd: true,
     addGreyReason: null,
+    canUnban: true,
   }
   return renderToStaticMarkup(
     <GroupRow

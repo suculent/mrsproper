@@ -191,6 +191,7 @@ export class GroupEnumerator {
         greyReason,
         canAdd,
         addGreyReason,
+        canUnban: false, // D-03: basic groups have no ban visibility
         // Api.Chat has no participantsCount in GramJS — it's on the full chat object
         memberCount: null,
       })
@@ -222,6 +223,7 @@ export class GroupEnumerator {
           greyReason,
           canAdd,
           addGreyReason,
+          canUnban: this._computeCanUnban(entity),
           memberCount,
         })
       } else {
@@ -250,6 +252,7 @@ export class GroupEnumerator {
           greyReason: 'broadcast-channel',
           canAdd,
           addGreyReason,
+          canUnban: this._computeCanUnban(entity), // D-10: independent of canAct
           memberCount,
         })
       }
@@ -273,6 +276,10 @@ export class GroupEnumerator {
    *   - megagroup / basic group → true unless defaultBannedRights.inviteUsers === true (open
    *     permissions — if the default member rights do not forbid inviting, any member may add)
    */
+  private _computeCanUnban(entity: Api.Channel): boolean {
+    return entity.creator === true || (entity.adminRights as { banUsers?: boolean } | null | undefined)?.banUsers === true
+  }
+
   private _computeCanAdd(entity: Api.Chat | Api.Channel): boolean {
     const adminRights = entity.adminRights as { inviteUsers?: boolean } | null | undefined
     if (entity.creator === true || adminRights?.inviteUsers === true) return true
@@ -300,6 +307,7 @@ export class GroupEnumerator {
     greyReason: GreyReason | null
     canAdd: boolean
     addGreyReason: AddGreyReason | null
+    canUnban: boolean
     memberCount: number | null
   }): AdminDialogDTO {
     return {
@@ -312,6 +320,7 @@ export class GroupEnumerator {
       greyReason: params.greyReason,
       canAdd: params.canAdd,
       addGreyReason: params.addGreyReason,
+      canUnban: params.canUnban,
     }
   }
 }

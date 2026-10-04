@@ -20,6 +20,7 @@ function makeDialog(overrides: Partial<AdminDialogDTO>): AdminDialogDTO {
     greyReason: null,
     canAdd: true,
     addGreyReason: null,
+    canUnban: true,
     ...overrides,
   }
 }

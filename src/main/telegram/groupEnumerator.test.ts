@@ -563,3 +563,44 @@ describe('migrated basic-group husk filtering', () => {
     expect(ids).toContain('502')
   })
 })
+
+// ---------------------------------------------------------------------------
+// canUnban (D-10, Phase 13 D-03) — main-computed boolean, independent of canAct
+// ---------------------------------------------------------------------------
+
+describe('canUnban computation', () => {
+  async function loadOne(dialog: Record<string, unknown>) {
+    const { enumerator, emitted } = makeEnumerator({
+      getDialogsResult: [dialog as never],
+    })
+    await enumerator.enumerateAtLogin()
+    const loaded = emitted.find((s) => s.step === 'loaded')
+    if (loaded?.step !== 'loaded') throw new Error('not loaded')
+    return loaded.dialogs[0]
+  }
+
+  it('supergroup: banUsers true -> true; banUsers false -> false', async () => {
+    const yes = await loadOne({ entity: 'Channel', id: '801', title: 'S1', megagroup: true, creator: false, adminRights: { banUsers: true } })
+    expect(yes.canUnban).toBe(true)
+    const no = await loadOne({ entity: 'Channel', id: '802', title: 'S2', megagroup: true, creator: false, adminRights: { banUsers: false } })
+    expect(no.canUnban).toBe(false)
+  })
+
+  it('supergroup creator with null adminRights -> true', async () => {
+    const d = await loadOne({ entity: 'Channel', id: '803', title: 'S3', megagroup: true, creator: true, adminRights: null })
+    expect(d.canUnban).toBe(true)
+  })
+
+  it('broadcast channel: canAct false but canUnban follows banUsers', async () => {
+    const yes = await loadOne({ entity: 'Channel', id: '804', title: 'B1', megagroup: false, creator: false, adminRights: { banUsers: true } })
+    expect(yes.canAct).toBe(false)
+    expect(yes.canUnban).toBe(true)
+    const no = await loadOne({ entity: 'Channel', id: '805', title: 'B2', megagroup: false, creator: false })
+    expect(no.canUnban).toBe(false)
+  })
+
+  it('basic group: always false (D-03)', async () => {
+    const d = await loadOne({ entity: 'Chat', id: '806', title: 'C1', creator: true })
+    expect(d.canUnban).toBe(false)
+  })
+})

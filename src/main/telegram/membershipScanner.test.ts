@@ -32,6 +32,7 @@ function makeDialog(id: string, type: 'supergroup' | 'basic-group' | 'broadcast-
     greyReason: null,
     canAdd: true,
     addGreyReason: null,
+    canUnban: true,
   }
 }
 

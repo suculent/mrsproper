@@ -24,6 +24,7 @@ function makeDialog(id: string): AdminDialogDTO {
     greyReason: null,
     canAdd: true,
     addGreyReason: null,
+    canUnban: true,
   }
 }
 

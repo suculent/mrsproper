@@ -57,6 +57,8 @@ export interface AdminDialogDTO {
   canAdd: boolean
   /** Reason this row is non-actionable in Add mode, or null if canAdd is true. */
   addGreyReason: AddGreyReason | null
+  /** True if the admin can lift a ban here (creator || adminRights.banUsers). Computed in GroupEnumerator only; raw rights never cross the bridge (D-10, ADD-04). */
+  canUnban: boolean
 }
 
 /**

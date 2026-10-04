@@ -83,6 +83,7 @@ const ADDABLE_DIALOG: AdminDialogDTO = {
   greyReason: null,
   canAdd: true,
   addGreyReason: null,
+  canUnban: true,
 }
 
 function makeTarget(overrides: Partial<ResolvedTargetDTO> = {}): ResolvedTargetDTO {

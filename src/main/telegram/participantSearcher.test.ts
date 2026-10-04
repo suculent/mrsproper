@@ -37,6 +37,7 @@ function makeDialog(
     greyReason: null,
     canAdd: true,
     addGreyReason: null,
+    canUnban: true,
   }
 }
 
