@@ -56,6 +56,8 @@ import {
   TARGET_ADD_CONTACT,
   TEMPLATE_GET,
   TEMPLATE_SET,
+  ADD_EXPORT_LOG,
+  CLIPBOARD_WRITE_TEXT,
 } from '../shared/channels'
 
 // contextBridge exposes ONLY whitelisted functions to the renderer.
@@ -261,4 +263,13 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.invoke(TEMPLATE_GET) as Promise<string | null>,
   setDmTemplate: (template: string): Promise<string> =>
     ipcRenderer.invoke(TEMPLATE_SET, { template }) as Promise<string>,
+
+  // ── Add-log export + clipboard bridge (Phase 15, ADD-14/ADD-13) ──────────
+  // add:exportLog takes no payload; opens a main-controlled save dialog and copies
+  // add-log.txt to the chosen path. clipboard:writeText carries { text }; Zod-bounded
+  // and auth-gated in clipboardChannels.ts — no additional transformation here.
+  exportAddLog: (): Promise<{ ok: boolean; reason?: 'no-log' | 'canceled' }> =>
+    ipcRenderer.invoke(ADD_EXPORT_LOG) as Promise<{ ok: boolean; reason?: 'no-log' | 'canceled' }>,
+  writeClipboardText: (text: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke(CLIPBOARD_WRITE_TEXT, { text }) as Promise<{ ok: boolean }>,
 })
