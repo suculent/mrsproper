@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Completed 15-09-PLAN.md
-last_updated: "2026-10-04T01:34:46.602Z"
+stopped_at: Completed 15-10-PLAN.md
+last_updated: "2026-10-04T01:45:14.699Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 11 of 13
+Plan: 12 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -89,6 +89,7 @@ Last activity: 2026-10-04
 | Phase 15 P07 | 10min | 2 tasks | 3 files |
 | Phase 15 P08 | 25min | 2 tasks | 1 files |
 | Phase 15 P09 | 15min | 3 tasks | 2 files |
+| Phase 15 P10 | 25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,8 @@ Recent decisions affecting current work:
 - [Phase 15]: [15-08]: Split the single-file GroupRow.tsx change into two atomic task commits by reverting to HEAD and re-applying each task's exact diff, since TypeScript noUnusedLocals requires Task 1 and Task 2's code to coexist to compile
 - [Phase 15]: [15-09]: isRunActive folds removal/tag/add running-or-stopping into unconditional ORs (no activeMode gate) since ModeSwitch's own disabled condition already prevents switching modes during an active run
 - [Phase 15]: [15-09]: GroupsPaneProps keeps the deprecated unused activeAction prop alongside the new optional activeMode/onModeChange (default 'remove') so AppShell's current call site type-checks unmodified until Plan 15-13
+- [Phase 15]: ReviewScreenProps keeps deprecated action/onActionChange alongside new optional mode/severity/onSeverityChange so AppShell's call site compiles unmodified until Plan 15-13
+- [Phase 15]: DmTemplateEditor owns its own Edit-toggle/isEditing state internally; ReviewScreen only owns the persisted/default currentTemplate value and the always-visible preview
 
 ### Pending Todos
 
@@ -204,8 +207,8 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T01:34:46.596Z
-Stopped at: Completed 15-09-PLAN.md
+Last session: 2026-10-04T01:45:14.695Z
+Stopped at: Completed 15-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

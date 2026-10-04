@@ -254,7 +254,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3)*
 
 - [x] 15-09-PLAN.md — ModeSwitch.tsx + GroupsPane.tsx wiring (partition, progress/report, export button)
-- [ ] 15-10-PLAN.md — ReviewScreen.tsx mode/severity split + DmTemplateEditor.tsx + templateClient.ts
+- [x] 15-10-PLAN.md — ReviewScreen.tsx mode/severity split + DmTemplateEditor.tsx + templateClient.ts
 - [ ] 15-12-PLAN.md — AddResumeJobDialog.tsx + SettingsMenu.tsx export entry
 
 **Wave 5** *(blocked on Wave 4)*
@@ -282,5 +282,5 @@ Plans:
 | 12. Renderer — Action Picker, Tag Input & Results | v1.6 | 0/0 | Complete    | 2026-06-20 |
 | 13. Add Rights & Scan Semantics (Foundation) | v1.7 | 3/3 | Complete    | 2026-10-03 |
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
-| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 10/13 | In Progress|  |
+| 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 11/13 | In Progress|  |
 </content>
