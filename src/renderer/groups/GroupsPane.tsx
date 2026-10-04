@@ -21,7 +21,10 @@ import { useGroupsStore, groupsActions } from '../store/groupsStore'
 import { useTargetStore, targetActions } from '../store/targetStore'
 import { useRemovalStore, removalActions } from '../store/removalStore'
 import { useTagStore, tagActions } from '../store/tagStore'
+import { useAddStore, addActions } from '../store/addStore'
 import { GroupRow } from './GroupRow'
+import { ModeSwitch } from './ModeSwitch'
+import { isActionableForMode, type GroupMode } from './modeRules'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
 import { formatTime } from '@renderer/lib/format'
@@ -37,7 +40,14 @@ interface GroupsPaneProps {
   onNavigateToReview: () => void
   onNavigateToTarget: () => void
   stage: WizardStage
-  activeAction: 'kick' | 'ban' | 'tag'
+  /** @deprecated — unused, kept only so AppShell's pre-Plan-15-13 call site
+   * (`activeAction={action}`) still type-checks; deleted by Plan 15-13. */
+  activeAction?: 'kick' | 'ban' | 'tag'
+  /** The active Remove/Tag/Add mode (D-01). Optional with a 'remove' default until
+   * Plan 15-13 wires AppShell to pass the real value. */
+  activeMode?: GroupMode
+  /** Called when the mode switch changes mode. Optional no-op until Plan 15-13. */
+  onModeChange?: (mode: GroupMode) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +71,13 @@ function sortDialogs(dialogs: AdminDialogDTO[], sort: SortMode): AdminDialogDTO[
 // ---------------------------------------------------------------------------
 
 export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
-  const { onNavigateToReview, onNavigateToTarget, activeAction } = props
+  const { onNavigateToReview, onNavigateToTarget } = props
+  // D-01/15-13 bridge: activeMode/onModeChange are optional with a 'remove' default so
+  // AppShell's current call site (which only passes the deprecated kick/ban/tag prop and
+  // stage) keeps type-checking until Plan 15-13 wires the real values. Never read the raw
+  // props fields directly past this point — use these two derived locals instead.
+  const activeMode = props.activeMode ?? 'remove'
+  const handleModeChange = props.onModeChange ?? (() => {})
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
   const { t: tW } = useTranslation('wizard')
@@ -71,6 +87,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const targetState = useTargetStore()
   const { state: removal } = useRemovalStore()
   const { state: tag } = useTagStore()
+  const { state: add } = useAddStore()
 
   const [sort, setSort] = useState<SortMode>('az')
   const [filter, setFilter] = useState('')
@@ -143,11 +160,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       const result = results.find((r) => r.dialogId === dialog.id)
       const status = result ? result.status : null
 
-      if (dialog.canAct && (status === 'member' || status === null)) {
-        // Actionable: canAct=true and either member or pending (during scan)
+      // D-03/D-05: route through the single shared predicate — never a duplicated inline
+      // rule — so Remove/Tag/Add partitioning can never silently drift from groupsStore's
+      // pre-check rebuild (modeRules.ts).
+      if (isActionableForMode(dialog, status, activeMode)) {
         actionable.push(dialog)
       } else {
-        // Non-actionable: canAct=false OR status=not-member OR status=failed
         nonActionable.push(dialog)
       }
     }
@@ -173,7 +191,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
 
   const isRunActive =
     removal.step === 'running' || removal.step === 'stopping' ||
-    (activeAction === 'tag' && (tag.step === 'running' || tag.step === 'stopping'))
+    tag.step === 'running' || tag.step === 'stopping' ||
+    add.step === 'running' || add.step === 'stopping'
 
   // Derive removalStatus for a given dialog
   function getRemovalStatus(
@@ -217,6 +236,24 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     if (outcome) return outcome.status as 'done' | 'skipped' | 'failed'
 
     if (tag.step === 'running' && dialogId === tag.currentGroupId) return 'tagging'
+
+    return 'queued'
+  }
+
+  // Derive addStatus for a given dialog (mirrors getTagStatus's structure)
+  function getAddStatus(
+    dialogId: string
+  ): 'queued' | 'adding' | 'done' | 'already-member' | 'privacy-blocked' | 'failed' | 'skipped' | null {
+    const addActive =
+      add.step === 'running' || add.step === 'stopping' ||
+      add.step === 'complete' || add.step === 'stopped' || add.step === 'hard-stopped'
+
+    if (!addActive) return null
+
+    const outcome = add.outcomes.find((o) => o.dialogId === dialogId)
+    if (outcome) return outcome.status
+
+    if (add.step === 'running' && dialogId === add.currentGroupId) return 'adding'
 
     return 'queued'
   }
@@ -288,8 +325,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     // Only in checklist mode
     if (mode !== 'checklist') return null
 
-    // TAG BRANCHES — gated on activeAction === 'tag'; placed before removal branches
-    if (activeAction === 'tag') {
+    // TAG BRANCHES — gated on activeMode === 'tag'; placed before removal branches
+    if (activeMode === 'tag') {
       // a-tag. Tag progress (running or stopping)
       if (tag.step === 'running' || tag.step === 'stopping') {
         const processed = tag.progress.processed
@@ -610,6 +647,13 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           </Button>
         )}
 
+        {/* D-01: Remove/Tag/Add mode switch — always rendered, both browse and checklist mode */}
+        <ModeSwitch
+          mode={activeMode}
+          onChange={handleModeChange}
+          disabled={scan.step === 'scanning' || isRunActive || props.stage === 'run' || props.stage === 'report'}
+        />
+
         {/* Sort toggle (both modes) */}
         <Button
           variant="ghost"
@@ -641,12 +685,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               size="sm"
               onClick={() => onNavigateToReview()}
               aria-label={
-                activeAction === 'tag'
+                activeMode === 'tag'
                   ? tT('runTriggerAriaTag', { count: checkedCount })
                   : tW('runTriggerAria', { count: checkedCount })
               }
             >
-              {activeAction === 'tag'
+              {activeMode === 'tag'
                 ? tT('runTriggerLabelTag', { count: checkedCount })
                 : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
@@ -658,7 +702,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               aria-disabled="true"
               disabled={true}
             >
-              {activeAction === 'tag'
+              {activeMode === 'tag'
                 ? tT('runTriggerLabelTag', { count: checkedCount })
                 : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
@@ -681,9 +725,10 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         {emptyState ?? (
           <div className="divide-y divide-border">
             {displayedDialogs.map((dialog) => {
-              const rowRemovalStatus = activeAction !== 'tag' ? getRemovalStatus(dialog.id) : null
+              const rowRemovalStatus = activeMode === 'remove' ? getRemovalStatus(dialog.id) : null
               const outcome = removal.outcomes.find((o) => o.dialogId === dialog.id)
               const tagOutcome = tag.outcomes.find((o) => o.dialogId === dialog.id)
+              const addOutcome = add.outcomes.find((o) => o.dialogId === dialog.id)
               return (
                 <GroupRow
                   key={dialog.id}
@@ -693,12 +738,17 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   onToggle={isRunActive ? () => {} : groupsActions.toggleGroup}
                   onRetry={isRunActive ? () => {} : (dialogId) => void groupsActions.retryScanGroup(dialogId)}
                   removalStatus={rowRemovalStatus}
-                  removalNote={activeAction !== 'tag' ? (outcome?.note ?? null) : null}
-                  errorCode={activeAction !== 'tag' ? (outcome?.errorCode ?? null) : null}
+                  removalNote={activeMode === 'remove' ? (outcome?.note ?? null) : null}
+                  errorCode={activeMode === 'remove' ? (outcome?.errorCode ?? null) : null}
                   severity={removal.severity ?? 'ban'}
                   onRetryRemoval={(id) => void removalActions.retryGroup(id)}
-                  tagStatus={activeAction === 'tag' ? getTagStatus(dialog.id) : null}
-                  tagErrorCode={activeAction === 'tag' ? (tagOutcome?.errorCode ?? null) : null}
+                  tagStatus={activeMode === 'tag' ? getTagStatus(dialog.id) : null}
+                  tagErrorCode={activeMode === 'tag' ? (tagOutcome?.errorCode ?? null) : null}
+                  addStatus={activeMode === 'add' ? getAddStatus(dialog.id) : null}
+                  addErrorCode={activeMode === 'add' ? (addOutcome?.errorCode ?? null) : null}
+                  addLink={activeMode === 'add' ? (addOutcome?.link ?? null) : null}
+                  premiumWouldAllow={activeMode === 'add' ? (addOutcome?.premiumWouldAllow ?? false) : false}
+                  onRetryAdd={(id) => void addActions.retryGroup(id)}
                 />
               )
             })}
