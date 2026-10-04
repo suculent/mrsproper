@@ -188,4 +188,11 @@ describe('addLogStore', () => {
     expect(fakeFs._appends).toHaveLength(1)
     expect(fakeFs._appends[0]!.data.length).toBeGreaterThan(0)
   })
+
+  it('getLogPath: returns a string ending in the log file name', () => {
+    const fakeFs = createFakeFs()
+    const store = createAddLogStore({ fs: fakeFs, app: createFakeApp() })
+
+    expect(store.getLogPath().endsWith('/add-log.txt')).toBe(true)
+  })
 })

@@ -72,9 +72,13 @@ export const ADD_GET_STATE    = 'add:getState' as const
 export const ADD_STATE        = 'add:state' as const        // push: main → renderer
 export const ADD_GET_JOB      = 'add:getJob' as const
 export const ADD_DISCARD_JOB  = 'add:discardJob' as const
+export const ADD_EXPORT_LOG   = 'add:exportLog' as const
 
 // Contact-add IPC (Phase 14, ADD-05 main half). Non-blocking; { ok, code? } response.
 export const TARGET_ADD_CONTACT = 'target:addContact' as const
+
+// Generic clipboard IPC (Phase 15, D-18) — first use is the Add-mode Copy-link button.
+export const CLIPBOARD_WRITE_TEXT = 'clipboard:writeText' as const
 
 // DM template preference IPC (Phase 14, ADD-16 main half). Mirrors SEVERITY_*/THEME_* pattern.
 export const TEMPLATE_GET = 'template:get' as const
@@ -146,7 +150,9 @@ export const CHANNELS = {
   ADD_STATE,
   ADD_GET_JOB,
   ADD_DISCARD_JOB,
+  ADD_EXPORT_LOG,
   TARGET_ADD_CONTACT,
+  CLIPBOARD_WRITE_TEXT,
   TEMPLATE_GET,
   TEMPLATE_SET,
   SEVERITY_GET,

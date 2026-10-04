@@ -55,6 +55,9 @@ export interface AddLogStore {
    * prior blocks — always appends, with mode 0o600 on every write.
    */
   appendBlock(entry: AddLogBlockEntry): void
+
+  /** Return the absolute path to add-log.txt (for the ADD_EXPORT_LOG handler). */
+  getLogPath(): string
 }
 
 // ── Block formatting ────────────────────────────────────────────────────────
@@ -159,6 +162,10 @@ export function createAddLogStore(deps: AddLogStoreDeps = {}): AddLogStore {
 
       const blockText = formatBlock(entry)
       fs.appendFileSync(path, blockText, { mode: 0o600 })
+    },
+
+    getLogPath(): string {
+      return logPath()
     },
   }
 }
