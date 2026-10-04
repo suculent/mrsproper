@@ -158,7 +158,9 @@ export function GroupRow({
     activeMode === 'add' && addStatus == null && !isPending && !isFailed
       ? membershipStatus === 'member'
         ? 'already-member'
-        : dialog.addGreyReason
+        : membershipStatus === 'banned' && dialog.canAdd && !dialog.canUnban
+          ? 'banned-no-unban-right'
+          : dialog.addGreyReason
       : null
 
   const avatarUrl = dialog.avatar ? bytesToDataUrl(dialog.avatar) : null
@@ -551,7 +553,7 @@ export function GroupRow({
         {/* CR-02: gated on activeMode === 'add' — canAdd is populated unconditionally by the
             scan, so without this guard a banned row being reviewed for Remove/Tag could show
             an Add-specific note. */}
-        {activeMode === 'add' && addStatus == null && membershipStatus === 'banned' && dialog.canAdd && (
+        {activeMode === 'add' && addStatus == null && membershipStatus === 'banned' && dialog.canAdd && dialog.canUnban && (
           <span className="text-label text-muted-foreground">
             {tAdd('rowNote.bannedWillUnban')}
           </span>

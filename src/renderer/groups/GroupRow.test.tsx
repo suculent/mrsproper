@@ -263,3 +263,46 @@ describe('GroupRow — Add-mode run subline (15-08 / ADD-13 / D-18)', () => {
     expect(getButtonOpenTags(html)).toHaveLength(0)
   })
 })
+
+describe('GroupRow — banned rows and unban right (16-05, D-09/D-11)', () => {
+  const base: AdminDialogDTO = {
+    id: '2001',
+    title: 'Banned group',
+    avatar: null,
+    memberCount: 50,
+    type: 'supergroup',
+    canAct: true,
+    greyReason: null,
+    canAdd: true,
+    addGreyReason: null,
+    canUnban: true,
+  }
+
+  it('banned + canAdd + no unban right: grey reason only, no lift-ban note', () => {
+    const html = render({ ...base, canUnban: false }, 'banned', false, 'add')
+    expect(html).toContain('greyReason.banned-no-unban-right')
+    expect(html).not.toContain('rowNote.bannedWillUnban')
+  })
+
+  it('banned + canAdd + unban right: lift-ban note, no grey reason', () => {
+    const html = render(base, 'banned', false, 'add')
+    expect(html).toContain('rowNote.bannedWillUnban')
+    expect(html).not.toContain('greyReason.banned-no-unban-right')
+  })
+
+  it('banned + canAdd false: keeps the dialog own addGreyReason', () => {
+    const html = render(
+      { ...base, canAdd: false, addGreyReason: 'no-invite-right' },
+      'banned',
+      false,
+      'add'
+    )
+    expect(html).toContain('greyReason.no-invite-right')
+    expect(html).not.toContain('greyReason.banned-no-unban-right')
+  })
+
+  it('member: already-member unchanged', () => {
+    const html = render(base, 'member', false, 'add')
+    expect(html).toContain('greyReason.already-member')
+  })
+})
