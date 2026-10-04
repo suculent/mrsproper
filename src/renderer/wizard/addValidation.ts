@@ -33,7 +33,10 @@ export function computeAddGroups(
   t: TranslateFn = (key) => key
 ): AddGroupAction[] {
   return dialogs
-    .filter((d) => checkedIds.has(d.id))
+    // WR-03: defensive re-filter on canAdd, mirroring computePlannedActions' `d.canAct` safety
+    // net on the Remove path — a dialog the target cannot actually be invited to must never
+    // reach startAdd(dialogIds), even if checkedDialogIds is stale/incorrect.
+    .filter((d) => checkedIds.has(d.id) && d.canAdd)
     .map((d) => {
       const isBasic = d.type === 'basic-group'
       const isBanned = membershipByDialogId.get(d.id) === 'banned'

@@ -94,6 +94,13 @@ describe('computeAddGroups', () => {
     const result = computeAddGroups([d1], new Set(['1']), new Map())
     expect(result[0].mechanicNote).toBe('add:mechanicNote.add')
   })
+
+  it('WR-03: excludes a checked dialog whose canAdd is false, even though it is in checkedIds', () => {
+    const d1 = makeDialog({ id: '1', canAdd: false })
+    const d2 = makeDialog({ id: '2', canAdd: true })
+    const result = computeAddGroups([d1, d2], new Set(['1', '2']), new Map(), t)
+    expect(result.map((r) => r.dialog.id)).toEqual(['2'])
+  })
 })
 
 // ---------------------------------------------------------------------------
