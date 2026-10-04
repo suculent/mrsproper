@@ -264,6 +264,9 @@ export function registerAddChannels(
   // always comes from dialog.showSaveDialog's return value — the renderer supplies neither
   // (T-15-02).
   ipcMain.handle(ADD_EXPORT_LOG, async () => {
+    if (getAuthState().step !== 'authorized') {
+      return { ok: false as const }
+    }
     // Dynamic import (not require) — vi.mock('node:fs', ...) only intercepts the ESM/
     // dynamic-import module graph in this test runner, not a literal CommonJS require() call.
     const { copyFileSync, existsSync } = await import('node:fs')
