@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import type { GroupsState, ScanState } from '@shared/groupTypes'
 import { groupsClient } from '../ipc/groupsClient'
+import { isActionableForMode, type GroupMode } from '../groups/modeRules'
 
 interface GroupsStoreState {
   groups: GroupsState
@@ -64,11 +65,17 @@ function startSubscriptions(): void {
         // manual deselections the user made survive retryGroup() emissions.
         const groups = currentState.groups
         if (groups.step === 'loaded') {
+          // D-03/D-05: route through the single shared predicate so this rebuild can
+          // never silently drift from GroupsPane.tsx's partition (Pitfall 2) or from
+          // recomputeCheckedForMode's mode-switch rebuild below.
           const checkedDialogIds = new Set(
-            s.results
-              .filter((r) => r.status === 'member')
-              .map((r) => r.dialogId)
-              .filter((id) => groups.dialogs.find((d) => d.id === id)?.canAct)
+            groups.dialogs
+              .filter((d) => {
+                const result = s.results.find((r) => r.dialogId === d.id)
+                const status = result ? result.status : null
+                return isActionableForMode(d, status, 'remove')
+              })
+              .map((d) => d.id)
           )
           setState({ scan: s, checkedDialogIds })
           _prevScanStep = s.step
@@ -169,5 +176,26 @@ export const groupsActions = {
     if (next.has(dialogId)) next.delete(dialogId)
     else next.add(dialogId)
     setState({ checkedDialogIds: next })
+  },
+
+  // D-03: rebuilds checkedDialogIds for the given mode from the current scan snapshot,
+  // without triggering a new scan. Called by the mode-switch control (Plan 15-09) on
+  // every mode change so the checked-set never goes stale against the new partition rule
+  // (RESEARCH.md Pitfall 3). No-ops when groups/scan state isn't ready to be partitioned.
+  recomputeCheckedForMode(mode: GroupMode): void {
+    const groups = currentState.groups
+    const scan = currentState.scan
+    if (groups.step !== 'loaded') return
+    if (scan.step !== 'scanning' && scan.step !== 'complete') return
+    const checkedDialogIds = new Set(
+      groups.dialogs
+        .filter((d) => {
+          const result = scan.results.find((r) => r.dialogId === d.id)
+          const status = result ? result.status : null
+          return isActionableForMode(d, status, mode)
+        })
+        .map((d) => d.id)
+    )
+    setState({ checkedDialogIds })
   },
 }
