@@ -9,7 +9,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Mode & Checklist
 
-- [ ] **ADD-01**: User can switch the groups pane between Remove, Tag and Add modes before the checklist is reviewed; the chosen mode determines which actions the review screen offers (Kick/Ban under Remove, Tag under Tag, Add under Add) and switching mode resets the checklist selection
+- [x] **ADD-01**: User can switch the groups pane between Remove, Tag and Add modes before the checklist is reviewed; the chosen mode determines which actions the review screen offers (Kick/Ban under Remove, Tag under Tag, Add under Add) and switching mode resets the checklist selection
 - [x] **ADD-02**: In Add mode the checklist inverts: groups the target is NOT a member of are actionable and pre-checked; groups they are already in, and groups where the admin lacks the invite right, are greyed with a cause-specific reason
 - [x] **ADD-03**: Broadcast channels are actionable in Add mode when the admin holds the invite right (Remove mode keeps them greyed as today)
 - [x] **ADD-04**: Each enumerated dialog carries a `canAdd` flag computed in the main process (creator, or `inviteUsers` admin right, or default permissions allowing invites); the renderer never derives rights itself
@@ -29,7 +29,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 - [x] **ADD-10**: For each privacy-blocked group the run exports a unique invite link limited to one use and expiring 5 days after creation
 - [x] **ADD-11**: At run end all generated links are sent to the target in ONE direct message; a message refused by the target's privacy settings is reported as such with the links shown so the admin can pass them along another way
-- [ ] **ADD-12**: The review screen shows the add consequence line, the exact group list, and the exact direct-message text that would be sent, and requires one explicit confirmation before any write; target identity is sourced from the main process only
+- [x] **ADD-12**: The review screen shows the add consequence line, the exact group list, and the exact direct-message text that would be sent, and requires one explicit confirmation before any write; target identity is sourced from the main process only
 - [x] **ADD-16**: User can edit the direct-message template used for the invite-link message (default template provided in English and Czech, placeholders for the target's name and the link list); the template is persisted across runs and the rendered message is what ADD-12 previews
 
 ### Reporting & Log
@@ -75,7 +75,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ADD-01 | Phase 15 | Pending |
+| ADD-01 | Phase 15 | Complete |
 | ADD-02 | Phase 13 | Complete |
 | ADD-03 | Phase 13 | Complete |
 | ADD-04 | Phase 13 | Complete |
@@ -86,7 +86,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-09 | Phase 14 | Complete |
 | ADD-10 | Phase 14 | Complete |
 | ADD-11 | Phase 14 | Complete |
-| ADD-12 | Phase 15 | Pending |
+| ADD-12 | Phase 15 | Complete |
 | ADD-13 | Phase 15 | Pending |
 | ADD-14 | Phase 15 | Complete |
 | ADD-15 | Phase 15 | Pending |

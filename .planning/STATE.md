@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Add Mode
 status: executing
 stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-10-04T00:34:32.142Z"
+last_updated: "2026-10-04T00:45:44.825Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 16
+  completed_plans: 17
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -81,6 +81,7 @@ Last activity: 2026-10-04
 | Phase 14 P11 | 25min | 2 tasks | 5 files |
 | Phase 15 P01 | 6min | 2 tasks | 3 files |
 | Phase 15 P02 | 8min | 3 tasks | 8 files |
+| Phase 15 P03 | 9min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase 14-11]: Used Parameters<typeof createContactService>[0]['client'] instead of ConstructorParameters since createContactService is a factory function, not a class
 - [Phase 15-01]: DM_TEMPLATE_MAX_LENGTH (4000) is the single source of truth for the template length bound, consumed by templateChannels.ts's Zod schema and the renderer's validateDmTemplate (Plan 15-03)
 - [Phase ?]: [15-02]: Switched ADD_EXPORT_LOG's node:fs access from require() to await import() -- vi.mock('node:fs') only intercepts the ESM/dynamic-import graph in this Vitest setup, not a literal CommonJS require() call
+- [Phase ?]: [15-03]: isActionableForMode's Add branch deliberately treats a null/pending status as non-actionable (D-05 asymmetry), while Remove/Tag treat null as actionable
+- [Phase ?]: [15-03]: addValidation.ts imports TranslateFn from tagValidation.ts rather than duplicating the type
 
 ### Pending Todos
 
@@ -183,7 +186,7 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T00:34:32.137Z
+Last session: 2026-10-04T00:45:40.433Z
 Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 
