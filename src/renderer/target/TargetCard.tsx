@@ -20,6 +20,9 @@ import {
 } from '@renderer/components/ui/tooltip'
 import { useTargetStore, targetActions } from '@renderer/store/targetStore'
 import { useRemovalStore } from '@renderer/store/removalStore'
+import { useTagStore } from '@renderer/store/tagStore'
+import { useAddStore } from '@renderer/store/addStore'
+import { isAnyRunActive } from '@renderer/store/runActivity'
 import { cn } from '@renderer/lib/utils'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -107,9 +110,11 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
   const { t: tA } = useTranslation('add')
   const { target, addToContactsChecked, contactAddFailed } = useTargetStore()
   const { state: removal } = useRemovalStore()
+  const { state: tag } = useTagStore()
+  const { state: add } = useAddStore()
 
-  // T-05-07-B: disable Change target while removal is running or stopping
-  const isRemovalRunning = removal.step === 'running' || removal.step === 'stopping'
+  // T-05-07-B / D-15: disable Change target while any Remove, Tag or Add run is active
+  const isRunActive = isAnyRunActive(removal, tag, add)
 
   // Rules of Hooks: ALL hooks must run unconditionally on every render — this
   // component is mounted in idle/resolving states too (StubbedWorkflowRegions),
@@ -279,21 +284,21 @@ export function TargetCard(props: TargetCardProps = {}): React.JSX.Element | nul
                 size="sm"
                 className="text-label text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  if (!isRemovalRunning) {
+                  if (!isRunActive) {
                     void targetActions.resetTarget()
                     props.onNavigateToTarget?.()
                   }
                 }}
                 type="button"
-                disabled={isRemovalRunning}
-                aria-disabled={isRemovalRunning}
+                disabled={isRunActive}
+                aria-disabled={isRunActive}
               >
                 {tTr('changeTarget')}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {isRemovalRunning
-                ? tTr('stopRemovalFirst')
+              {isRunActive
+                ? tTr('stopRunFirst')
                 : tTr('clearTargetTooltip')}
             </TooltipContent>
           </Tooltip>

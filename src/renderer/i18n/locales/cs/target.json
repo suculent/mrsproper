@@ -51,7 +51,7 @@
   "phoneModeAria": "Režim telefonního čísla",
   "findingPerson": "Hledám osobu…",
   "findPerson": "Najít osobu",
-  "stopRemovalFirst": "Nejprve zastavte odebírání",
+  "stopRunFirst": "Nejprve zastavte probíhající operaci",
   "clearTargetTooltip": "Vymaže tuto osobu a všechny výběry skupin",
   "isThisRightPerson": "Je to ta správná osoba?",
   "targetConfirmed": "Cíl potvrzen",

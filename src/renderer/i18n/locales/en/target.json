@@ -49,7 +49,7 @@
   "phoneModeAria": "Phone mode detected",
   "findingPerson": "Finding person…",
   "findPerson": "Find person",
-  "stopRemovalFirst": "Stop the removal first",
+  "stopRunFirst": "Stop the current run first",
   "clearTargetTooltip": "Clears this person and any group selections",
   "isThisRightPerson": "Is this the right person?",
   "targetConfirmed": "Target confirmed",
