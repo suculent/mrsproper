@@ -17,6 +17,7 @@ import { cn } from '@renderer/lib/utils'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { RmvErrorCode } from '@shared/removalTypes'
 import type { TagErrorCode } from '@shared/tagTypes'
+import type { AddErrorCode } from '@shared/addTypes'
 import { formatMemberCount } from '@renderer/lib/format'
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,16 @@ export interface GroupRowProps {
   /** Typed tag failure/skip code — present when tagStatus === 'failed' or 'skipped'. */
   tagErrorCode?: TagErrorCode | null
   // NOTE: no onRetryTag, no tagNote — tag has no per-group retry, no basic-group-fallback note
+  /** Add status for this group. null/undefined = not in an add run. */
+  addStatus?: 'queued' | 'adding' | 'done' | 'already-member' | 'privacy-blocked' | 'failed' | 'skipped' | null
+  /** Typed add failure code — present when addStatus === 'failed'. */
+  addErrorCode?: AddErrorCode | null
+  /** Single-use invite link — present when addStatus === 'privacy-blocked' (D-18). */
+  addLink?: string | null
+  /** Telegram Premium would have allowed a direct add — present when addStatus === 'privacy-blocked' (D-18/D-09). */
+  premiumWouldAllow?: boolean
+  /** Called when user clicks the "retry" link for a failed Add row (D-18). */
+  onRetryAdd?: (dialogId: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -106,10 +117,12 @@ export function GroupRow({
   severity = 'ban',
   tagStatus,
   tagErrorCode,
+  addStatus,
 }: GroupRowProps): React.JSX.Element {
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
   const { t: tT } = useTranslation('tag')
+  const { t: tAdd } = useTranslation('add')
 
   const isActionable = dialog.canAct && membershipStatus === 'member'
   const isPending = membershipStatus === null || membershipStatus === 'pending'
@@ -119,8 +132,8 @@ export function GroupRow({
   const initial = getInitials(dialog.title)
   const avatarBg = getAvatarColor(dialog.id)
 
-  // When a removal or tag run is active for this row, disable toggle interactions
-  const isRemovalActive = removalStatus != null || tagStatus != null
+  // When a removal, tag, or add run is active for this row, disable toggle interactions
+  const isRemovalActive = removalStatus != null || tagStatus != null || addStatus != null
 
   // ---------------------------------------------------------------------------
   // Checkbox slot — Phase 5 removal status branch is FIRST
@@ -208,6 +221,50 @@ export function GroupRow({
               checked={true}
               disabled={true}
               aria-label={tT('queuedTagAria', { title: dialog.title })}
+            />
+          )
+      }
+    }
+
+    // 1c. addStatus branch — parallel to removalStatus/tagStatus, never overlap
+    if (addStatus != null) {
+      switch (addStatus) {
+        case 'adding':
+          return (
+            <Loader2
+              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'done':
+        case 'already-member':
+        case 'privacy-blocked':
+          return (
+            <Check
+              className="h-4 w-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+          )
+        case 'failed':
+          return (
+            <AlertCircle
+              className="h-4 w-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
+          )
+        case 'skipped':
+          return (
+            <Minus
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          )
+        case 'queued':
+          return (
+            <Checkbox
+              checked={true}
+              disabled={true}
+              aria-label={tAdd('queuedAddAria', { title: dialog.title })}
             />
           )
       }
