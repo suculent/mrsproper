@@ -16,9 +16,11 @@ import type { WizardStage } from '../wizard/StepIndicator'
 import { ReviewScreen } from '../wizard/ReviewScreen'
 import { ResumeJobDialog } from '../removal/ResumeJobDialog'
 import { TagResumeJobDialog } from '../removal/TagResumeJobDialog'
+import { AddResumeJobDialog } from '../removal/AddResumeJobDialog'
 import { useSearchStore } from '../store/searchStore'
 import { useRemovalStore } from '../store/removalStore'
 import { useTagStore } from '../store/tagStore'
+import { useAddStore } from '../store/addStore'
 import { severityClient } from '../ipc/severityClient'
 
 interface AppShellProps {
@@ -35,21 +37,21 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   const [stage, setStage] = useState<WizardStage>('target')
 
   // ---------------------------------------------------------------------------
-  // Severity state — rehydrated from electron-store on mount
+  // Mode / severity state — mode is session-only (D-02, never persisted, always
+  // defaults to 'remove' on launch); severity is unchanged and persisted exactly
+  // as today via severityClient.
   // ---------------------------------------------------------------------------
 
-  // Phase 12: severity widened to action ('kick' | 'ban' | 'tag') — full wiring in Plan 04.
-  // Minimal update here to keep ReviewScreen props in sync after interface rename.
-  const [action, setAction] = useState<'kick' | 'ban' | 'tag'>('ban')
+  const [mode, setMode] = useState<'remove' | 'tag' | 'add'>('remove')
+  const [severity, setSeverity] = useState<'kick' | 'ban'>('ban')
 
   useEffect(() => {
-    severityClient.getSeverity().then(setAction).catch(() => {})
+    severityClient.getSeverity().then(setSeverity).catch(() => {})
   }, [])
 
-  const handleActionChange = useCallback((a: 'kick' | 'ban' | 'tag') => {
-    setAction(a)
-    // Only persist kick/ban to electron-store — 'tag' is not a severity
-    if (a === 'kick' || a === 'ban') void severityClient.setSeverity(a)
+  const handleSeverityChange = useCallback((s: 'kick' | 'ban') => {
+    setSeverity(s)
+    void severityClient.setSeverity(s)
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -70,26 +72,47 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
   }, [removal.step, stage])
 
   // ---------------------------------------------------------------------------
-  // Tag store subscription + tag auto-advance (gated on action === 'tag')
+  // Tag store subscription + tag auto-advance (gated on mode === 'tag')
   // ---------------------------------------------------------------------------
 
   const { state: tag, pendingJob: pendingTagJob } = useTagStore()
 
-  // Tag auto-advance run→report — CRITICAL: gate on action === 'tag' to prevent
+  // Tag auto-advance run→report — CRITICAL: gate on mode === 'tag' to prevent
   // cross-contamination with removal auto-advance (RESEARCH Pitfall 3)
   useEffect(() => {
     if (
       stage === 'run' &&
-      action === 'tag' &&
+      mode === 'tag' &&
       (tag.step === 'complete' || tag.step === 'stopped' || tag.step === 'hard-stopped')
     ) {
       setStage('report')
     }
-  }, [tag.step, stage, action])
+  }, [tag.step, stage, mode])
 
   // Derive tagResumeOpen reactively from store — NOT via useState (RESEARCH Pitfall 1:
   // useState would miss the initial value when pendingTagJob is set before first render)
   const tagResumeOpen = pendingTagJob !== null
+
+  // ---------------------------------------------------------------------------
+  // Add store subscription + add auto-advance (gated on mode === 'add')
+  // ---------------------------------------------------------------------------
+
+  const { state: add, pendingJob: pendingAddJob } = useAddStore()
+
+  // Add auto-advance run→report — CRITICAL: gate on mode === 'add' to prevent
+  // cross-contamination with removal/tag auto-advance (RESEARCH Pitfall 3)
+  useEffect(() => {
+    if (
+      stage === 'run' &&
+      mode === 'add' &&
+      (add.step === 'complete' || add.step === 'stopped' || add.step === 'hard-stopped')
+    ) {
+      setStage('report')
+    }
+  }, [add.step, stage, mode])
+
+  // Derive addResumeOpen reactively from store — NOT via useState (RESEARCH Pitfall 1)
+  const addResumeOpen = pendingAddJob !== null
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
