@@ -530,7 +530,10 @@ export function GroupRow({
         {renderAddSubline()}
 
         {/* Banned-but-actionable note (D-06) — Add mode, no run active, row stays interactive */}
-        {addStatus == null && membershipStatus === 'banned' && dialog.canAdd && (
+        {/* CR-02: gated on activeMode === 'add' — canAdd is populated unconditionally by the
+            scan, so without this guard a banned row being reviewed for Remove/Tag could show
+            an Add-specific note. */}
+        {activeMode === 'add' && addStatus == null && membershipStatus === 'banned' && dialog.canAdd && (
           <span className="text-label text-muted-foreground">
             {tAdd('rowNote.bannedWillUnban')}
           </span>
@@ -544,7 +547,10 @@ export function GroupRow({
         )}
 
         {/* Add-mode grey reason — canAdd=false (D-08, data layer shipped Phase 13) */}
-        {addStatus == null && dialog.addGreyReason != null && dialog.greyReason == null && (
+        {/* CR-02: gated on activeMode === 'add' — addGreyReason/canAdd are populated by the
+            scan unconditionally, so without this guard the caption leaked onto ordinary
+            Remove/Tag rows (e.g. "Already a member" showing while reviewing a removal). */}
+        {activeMode === 'add' && addStatus == null && dialog.addGreyReason != null && dialog.greyReason == null && (
           <span className="text-label text-muted-foreground">
             {tG(`greyReason.${dialog.addGreyReason}`)}
           </span>
