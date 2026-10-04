@@ -22,6 +22,7 @@ import { useTargetStore, targetActions } from '../store/targetStore'
 import { useRemovalStore, removalActions } from '../store/removalStore'
 import { useTagStore, tagActions } from '../store/tagStore'
 import { useAddStore, addActions } from '../store/addStore'
+import { addClient } from '../ipc/addClient'
 import { GroupRow } from './GroupRow'
 import { ModeSwitch } from './ModeSwitch'
 import { isActionableForMode, type GroupMode } from './modeRules'
@@ -82,6 +83,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const { t: tR } = useTranslation('removal')
   const { t: tW } = useTranslation('wizard')
   const { t: tT } = useTranslation('tag')
+  const { t: tAdd } = useTranslation('add')
 
   const { groups, scan, checkedDialogIds } = useGroupsStore()
   const targetState = useTargetStore()
@@ -91,6 +93,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
 
   const [sort, setSort] = useState<SortMode>('az')
   const [filter, setFilter] = useState('')
+  // D-20: transient "No add log yet" inline message next to the Export add log button
+  const [exportLogMessage, setExportLogMessage] = useState<string | null>(null)
 
   // D-12: mode derivation
   const mode = targetState.target.step === 'confirmed' ? 'checklist' : 'browse'
@@ -452,6 +456,172 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       // Tag is idle — fall through to scan progress slot (d)
     }
 
+    // ADD BRANCHES — gated on activeMode === 'add'; placed before removal branches,
+    // structurally identical to the Tag block above (D-17/D-18/D-19/D-20)
+    if (activeMode === 'add') {
+      // a-add. Add progress (running or stopping)
+      if (add.step === 'running' || add.step === 'stopping') {
+        const processed = add.progress.processed
+        const total = add.progress.total
+        const pct = total > 0 ? Math.round((processed / total) * 100) : 0
+        const isStopping = add.step === 'stopping'
+
+        return (
+          <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-label text-muted-foreground">
+                {tAdd('progressLabel', { name: targetName, x: processed + 1, n: total })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-label text-muted-foreground hover:text-foreground"
+                onClick={() => void addActions.abortAdd()}
+                disabled={isStopping}
+                aria-label={tG('stopRemovalAria')}
+              >
+                {isStopping ? (
+                  <>
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                    {tAdd('stoppingLabel')}
+                  </>
+                ) : (
+                  tAdd('stopLabel')
+                )}
+              </Button>
+            </div>
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-[width] duration-200"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {add.floodWaitRemaining != null && add.floodWaitRemaining > 0 && (
+              <span className="text-label text-muted-foreground flex items-baseline gap-1">
+                {tAdd('floodWaitSubline')}
+                <FloodCountdown remaining={add.floodWaitRemaining} />
+              </span>
+            )}
+          </div>
+        )
+      }
+
+      // b-add. PEER_FLOOD banner (hard-stopped)
+      if (add.step === 'hard-stopped') {
+        return (
+          <div className="px-4 py-2 shrink-0">
+            <Alert
+              variant="destructive"
+              className="bg-destructive/10 border-destructive/30"
+              role="alert"
+              aria-live="assertive"
+            >
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription className="text-body">
+                {tAdd('peerFloodBanner')}
+                <div className="mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => void addActions.resumeJobFromDisk()}
+                  >
+                    {tAdd('peerFloodResumeLabel')}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )
+      }
+
+      // c-add. Summary band (complete or stopped)
+      if (add.step === 'complete' || add.step === 'stopped') {
+        const summary = add.summary
+        const summaryParts: Array<{ label: string; count: number }> = []
+        if (summary) {
+          if (summary.added > 0) summaryParts.push({ count: summary.added, label: tAdd('summaryPart.added') })
+          if (summary.alreadyMember > 0) summaryParts.push({ count: summary.alreadyMember, label: tAdd('summaryPart.alreadyMember') })
+          if (summary.privacyBlocked > 0) summaryParts.push({ count: summary.privacyBlocked, label: tAdd('summaryPart.privacyBlocked') })
+          if (summary.failed > 0) summaryParts.push({ count: summary.failed, label: tAdd('summaryPart.failed') })
+          if (summary.skipped > 0) summaryParts.push({ count: summary.skipped, label: tAdd('summaryPart.skipped') })
+        }
+
+        async function handleExportAddLog(): Promise<void> {
+          const result = await addClient.exportAddLog()
+          if (!result.ok && result.reason === 'no-log') {
+            setExportLogMessage(tAdd('exportLogNoLogYet'))
+            setTimeout(() => setExportLogMessage(null), 4000)
+          }
+        }
+
+        return (
+          <div className="px-4 py-2 shrink-0 border-t border-border flex items-center justify-between gap-2 flex-wrap" role="status">
+            <div className="flex flex-col gap-1">
+              {add.step === 'stopped' && (
+                <span className="text-label text-muted-foreground">
+                  {tAdd('summaryStopped', { x: add.progress.processed, n: add.progress.total })}
+                </span>
+              )}
+              {summaryParts.length > 0 && (
+                <span className="text-label">
+                  {summaryParts.map((part, i) => (
+                    <React.Fragment key={part.label}>
+                      {i > 0 && <span className="text-muted-foreground"> · </span>}
+                      <span className="font-semibold text-foreground">{part.count}</span>
+                      {' '}
+                      <span className="text-muted-foreground">{part.label}</span>
+                    </React.Fragment>
+                  ))}
+                </span>
+              )}
+              {summary && summary.failed > 0 && (
+                <span className="text-label text-muted-foreground">
+                  {tAdd('summaryFailed', { count: summary.failed })}
+                </span>
+              )}
+              {summary && summary.completedAt && (
+                <span className="text-label text-muted-foreground">
+                  {tAdd('finishedAt', { time: formatTime(summary.completedAt) })}
+                </span>
+              )}
+              {/* D-19: DM status line — sent/refused render a line, not-needed renders nothing */}
+              {add.dmStatus === 'sent' && (
+                <span className="text-label text-muted-foreground">
+                  {tAdd('dmStatusSent', { name: targetName })}
+                </span>
+              )}
+              {add.dmStatus === 'refused' && (
+                <span className="text-label text-foreground">
+                  {tAdd('dmStatusRefused', { name: targetName })}
+                </span>
+              )}
+              {exportLogMessage != null && (
+                <span className="text-label text-muted-foreground">{exportLogMessage}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleExportAddLog()}
+              >
+                {tAdd('exportLogButton')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => { await targetActions.resetTarget(); onNavigateToTarget() }}
+              >
+                {tAdd('addSomeoneElse')}
+              </Button>
+            </div>
+          </div>
+        )
+      }
+
+      // Add is idle — fall through to scan progress slot (d)
+    }
+
     // EXISTING REMOVAL BRANCHES (unchanged) — placed after tag block
 
     // a. Removal progress (running or stopping)
@@ -677,22 +847,26 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <RefreshCw className="h-4 w-4" />
         </Button>
 
-        {/* Run-trigger button — checklist mode, scan complete, ≥1 checked, removal+tag idle */}
+        {/* Run-trigger button — checklist mode, scan complete, ≥1 checked, removal+tag+add idle */}
         {mode === 'checklist' && scan.step === 'complete' && checkedCount > 0 && (
-          removal.step === 'idle' && tag.step === 'idle' ? (
+          removal.step === 'idle' && tag.step === 'idle' && add.step === 'idle' ? (
             <Button
               variant="default"
               size="sm"
               onClick={() => onNavigateToReview()}
               aria-label={
-                activeMode === 'tag'
-                  ? tT('runTriggerAriaTag', { count: checkedCount })
-                  : tW('runTriggerAria', { count: checkedCount })
+                activeMode === 'add'
+                  ? tAdd('runTriggerAria', { count: checkedCount })
+                  : activeMode === 'tag'
+                    ? tT('runTriggerAriaTag', { count: checkedCount })
+                    : tW('runTriggerAria', { count: checkedCount })
               }
             >
-              {activeMode === 'tag'
-                ? tT('runTriggerLabelTag', { count: checkedCount })
-                : tW('runTriggerLabel', { count: checkedCount })}
+              {activeMode === 'add'
+                ? tAdd('runTriggerLabel', { count: checkedCount })
+                : activeMode === 'tag'
+                  ? tT('runTriggerLabelTag', { count: checkedCount })
+                  : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : removal.step === 'stopping' ? (
             // Disabled (not hidden) while stopping — UI-SPEC
@@ -702,9 +876,11 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               aria-disabled="true"
               disabled={true}
             >
-              {activeMode === 'tag'
-                ? tT('runTriggerLabelTag', { count: checkedCount })
-                : tW('runTriggerLabel', { count: checkedCount })}
+              {activeMode === 'add'
+                ? tAdd('runTriggerLabel', { count: checkedCount })
+                : activeMode === 'tag'
+                  ? tT('runTriggerLabelTag', { count: checkedCount })
+                  : tW('runTriggerLabel', { count: checkedCount })}
             </Button>
           ) : null
         )}
