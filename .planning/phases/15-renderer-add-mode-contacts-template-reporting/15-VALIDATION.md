@@ -28,7 +28,7 @@ updated: 2026-10-04
 
 ## Sampling Rate
 
-- **After every task commit:** Run `npx tsc --build` then `npx vitest run <touched test files>`
+- **After every task commit:** Run `npx tsc --build`, then clean emitted artifacts (`find src -name '*.js' -newer package.json -delete 2>/dev/null; find src -name '*.d.ts' -newer package.json ! -name 'env.d.ts' ! -name 'i18next.d.ts' -delete 2>/dev/null`), then `npx vitest run <touched test files>` — matches every `<verify><automated>` command in this phase's plans (the cleanup step prevents Vitest from running stale compiled output per the project's documented `tsc-noop-pitfall`).
 - **After every plan wave:** Run the full suite command, plus `npm run build` (electron-vite) so renderer bundling errors surface
 - **Before `/gsd:verify-work`:** Full suite must be green
 - **Max feedback latency:** 60 seconds
