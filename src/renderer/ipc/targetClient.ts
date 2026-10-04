@@ -15,6 +15,7 @@ declare global {
     getTargetState(): Promise<TargetState>
     onTargetState(cb: (s: TargetState) => void): () => void
     onGovernorEvent(cb: (e: GovernorEvent) => void): () => void
+    addTargetToContacts(): Promise<{ ok: boolean; code?: string }>
   }
 }
 
@@ -41,5 +42,9 @@ export const targetClient = {
 
   onGovernorEvent(cb: (e: GovernorEvent) => void): () => void {
     return window.mrsproper.onGovernorEvent(cb)
+  },
+
+  addTargetToContacts(): Promise<{ ok: boolean; code?: string }> {
+    return window.mrsproper.addTargetToContacts()
   },
 }
