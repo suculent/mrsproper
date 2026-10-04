@@ -756,8 +756,10 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
       )
     }
 
-    // d. Scan progress — when scan is scanning and no run is active (removal or tag)
-    if (scan.step === 'scanning' && removal.step === 'idle' && tag.step === 'idle') {
+    // d. Scan progress — when scan is scanning and no run is active (removal, tag, or add)
+    // WR-05: add.step === 'idle' was missing from this guard — this block predates Add mode
+    // and was never extended, unlike every other removal/tag/add parallel block in this file.
+    if (scan.step === 'scanning' && removal.step === 'idle' && tag.step === 'idle' && add.step === 'idle') {
       return (
         <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
           <div className="flex items-center justify-between mb-1">
