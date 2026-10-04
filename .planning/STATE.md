@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
 status: executing
-stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-10-04T00:19:21.631Z"
-last_activity: 2026-10-04 -- Phase 15 planning complete
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-10-04T00:24:32.848Z"
+last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 14
+  completed_plans: 15
   percent: 29
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 15 — renderer — add mode, contacts, template & reporting
+**Current focus:** Phase 15 — Renderer — Add Mode, Contacts, Template & Reporting
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
+Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-10-04 -- Phase 15 planning complete
+Last activity: 2026-10-04
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Last activity: 2026-10-04 -- Phase 15 planning complete
 | Phase 14 P09 | 25min | 1 tasks | 2 files |
 | Phase 14 P10 | 12min | 2 tasks | 2 files |
 | Phase 14 P11 | 25min | 2 tasks | 5 files |
+| Phase 15 P01 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,7 @@ Recent decisions affecting current work:
 - [Phase 14]: [14-10]: resume flag for ADD_START computed server-side from auditStore.readJob() (existingJob !== null && status !== 'complete'), never accepted from renderer payload
 - [Phase 14-11]: getDmText closure reads getCachedTemplate() first, falling back to DEFAULT_TEMPLATE_CS/EN by the language stored at launch (D-15)
 - [Phase 14-11]: Used Parameters<typeof createContactService>[0]['client'] instead of ConstructorParameters since createContactService is a factory function, not a class
+- [Phase 15-01]: DM_TEMPLATE_MAX_LENGTH (4000) is the single source of truth for the template length bound, consumed by templateChannels.ts's Zod schema and the renderer's validateDmTemplate (Plan 15-03)
 
 ### Pending Todos
 
@@ -179,9 +181,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-03T23:02:50.275Z
-Stopped at: Phase 15 UI-SPEC approved
-Resume file: .planning/phases/15-renderer-add-mode-contacts-template-reporting/15-UI-SPEC.md
+Last session: 2026-10-04T00:24:32.842Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
