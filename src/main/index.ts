@@ -19,7 +19,7 @@ import { registerTagChannels, emitTagState } from './ipc/tagChannels'
 import { TagExecutor } from './telegram/TagExecutor'
 import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
-import { registerLanguageChannels, getStoredLanguage } from './ipc/languageChannels'
+import { registerLanguageChannels, preloadLanguageCache, getCachedLanguage } from './ipc/languageChannels'
 import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { AddExecutor } from './telegram/AddExecutor'
@@ -366,11 +366,11 @@ app.whenReady().then(async () => {
   // preloadTemplateCache() warms the synchronous cache BEFORE any AddExecutor.execute() can
   // run — DmTextProvider is a synchronous function, but electron-store access is async.
   await preloadTemplateCache()
-  const storedLanguage = await getStoredLanguage()
-  const dmLanguage: 'en' | 'cs' = storedLanguage ?? 'en'
+  await preloadLanguageCache()
   const getDmText = (vars: { name: string; links: string }): string =>
     renderTemplate(
-      getCachedTemplate() ?? (dmLanguage === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN),
+      getCachedTemplate() ??
+        ((getCachedLanguage() ?? 'en') === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN),
       vars
     )
 

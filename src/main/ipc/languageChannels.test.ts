@@ -39,7 +39,7 @@ vi.mock('electron', () => ({
 }))
 
 import { ipcMain } from 'electron'
-import { registerLanguageChannels } from './languageChannels'
+import { registerLanguageChannels, preloadLanguageCache, getCachedLanguage } from './languageChannels'
 
 type IpcHandler = (event: unknown, payload?: unknown) => Promise<unknown>
 
@@ -59,6 +59,17 @@ beforeEach(() => {
 })
 
 describe('languageChannels', () => {
+  // Must stay first: module-level cache is untouched until preload/LANGUAGE_SET runs.
+  it('getCachedLanguage returns null before preload', () => {
+    expect(getCachedLanguage()).toBeNull()
+  })
+
+  it('preloadLanguageCache warms the cache from the store', async () => {
+    mocks.store.get.mockReturnValue('cs')
+    await preloadLanguageCache()
+    expect(getCachedLanguage()).toBe('cs')
+  })
+
   it('registers handlers for LANGUAGE_GET and LANGUAGE_SET', () => {
     expect(getHandler).toBeDefined()
     expect(setHandler).toBeDefined()
@@ -91,5 +102,12 @@ describe('languageChannels', () => {
   it('LANGUAGE_GET returns stored value when pref is set to "cs"', async () => {
     mocks.store.get.mockReturnValue('cs')
     await expect(getHandler({})).resolves.toBe('cs')
+  })
+
+  it('LANGUAGE_SET updates the cache without restart; invalid input leaves it untouched', async () => {
+    await setHandler({}, { language: 'en' })
+    expect(getCachedLanguage()).toBe('en')
+    await expect(setHandler({}, { language: 'de' })).rejects.toThrow(ZodError)
+    expect(getCachedLanguage()).toBe('en')
   })
 })

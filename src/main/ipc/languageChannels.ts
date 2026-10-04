@@ -48,16 +48,31 @@ async function getStore(): Promise<LanguageStore> {
 // ── Launch-time language read (Plan 14-11) ──────────────────────────────────
 
 /**
- * Read the persisted language preference for launch-time use (DM default-template
- * language selection, main/index.ts). Returns null when no preference is stored —
- * caller falls back to 'en'. Mirrors themeChannels.ts's getStoredTheme() exactly.
- * Read-only, no caching: language changes mid-session do not retroactively change
- * which BUILT-IN default would have applied — only a stored custom template is live-cached
- * (see templateChannels.ts's getCachedTemplate()).
+ * Read the persisted language preference. Returns null when no preference is stored —
+ * caller falls back to 'en'. Mirrors themeChannels.ts's getStoredTheme().
+ * For synchronous render-time use (DM default template) see getCachedLanguage().
  */
 export async function getStoredLanguage(): Promise<'en' | 'cs' | null> {
   const store = await getStore()
   return store.get('language') ?? null
+}
+
+// ── Synchronous language cache (D-13) ───────────────────────────────────────
+
+/**
+ * Sync cache of the persisted language. DmTextProvider is synchronous but
+ * electron-store access is async, so warm at launch (preloadLanguageCache) and
+ * update inside the LANGUAGE_SET handler after Zod validation. getDmText reads it
+ * on every render, so an in-session language switch changes the default DM template.
+ */
+let _cachedLanguage: 'en' | 'cs' | null = null
+
+export async function preloadLanguageCache(): Promise<void> {
+  _cachedLanguage = await getStoredLanguage()
+}
+
+export function getCachedLanguage(): 'en' | 'cs' | null {
+  return _cachedLanguage
 }
 
 // ── IPC handler registration ───────────────────────────────────────────────
@@ -88,6 +103,7 @@ export function registerLanguageChannels(): void {
     const { language } = LanguageSchema.parse(payload)
     const store = await getStore()
     store.set('language', language)
+    _cachedLanguage = language
     return language
   })
 }
