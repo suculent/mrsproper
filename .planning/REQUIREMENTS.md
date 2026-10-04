@@ -34,7 +34,7 @@ Requirements for milestone v1.7. Each maps to roadmap phases.
 
 ### Reporting & Log
 
-- [ ] **ADD-13**: Live per-group progress during an add run and a per-group results report afterwards, reusing the run/report UI, with retry per failed group
+- [x] **ADD-13**: Live per-group progress during an add run and a per-group results report afterwards, reusing the run/report UI, with retry per failed group
 - [x] **ADD-14**: An add log records one entry per added user (timestamp, user id and display name, groups added, and the invite links generated for them), stored next to the job files with owner-only permissions, and exportable as a plain-text file through a save dialog from the app
 
 ### Localization
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADD-10 | Phase 14 | Complete |
 | ADD-11 | Phase 14 | Complete |
 | ADD-12 | Phase 15 | Complete |
-| ADD-13 | Phase 15 | Pending |
+| ADD-13 | Phase 15 | Complete |
 | ADD-14 | Phase 15 | Complete |
 | ADD-15 | Phase 15 | Complete |
 | ADD-16 | Phase 15 | Complete |

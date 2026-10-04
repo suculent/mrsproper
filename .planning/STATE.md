@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Add Mode
 status: executing
 stopped_at: Completed 15-05-PLAN.md
-last_updated: "2026-10-04T00:59:59.965Z"
+last_updated: "2026-10-04T01:04:47.718Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 27
-  completed_plans: 19
+  completed_plans: 20
   percent: 29
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 15 (Renderer — Add Mode, Contacts, Template & Reporting) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -84,6 +84,7 @@ Last activity: 2026-10-04
 | Phase 15 P03 | 9min | 3 tasks | 8 files |
 | Phase 15 P04 | 12min | 3 tasks | 8 files |
 | Phase 15 P05 | 6min | 2 tasks | 3 files |
+| Phase 15 P06 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,7 @@ Recent decisions affecting current work:
 - [Phase 15-04]: add i18n namespace created verbatim from UI-SPEC sections 2-9; groups.json gains modeSwitch keys; i18next.d.ts needs zero edits since CustomTypeOptions.resources is structurally typed
 - [Phase 15]: [15-05]: maybeAddToContacts sets contactAddAttempted synchronously before awaiting the bridge call, so a second concurrent call sees the flag already set — enforces the at-most-once-per-target guarantee (D-09)
 - [Phase 15]: [15-05]: targetStore.test.ts reuses the react-mock + vi.resetModules()-per-test pattern established in 15-03's groupsStore.test.ts for node-environment store tests
+- [Phase 15]: [15-06]: exportAddLog's typed MrsProperApi augmentation deferred to Plan 15-07's addClient.ts (Add-mode action, not generic clipboard)
 
 ### Pending Todos
 
@@ -191,7 +193,7 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T00:59:59.959Z
+Last session: 2026-10-04T01:03:50.226Z
 Stopped at: Completed 15-05-PLAN.md
 Resume file: None
 
