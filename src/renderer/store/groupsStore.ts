@@ -33,6 +33,13 @@ const listeners = new Set<Listener>()
 // and hook re-subscriptions.
 let _prevScanStep: ScanState['step'] | null = null
 
+// 15-14: tracks the currently-active checklist mode. recomputeCheckedForMode(mode) is the
+// only call site that ever changes the active mode (invoked synchronously by
+// ModeSwitch.handleSelect on every mode switch, before onChange bubbles up), so recording it
+// there keeps this module-level value in sync with zero new call sites elsewhere. Consumed by
+// the first-scan-complete pre-check rebuild below so it no longer hardcodes 'remove'.
+let _activeMode: GroupMode = 'remove'
+
 function notify(): void {
   for (const l of listeners) l()
 }
@@ -73,7 +80,7 @@ function startSubscriptions(): void {
               .filter((d) => {
                 const result = s.results.find((r) => r.dialogId === d.id)
                 const status = result ? result.status : null
-                return isActionableForMode(d, status, 'remove')
+                return isActionableForMode(d, status, _activeMode)
               })
               .map((d) => d.id)
           )
@@ -183,6 +190,7 @@ export const groupsActions = {
   // every mode change so the checked-set never goes stale against the new partition rule
   // (RESEARCH.md Pitfall 3). No-ops when groups/scan state isn't ready to be partitioned.
   recomputeCheckedForMode(mode: GroupMode): void {
+    _activeMode = mode
     const groups = currentState.groups
     const scan = currentState.scan
     if (groups.step !== 'loaded') return

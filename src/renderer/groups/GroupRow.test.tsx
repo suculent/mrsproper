@@ -39,6 +39,35 @@ function render(
   )
 }
 
+// Extracts the outermost wrapper <div>'s class attribute. Needed because a plain
+// `toContain('opacity-50')` on the full markup false-positives: the actionable-row
+// Checkbox (@radix-ui/react-checkbox) always carries the static Tailwind utility class
+// "disabled:opacity-50" in its own className, regardless of this row's greyed state.
+function getWrapperClasses(html: string): string[] {
+  const match = /^<div class="([^"]*)"/.exec(html)
+  if (!match) throw new Error('wrapper <div class="..."> not found in markup')
+  return match[1].split(/\s+/)
+}
+
+// All class="..." tokens across the whole markup, flattened. Used to assert the ACTUAL
+// non-actionable fallback's literal 'cursor-not-allowed' class token is absent, distinct
+// from the always-present Tailwind variant token 'disabled:cursor-not-allowed' on the live
+// Checkbox (a different, unrelated token once split on whitespace).
+function getAllClassTokens(html: string): string[] {
+  const tokens: string[] = []
+  for (const m of html.matchAll(/class="([^"]*)"/g)) {
+    tokens.push(...m[1].split(/\s+/))
+  }
+  return tokens
+}
+
+// True only when a real HTML `disabled` attribute is present on some element — distinct
+// from the static Tailwind variant class tokens "disabled:opacity-50"/"disabled:cursor-not-allowed"
+// that the Checkbox component always carries regardless of whether it is actually disabled.
+function hasDisabledAttribute(html: string): boolean {
+  return /\sdisabled(=|\s|>)/.test(html)
+}
+
 describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
   it('Case 1: actionable supergroup (canAct=false/canAdd=true/not-member) in Add mode renders fully visible, checked, interactive', () => {
     const dialog: AdminDialogDTO = {
@@ -55,13 +84,13 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
 
     const html = render(dialog, 'not-member', true, 'add')
 
-    expect(html).not.toContain('opacity-50')
+    expect(getWrapperClasses(html)).not.toContain('opacity-50')
     expect(html).not.toContain('greyReason.no-ban-right')
     expect(html).not.toContain('groupTypeLabel.supergroup')
     expect(html).toContain('aria-checked="true"')
     expect(html).toContain('includeInAddAria')
-    expect(html).not.toContain('disabled')
-    expect(html).not.toContain('cursor-not-allowed')
+    expect(hasDisabledAttribute(html)).toBe(false)
+    expect(getAllClassTokens(html)).not.toContain('cursor-not-allowed')
   })
 
   it('Case 2: non-actionable channel (canAdd=false/addGreyReason=no-invite-right) in Add mode shows the Add reason, never the Remove reason', () => {
@@ -98,7 +127,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
 
     const html = render(dialog, 'member', false, 'add')
 
-    expect(html).toContain('opacity-50')
+    expect(getWrapperClasses(html)).toContain('opacity-50')
     expect(html).toContain('greyReason.already-member')
     expect(html).not.toContain('greyReason.no-ban-right')
     // No other greyReason.* key should appear alongside the derived reason.
@@ -121,7 +150,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
 
     const html = render(dialog, 'not-member', false, 'remove')
 
-    expect(html).toContain('opacity-50')
+    expect(getWrapperClasses(html)).toContain('opacity-50')
     expect(html).toContain('greyReason.no-ban-right')
     expect(html).toContain('groupTypeLabel.supergroup')
   })

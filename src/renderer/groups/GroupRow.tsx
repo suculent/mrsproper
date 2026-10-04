@@ -15,7 +15,7 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
-import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
+import type { AdminDialogDTO, AddGreyReason, MembershipStatus } from '@shared/groupTypes'
 import type { RmvErrorCode } from '@shared/removalTypes'
 import type { TagErrorCode } from '@shared/tagTypes'
 import type { AddErrorCode } from '@shared/addTypes'
@@ -142,6 +142,24 @@ export function GroupRow({
   const isActionable = isActionableForMode(dialog, membershipStatus, activeMode)
   const isPending = membershipStatus === null || membershipStatus === 'pending'
   const isFailed = membershipStatus === 'failed'
+
+  // 15-14: mode-aware "is this row greyed" flag — drives wrapper opacity + type badge.
+  // For Add mode, reuses isActionable (already mode-aware via isActionableForMode) instead
+  // of the Remove-only dialog.canAct flag, so a row that is actionable-but-not-kickable
+  // (canAct=false, canAdd=true) no longer renders dimmed. For any other mode this is
+  // byte-identical to the pre-fix expression, so Remove/Tag output never changes.
+  const isGreyedVisual =
+    activeMode === 'add' ? !isActionable && !isPending && !isFailed : !dialog.canAct
+
+  // 15-14: mode-aware Add-mode grey-reason key. Membership status wins over the
+  // enumeration-time addGreyReason because a row can be canAdd=true yet still a current
+  // member — Add mode never considers a member row actionable regardless of rights.
+  const addGreyReasonKey: AddGreyReason | 'already-member' | null =
+    activeMode === 'add' && addStatus == null && !isPending && !isFailed
+      ? membershipStatus === 'member'
+        ? 'already-member'
+        : dialog.addGreyReason
+      : null
 
   const avatarUrl = dialog.avatar ? bytesToDataUrl(dialog.avatar) : null
   const initial = getInitials(dialog.title)
@@ -501,7 +519,7 @@ export function GroupRow({
     <div
       className={cn(
         'min-h-[56px] px-4 py-3 flex items-center gap-3 hover:bg-accent/10',
-        !dialog.canAct && 'opacity-50'
+        isGreyedVisual && 'opacity-50'
       )}
     >
       {/* Checkbox area — left side (Phase 5 removal status renders first) */}
@@ -540,19 +558,20 @@ export function GroupRow({
         )}
 
         {/* Grey reason — canAct=false, not failed-verify (D-03) — only when no removal active */}
-        {!isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
+        {/* 15-14: suppressed entirely in Add mode — the Remove reason is irrelevant to Add
+            actionability and must never co-render with (or crowd out) the Add-mode reason. */}
+        {activeMode !== 'add' && !isRemovalActive && !dialog.canAct && dialog.greyReason && dialog.greyReason !== 'verify-failed' && !isFailed && (
           <span className="text-label text-muted-foreground">
             {tG(`greyReason.${dialog.greyReason}`)}
           </span>
         )}
 
-        {/* Add-mode grey reason — canAdd=false (D-08, data layer shipped Phase 13) */}
-        {/* CR-02: gated on activeMode === 'add' — addGreyReason/canAdd are populated by the
-            scan unconditionally, so without this guard the caption leaked onto ordinary
-            Remove/Tag rows (e.g. "Already a member" showing while reviewing a removal). */}
-        {activeMode === 'add' && addStatus == null && dialog.addGreyReason != null && dialog.greyReason == null && (
+        {/* Add-mode grey reason — canAdd=false or already a member (D-08, data layer shipped
+            Phase 13; 15-14 derives 'already-member' in the renderer and drops the old
+            dialog.greyReason == null gate, which made this unreachable on every channel). */}
+        {addGreyReasonKey != null && (
           <span className="text-label text-muted-foreground">
-            {tG(`greyReason.${dialog.addGreyReason}`)}
+            {tG(`greyReason.${addGreyReasonKey}`)}
           </span>
         )}
 
@@ -571,7 +590,7 @@ export function GroupRow({
         )}
 
         {/* Type badge — greyed rows only, not failed-verify (D-04) — only when no removal active */}
-        {!isRemovalActive && !dialog.canAct && !isFailed && (
+        {!isRemovalActive && !isFailed && isGreyedVisual && (
           <Badge variant="secondary" className="w-fit mt-0.5">
             {tG(`groupTypeLabel.${dialog.type}`)}
           </Badge>
