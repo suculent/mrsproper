@@ -1,14 +1,18 @@
 ---
-status: partial
+status: testing
 phase: 16-close-gap-add-08-resume-path-and-add-02-empty-state
 source: [16-VERIFICATION.md]
 started: 2026-10-04T20:45:17Z
-updated: 2026-10-04T20:45:17Z
+updated: 2026-10-04T21:39:55Z
 ---
 
 ## Current Test
 
-[awaiting human testing]
+number: 1
+name: Relaunch resume continues the same add job
+expected: |
+  Start an Add run, Stop it, quit and relaunch the app, choose Resume on the launch prompt. The run continues the same jobId from its checkpoint without re-resolving the target, the report renders, one DM covers links from all segments, and the add log has a CONTINUATION block.
+awaiting: user response
 
 ## Tests
 
