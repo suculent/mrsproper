@@ -111,7 +111,9 @@ function makeAddAuditStore(
     checkpoint(dialogId: string, outcome: AddGroupOutcome): void {
       checkpointCalls.push({ dialogId, outcome })
       if (state.job) {
-        state.job = { ...state.job, outcomes: [...state.job.outcomes, { ...outcome, dialogId }] }
+        // Mirrors the real store's CR-01 dedup: replace any existing entry for this dialogId.
+        const deduped = state.job.outcomes.filter((o) => o.dialogId !== dialogId)
+        state.job = { ...state.job, outcomes: [...deduped, { ...outcome, dialogId }] }
       }
     },
     setStatus(status: AddJobFile['status'], completedAt?: string, dmStatus?: AddJobFile['dmStatus']): void {
@@ -2083,7 +2085,7 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(ctx.addLogStore.appendBlockCalls).toHaveLength(0)
   })
 
-  it('generation change during the DM await: add-log record kept (WR-03), no state write afterwards', async () => {
+  it('generation change during the DM await: add-log record and retryDmStatus kept (WR-03, WR-01 iter 2), no state emission afterwards', async () => {
     const { executor, mockClient, addLogStore, auditStore } = await setupFailedThenPrivacy('31005')
     const origInvoke = mockClient.invoke.bind(mockClient)
     mockClient.invoke = (async (req: unknown) => {
@@ -2095,8 +2097,41 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     // WR-03: the DM really went out, so its append-only add-log record is still written.
     expect(addLogStore.appendBlockCalls).toHaveLength(1)
     expect(addLogStore.appendBlockCalls[0]!.dmStatus).toBe('sent')
-    expect(auditStore.checkpointCalls.some((c) => c.outcome.retryDmStatus !== undefined)).toBe(false)
+    // WR-01 (iter 2): the delivered DM is persisted on the job file even though the state
+    // emission is skipped, so a later Resume never re-sends this link.
+    expect(auditStore.checkpointCalls.at(-1)!.outcome.retryDmStatus).toBe('sent')
+    expect(auditStore._job!.outcomes.find((o) => o.dialogId === '31005')?.retryDmStatus).toBe('sent')
     expect(executor.getState().step).toBe('idle')
+  })
+
+  it('WR-01 (iter 2): a retry DM delivered while another retry hard-stops is persisted as sent; a later Resume does not re-send it', async () => {
+    const ctx = await setupFailedThenPrivacy('31040')
+    const { executor, mockClient, auditStore } = ctx
+    const origInvoke = mockClient.invoke.bind(mockClient)
+    let bumped = false
+    mockClient.invoke = (async (req: unknown) => {
+      const r = await origInvoke(req as never)
+      if (!bumped && ctorNameOf(req).includes('SendMessage')) {
+        bumped = true
+        // A concurrent retry of another row hits PEER_FLOOD while this DM is in flight.
+        const ex = executor as unknown as { _hardStopRetry(d: string, g: number): void; _generation: number }
+        ex._hardStopRetry('other', ex._generation)
+      }
+      return r
+    }) as never
+    await executor.retryGroup('31040')
+    expect(executor.getState().step).toBe('hard-stopped')
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
+    expect(auditStore._job!.status).toBe('hard-stopped')
+    expect(auditStore._job!.outcomes.find((o) => o.dialogId === '31040')?.retryDmStatus).toBe('sent')
+
+    // Resume the hard-stopped job: the end-of-run DM must not carry the already-delivered link.
+    mockClient.invoke = origInvoke as never
+    const p = executor.execute({ dialogIds: ['31040'], resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
   })
 
   it('WR-02: a concurrent retry stops (no DM, no stale status) once another retry hard-stops', async () => {

@@ -768,17 +768,28 @@ export class AddExecutor {
       timestamp: new Date().toISOString(),
     })
 
+    // WR-01 (iter 2): the DM outcome is a side-effect fact — persist retryDmStatus on the job
+    // file BEFORE the generation guard, so a link that really went out is never re-sent by a
+    // later Resume's end-of-run DM when the generation changed mid-send (a concurrent retry's
+    // PEER_FLOOD, or abort). Only skip it if the on-disk job was replaced by another lineage.
+    // A hard-stopped send was not delivered, so nothing is recorded for it.
+    const withDm: AddGroupOutcome = { ...newOutcome, retryDmStatus: dm }
+    if (!hardStop) {
+      const onDisk = this._auditStore.readJob()
+      if (onDisk !== null && onDisk.jobId === job.jobId) {
+        this._auditStore.checkpoint(dialogId, withDm)
+      }
+    }
+
     if (hardStop) {
       // CR-03: never continue after a hard-stop (_hardStopRetry applies its own gen guard).
       this._hardStopRetry(dialogId, gen)
       return
     }
 
-    // Generation guard AFTER the DM await, BEFORE any state write.
+    // Generation guard AFTER the DM await, BEFORE any state emission.
     if (gen !== this._generation) return
 
-    const withDm: AddGroupOutcome = { ...newOutcome, retryDmStatus: dm }
-    this._auditStore.checkpoint(dialogId, withDm)
     // WR-02: re-read the job after the awaits — never write back a status captured before
     // them (a concurrent hard-stop or resume may have changed it on disk).
     const fresh = this._auditStore.readJob()
