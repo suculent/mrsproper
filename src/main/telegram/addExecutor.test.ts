@@ -2168,6 +2168,42 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(executor.getState().step).toBe('hard-stopped')
   })
 
+  it('WR-02 (iter 2): a second retry of the same row while the first is in flight is refused (one invite, one link, one DM)', async () => {
+    const ctx = await setupFailedThenPrivacy('31050')
+    const origInvoke = ctx.mockClient.invoke.bind(ctx.mockClient)
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    let invites = 0
+    let exports = 0
+    ctx.mockClient.invoke = (async (req: unknown) => {
+      const name = ctorNameOf(req)
+      if (name.includes('InviteToChannel')) {
+        invites++
+        await gate
+      }
+      if (name.includes('ExportChatInvite')) exports++
+      return origInvoke(req as never)
+    }) as never
+
+    const first = ctx.executor.retryGroup('31050')
+    await vi.advanceTimersByTimeAsync(0)
+    const second = ctx.executor.retryGroup('31050')
+    release()
+    await vi.runAllTimersAsync()
+    await Promise.all([first, second])
+    expect(invites).toBe(1)
+    expect(exports).toBe(1)
+    expect(ctx.mockClient.sendMessageCalls).toHaveLength(1)
+    expect(ctx.addLogStore.appendBlockCalls).toHaveLength(1)
+
+    // Once the first retry settles, the row can be retried again.
+    ctx.mockClient.invoke = origInvoke as never
+    await ctx.executor.retryGroup('31050')
+    expect(ctx.mockClient.sendMessageCalls).toHaveLength(2)
+  })
+
   it('WR-04: execute() (Resume) is refused while a retry is in flight; the retry outcome is kept', async () => {
     const ctx = await setupFailedThenPrivacy('31030')
     ctx.mockConfig.inviteToChannelErrorDialogIds = {}

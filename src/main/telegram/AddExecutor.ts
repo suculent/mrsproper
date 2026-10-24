@@ -162,6 +162,10 @@ export class AddExecutor {
   private _jobDialogIds: string[] | null = null
   /** WR-04: number of retryGroup() calls currently awaiting Telegram. */
   private _retriesInFlight = 0
+  // WR-02 (iter 2): dialog ids with a retry still awaiting Telegram — a second retry of the
+  // same row (double-click, click during a FLOOD_WAIT) is refused so the target never gets
+  // two different invite links / two DMs for one group.
+  private readonly _retryingDialogIds = new Set<string>()
 
   constructor(options: AddExecutorOptions) {
     this._client = options.client
@@ -655,12 +659,17 @@ export class AddExecutor {
     ) {
       return
     }
+    // WR-02 (iter 2): main is authoritative (the IPC call is fire-and-forget) — refuse a
+    // duplicate retry of a row whose previous retry is still in flight.
+    if (this._retryingDialogIds.has(dialogId)) return
+    this._retryingDialogIds.add(dialogId)
     // WR-04: tracked so execute() refuses to start a Resume while this retry is in flight.
     this._retriesInFlight++
     try {
       await this._retryGroupInner(dialogId)
     } finally {
       this._retriesInFlight--
+      this._retryingDialogIds.delete(dialogId)
     }
   }
 
