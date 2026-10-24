@@ -416,6 +416,28 @@ describe('registerTargetChannels — add-job lookup lock (D-05)', () => {
     expect(resolver.resolve).toHaveBeenCalled()
   })
 
+  it('WR-05: an add job that starts during TARGET_RESOLVE resets the late result', async () => {
+    const resolver = makeMockResolver()
+    let step = 'idle'
+    resolver.resolve.mockImplementation(async () => {
+      step = 'running'
+    })
+    const addExecutor = { abortExecution: vi.fn(), getState: vi.fn(() => ({ step })) }
+    registerTargetChannels(
+      makeMockWin() as never, resolver as never, makeMockScanner() as never,
+      makeMockSearcher() as never, undefined, undefined, addExecutor as never
+    )
+    await capturedHandlers['target:resolve']({}, { input: '@x' })
+    expect(resolver.resolve).toHaveBeenCalledWith('@x')
+    expect(resolver.reset).toHaveBeenCalledOnce()
+  })
+
+  it('idle throughout: TARGET_RESOLVE does not reset afterwards', async () => {
+    const { resolver } = setup('idle')
+    await capturedHandlers['target:resolve']({}, { input: '@x' })
+    expect(resolver.reset).not.toHaveBeenCalled()
+  })
+
   it('Zod still runs first while locked', async () => {
     const { resolver } = setup('running')
     await expect(capturedHandlers['target:resolve']({}, {})).rejects.toThrow()

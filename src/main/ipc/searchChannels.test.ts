@@ -64,6 +64,7 @@ function makeMockResolver() {
   return {
     getState: vi.fn(() => ({ step: 'idle' as const })),
     resolveByCandidate: vi.fn(async () => {}),
+    reset: vi.fn(),
   }
 }
 
@@ -211,6 +212,29 @@ describe('registerSearchChannels — TARGET_RESOLVE_CANDIDATE add lock (D-05/D-0
     registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => 'idle')
     await capturedHandlers['target:resolveCandidate']({}, { userId: '123' })
     expect(resolver.resolveByCandidate).toHaveBeenCalled()
+  })
+
+  it('WR-05: an add job that starts during resolveByCandidate resets the late result', async () => {
+    const searcher = makeMockSearcher()
+    const resolver = makeMockResolver()
+    searcher.getCandidateAccessHash.mockReturnValue(BigInt(1))
+    let step = 'idle'
+    resolver.resolveByCandidate.mockImplementation(async () => {
+      step = 'running'
+    })
+    registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => step)
+    await capturedHandlers['target:resolveCandidate']({}, { userId: '123' })
+    expect(resolver.resolveByCandidate).toHaveBeenCalled()
+    expect(resolver.reset).toHaveBeenCalledOnce()
+  })
+
+  it('idle throughout: no reset after resolveByCandidate', async () => {
+    const searcher = makeMockSearcher()
+    const resolver = makeMockResolver()
+    searcher.getCandidateAccessHash.mockReturnValue(BigInt(1))
+    registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => 'idle')
+    await capturedHandlers['target:resolveCandidate']({}, { userId: '123' })
+    expect(resolver.reset).not.toHaveBeenCalled()
   })
 
   it('malformed payload throws before the guard', async () => {

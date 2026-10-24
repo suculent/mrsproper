@@ -122,6 +122,8 @@ export function registerSearchChannels(
 
     // Proceed with resolution — accessHash stays in main process (T-03-01)
     await resolver.resolveByCandidate(BigInt(parsed.userId), accessHash)
+    // WR-05: re-check after the await — an add job may have started while resolving.
+    if (getAddStep && getAddStep() !== 'idle') resolver.reset()
     return resolver.getState()
   })
 }

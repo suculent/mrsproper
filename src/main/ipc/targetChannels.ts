@@ -91,6 +91,10 @@ export function registerTargetChannels(
     const parsed = ResolveTargetSchema.parse(payload) // throws ZodError on malformed input
     if (addIsActive()) return resolver.getState() // D-05: locked during add job
     await resolver.resolve(parsed.input)
+    // WR-05: the lock check above ran before a possibly long await (FLOOD_WAIT absorbed by
+    // the governor). If an add job started meanwhile (e.g. a relaunch Resume), drop the
+    // late result so a person the admin can't confirm or clear never sits in the resolver.
+    if (addIsActive()) resolver.reset()
     return resolver.getState()
   })
 
