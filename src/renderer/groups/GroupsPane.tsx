@@ -293,18 +293,23 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   // Empty state derivation
   // ---------------------------------------------------------------------------
 
+  // IN-01: single "no groups" empty state shared by the browse, checklist and Add branches.
+  function renderNoGroups(): React.JSX.Element {
+    return (
+      <div className="px-4 py-8 flex flex-col gap-1">
+        <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
+        <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
+      </div>
+    )
+  }
+
   function renderEmptyState(): React.JSX.Element | null {
     // D-03: the job view never shows browse/scan empty states
     if (isJob) return null
 
     // D-14: zero dialogs in Add checklist mode must not render a blank list
     if (mode === 'checklist' && activeMode === 'add' && groups.step === 'loaded' && allDialogs.length === 0) {
-      return (
-        <div className="px-4 py-8 flex flex-col gap-1">
-          <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
-          <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
-        </div>
-      )
+      return renderNoGroups()
     }
 
     if (mode === 'browse') {
@@ -333,12 +338,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         )
       }
       if (groups.step === 'loaded' && allDialogs.length === 0) {
-        return (
-          <div className="px-4 py-8 flex flex-col gap-1">
-            <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
-            <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
-          </div>
-        )
+        return renderNoGroups()
       }
       return null
     }
@@ -354,12 +354,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           failedCount
         )
         if (addEmpty === 'no-groups') {
-          return (
-            <div className="px-4 py-8 flex flex-col gap-1">
-              <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
-              <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
-            </div>
-          )
+          return renderNoGroups()
         }
         if (addEmpty !== 'none') {
           return (
