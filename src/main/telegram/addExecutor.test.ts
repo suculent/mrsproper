@@ -1124,7 +1124,7 @@ describe('AddExecutor — continuation-based resume (ADD-08, D-20)', () => {
     expect(finalState.outcomes.some((o) => o.dialogId === '15003' && o.status === 'done')).toBe(true)
   })
 
-  it("resume:true but the existing job's targetId does not match the resolved target: falls back to a fresh job (new jobId)", async () => {
+  it("resume:true but the existing job's targetId does not match the resolved target: rejected (D-07), never a fresh job for another person", async () => {
     const dialogs = [makeDialog('15005', 'supergroup')]
     const dialogIds = ['15005']
     const auditStore = makeAddAuditStore(dialogIds, {
@@ -1141,8 +1141,8 @@ describe('AddExecutor — continuation-based resume (ADD-08, D-20)', () => {
     await vi.runAllTimersAsync()
     await p
 
-    expect(auditStore.initJobCalls).toHaveLength(1)
-    expect(auditStore.initJobCalls[0]!.jobId).not.toBe('OLD-JOB-ID')
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(auditStore._job?.jobId).toBe('OLD-JOB-ID')
   })
 
   it("resume:true but the existing job's dialogIds set does not match (order-insensitive compare via sameDialogIdSet): falls back to a fresh job", async () => {
@@ -1758,5 +1758,204 @@ describe('AddExecutor — relaunch resume (D-03, D-14, D-16)', () => {
     const block = addLogStore.appendBlockCalls[0]!
     expect(block.addedDialogs[0]).toMatchObject({ dialogId: '20007', title: 'Group 20007' })
     expect(block.linkedDialogs[0]).toMatchObject({ dialogId: '20008', title: 'Group 20008' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AddExecutor — Phase 17 identity lock (D-06/D-07) and persisted unban-first (D-10)
+// ---------------------------------------------------------------------------
+
+describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-07/D-10)', () => {
+  const other = {
+    id: BigInt('77'),
+    accessHash: BigInt('1'),
+    name: 'Other',
+    deleted: false,
+    bot: false,
+    contact: false,
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('D-06: retryGroup is a no-op (zero invoke) when the live resolver user differs from the run target', async () => {
+    const dialogs = [makeDialog('30001', 'supergroup')]
+    const config: Parameters<typeof makeExecutor>[0] = {
+      dialogs,
+      mockConfig: { inviteToChannelErrorDialogIds: { '30001': 'CHAT_ADMIN_REQUIRED' } },
+    }
+    const { executor, mockClient } = makeExecutor(config)
+    const p = executor.execute({ dialogIds: ['30001'] })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+
+    config.resolved = other
+    const spy = vi.spyOn(mockClient, 'invoke')
+    await executor.retryGroup('30001')
+    expect(spy).not.toHaveBeenCalled()
+    expect(executor.getState().step).toBe('complete')
+  })
+
+  it('D-06: retryGroup is a no-op when the job file targetId differs from the run target', async () => {
+    const dialogs = [makeDialog('30002', 'supergroup')]
+    const config: Parameters<typeof makeExecutor>[0] = {
+      dialogs,
+      mockConfig: { inviteToChannelErrorDialogIds: { '30002': 'CHAT_ADMIN_REQUIRED' } },
+    }
+    const { executor, mockClient, auditStore } = makeExecutor(config)
+    const p = executor.execute({ dialogIds: ['30002'] })
+    await vi.runAllTimersAsync()
+    await p
+
+    auditStore.clearJob()
+    auditStore.initJob({ ...(makeAddAuditStore(['30002'], { targetId: '55' })._job as AddJobFile) })
+    const spy = vi.spyOn(mockClient, 'invoke')
+    await executor.retryGroup('30002')
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('D-06/D-08: retry works on a relaunch-resumed report (target rebuilt from the job)', async () => {
+    const dialogs = [makeDialog('30003', 'supergroup'), makeDialog('30004', 'supergroup')]
+    const dialogIds = ['30003', '30004']
+    const auditStore = makeAddAuditStore(dialogIds, {
+      targetId: '99',
+      targetAccessHash: '777',
+      outcomes: [{ dialogId: '30003', status: 'failed', errorCode: 'UNKNOWN', timestamp: 'x' } as AddGroupOutcome],
+      status: 'stopped',
+    })
+    const { executor, mockClient } = makeExecutor({ dialogs, auditStore, resolverNull: true })
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+
+    const before = mockClient.inviteToChannelCalls.length
+    await executor.retryGroup('30003')
+    expect(mockClient.inviteToChannelCalls.length).toBeGreaterThan(before)
+  })
+
+  it('checkResumeIdentity: decision table', async () => {
+    const dialogs = [makeDialog('30005', 'supergroup'), makeDialog('30006', 'supergroup')]
+    const jobFor = (ids: string[], status: AddJobFile['status'] = 'stopped'): AddJobFile =>
+      makeAddAuditStore(ids, { targetId: '99', status })._job as AddJobFile
+    const config: Parameters<typeof makeExecutor>[0] = { dialogs }
+    const { executor } = makeExecutor(config)
+    const job = jobFor(['30005'])
+
+    expect(executor.checkResumeIdentity(null, ['30005'])).toBe('fresh')
+    expect(executor.checkResumeIdentity(jobFor(['30005'], 'complete'), ['30005'])).toBe('fresh')
+    config.resolverNull = true
+    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('resume')
+    config.resolverNull = false
+    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('resume') // id 99 == 99
+    config.resolved = other
+    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('reject') // idle, same set
+    expect(executor.checkResumeIdentity(job, ['30006'])).toBe('fresh') // idle, different set
+
+    // non-idle: run a job as 99 then switch identity
+    config.resolved = undefined
+    const p = executor.execute({ dialogIds: ['30005'] })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    config.resolved = other
+    expect(executor.checkResumeIdentity(job, ['30006'])).toBe('reject')
+  })
+
+  it('D-07: execute() with a different live identity and the same set never inits, never RPCs', async () => {
+    const dialogs = [makeDialog('30007', 'supergroup'), makeDialog('30008', 'supergroup')]
+    const dialogIds = ['30007', '30008']
+    for (const resume of [true, false]) {
+      const auditStore = makeAddAuditStore(dialogIds, { targetId: '99', status: 'stopped' })
+      const { executor, mockClient } = makeExecutor({ dialogs, auditStore, resolved: other })
+      const before = auditStore._job
+      const spy = vi.spyOn(mockClient, 'invoke')
+      await executor.execute({ dialogIds, resume })
+      expect(auditStore.initJobCalls).toHaveLength(0)
+      expect(auditStore._job).toBe(before)
+      expect(spy).not.toHaveBeenCalled()
+    }
+  })
+
+  it('D-07: a non-idle state is not reset to idle by a rejected execute()', async () => {
+    const dialogs = [makeDialog('30009', 'supergroup')]
+    const config: Parameters<typeof makeExecutor>[0] = { dialogs }
+    const { executor, auditStore } = makeExecutor(config)
+    const p = executor.execute({ dialogIds: ['30009'] })
+    await vi.runAllTimersAsync()
+    await p
+    auditStore.setStatus('stopped')
+    config.resolved = other
+    await executor.execute({ dialogIds: ['30009'], resume: true })
+    expect(executor.getState().step).toBe('complete')
+    expect(auditStore.initJobCalls).toHaveLength(1)
+  })
+
+  it('D-10: persisted bannedDialogIds drive unban-first on resume; live scan wins; old files unchanged', async () => {
+    const dialogs = [makeDialog('30010', 'supergroup')]
+    const run = async (
+      banned: string[] | undefined,
+      scanResults?: Array<{ dialogId: string; status: 'not-member' }>
+    ) => {
+      const auditStore = makeAddAuditStore(['30010'], {
+        targetId: '99',
+        status: 'stopped',
+        ...(banned ? { bannedDialogIds: banned } : {}),
+      })
+      const { executor, mockClient } = makeExecutor({ dialogs, auditStore, resolverNull: true, scanResults })
+      const p = executor.execute({ dialogIds: ['30010'], resume: true })
+      await vi.runAllTimersAsync()
+      await p
+      return mockClient
+    }
+    expect((await run(['30010'])).editBannedCalls).toHaveLength(1)
+    expect((await run(['30010'], [{ dialogId: '30010', status: 'not-member' }])).editBannedCalls).toHaveLength(0)
+    expect((await run(undefined)).editBannedCalls).toHaveLength(0)
+  })
+
+  it('D-10: retryGroup unbans first from the persisted flag', async () => {
+    const dialogs = [makeDialog('30011', 'supergroup')]
+    const auditStore = makeAddAuditStore(['30011'], { targetId: '99', status: 'stopped', bannedDialogIds: ['30011'] })
+    const { executor, mockClient } = makeExecutor({
+      dialogs,
+      auditStore,
+      resolverNull: true,
+      mockConfig: { inviteToChannelErrorDialogIds: { '30011': 'CHAT_ADMIN_REQUIRED' } },
+    })
+    const p = executor.execute({ dialogIds: ['30011'], resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    const before = mockClient.editBannedCalls.length
+    await executor.retryGroup('30011')
+    expect(mockClient.editBannedCalls.length).toBe(before + 1)
+  })
+
+  it('D-10: fresh initJob stores banned ids restricted to selection; continuation preserves them', async () => {
+    const dialogs = [makeDialog('30012', 'supergroup'), makeDialog('30013', 'supergroup'), makeDialog('30014', 'supergroup')]
+    const { executor, auditStore } = makeExecutor({
+      dialogs,
+      scanResults: [
+        { dialogId: '30012', status: 'banned' },
+        { dialogId: '30013', status: 'banned' },
+        { dialogId: '30014', status: 'not-member' },
+      ],
+    })
+    const p = executor.execute({ dialogIds: ['30012', '30014'] })
+    await vi.runAllTimersAsync()
+    await p
+    expect(auditStore.initJobCalls[0]!.bannedDialogIds).toEqual(['30012'])
+
+    const seeded = makeAddAuditStore(['30012'], { targetId: '99', status: 'stopped', bannedDialogIds: ['30012'] })
+    const second = makeExecutor({ dialogs, auditStore: seeded })
+    const p2 = second.executor.execute({ dialogIds: ['30012'], resume: true })
+    await vi.runAllTimersAsync()
+    await p2
+    expect(seeded.initJobCalls).toHaveLength(0)
+    expect(seeded._job?.bannedDialogIds).toEqual(['30012'])
   })
 })

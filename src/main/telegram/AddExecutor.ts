@@ -194,6 +194,35 @@ export class AddExecutor {
   }
 
   /**
+   * D-07 (narrow rule): decide how ADD_START should treat an on-disk job relative to the
+   * live resolved target. 'reject' = never act (job untouched, no RPC); 'resume' = continue
+   * job A; 'fresh' = start a new job (replacing any leftover file).
+   */
+  checkResumeIdentity(
+    existing: AddJobFile | null,
+    dialogIds: string[]
+  ): 'resume' | 'fresh' | 'reject' {
+    if (existing === null || existing.status === 'complete') return 'fresh'
+    const live = this._resolver.getResolvedUser()
+    if (live === null) return 'resume'
+    if (live.id.toString() === existing.targetId) return 'resume'
+    if (this._currentState.step !== 'idle' || sameDialogIdSet(existing.dialogIds, dialogIds)) {
+      return 'reject'
+    }
+    return 'fresh'
+  }
+
+  /** D-10: live scan status wins; else a persisted ban flag from the job file. */
+  private _effectiveScanStatus(
+    dialogId: string,
+    job: AddJobFile | null,
+    live: string | undefined
+  ): string | undefined {
+    if (live !== undefined) return live
+    return job?.bannedDialogIds?.includes(dialogId) ? 'banned' : undefined
+  }
+
+  /**
    * Execute the add run across the specified dialog IDs.
    *
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — never from
@@ -203,12 +232,28 @@ export class AddExecutor {
    * `params.resume` is true; otherwise a fresh job is started via initJob().
    */
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
-    const gen = ++this._generation
-    this._runActive = true
-
     // T-05-04-B: read target from resolver, never from params
     const existing = this._auditStore.readJob()
     let resolved: ResolvedAddUser | null = this._resolver.getResolvedUser()
+
+    // D-07 defense-in-depth: a start whose dialog-id set equals a non-complete job A's set
+    // under a different live identity is by shape a Resume of A while B is confirmed. Reject
+    // before any state change, initJob, or RPC; never fall through to initJob for B.
+    if (
+      resolved !== null &&
+      existing !== null &&
+      existing.status !== 'complete' &&
+      resolved.id.toString() !== existing.targetId &&
+      sameDialogIdSet(existing.dialogIds, params.dialogIds)
+    ) {
+      // Pitfall 3: never wipe a live job view — only emit idle when already idle.
+      if (this._currentState.step === 'idle') this._emitEarlyIdle()
+      return
+    }
+
+    const gen = ++this._generation
+    this._runActive = true
+
     if (
       resolved === null &&
       params.resume === true &&
@@ -313,6 +358,7 @@ export class AddExecutor {
 
     let jobId: string
     let outcomes: AddGroupOutcome[]
+    let persistedBanned: string[] | undefined
     if (isContinuation) {
       jobId = existing!.jobId
       // 'skipped' entries only mark dialogs the PREVIOUS segment never actually attempted
@@ -320,6 +366,7 @@ export class AddExecutor {
       // so they are excluded from the seeded outcomes and from the already-finished set
       // used to compute dialogsToProcess below.
       outcomes = existing!.outcomes.filter((o) => o.status !== 'skipped')
+      persistedBanned = existing!.bannedDialogIds
     } else {
       jobId = new Date().toISOString()
       outcomes = []
@@ -335,6 +382,10 @@ export class AddExecutor {
         startedAt: jobId,
         status: 'running',
       }
+      const bannedIds = (this._scanner.getState().results ?? [])
+        .filter((r) => r.status === 'banned' && params.dialogIds.includes(r.dialogId))
+        .map((r) => r.dialogId)
+      if (bannedIds.length > 0) job.bannedDialogIds = bannedIds
       this._auditStore.initJob(job)
     }
 
@@ -355,7 +406,11 @@ export class AddExecutor {
 
     const scanResults = this._scanner.getState().results ?? []
     const scanStatusFor = (dialogId: string): string | undefined =>
-      scanResults.find((r) => r.dialogId === dialogId)?.status
+      this._effectiveScanStatus(
+        dialogId,
+        persistedBanned ? ({ bannedDialogIds: persistedBanned } as AddJobFile) : null,
+        scanResults.find((r) => r.dialogId === dialogId)?.status
+      )
 
     const ctx = { targetId, targetName, total }
 
@@ -589,8 +644,13 @@ export class AddExecutor {
 
     const gen = this._generation
 
-    const resolved = this._resolver.getResolvedUser() ?? this._resolvedTarget
+    // D-06: act only on the job's target — never on a live resolver user for someone else.
+    const resolved = this._resolvedTarget
     if (resolved === null) return
+    const liveUser = this._resolver.getResolvedUser()
+    if (liveUser !== null && liveUser.id.toString() !== resolved.id.toString()) return
+    const job = this._auditStore.readJob()
+    if (job === null || job.targetId !== resolved.id.toString()) return
 
     const groupsState = this._enumerator.getState()
     if (groupsState.step !== 'loaded') return
@@ -599,7 +659,11 @@ export class AddExecutor {
     if (!dialog) return
 
     const scanResults = this._scanner.getState().results ?? []
-    const scanStatus = scanResults.find((r) => r.dialogId === dialogId)?.status
+    const scanStatus = this._effectiveScanStatus(
+      dialogId,
+      job,
+      scanResults.find((r) => r.dialogId === dialogId)?.status
+    )
     const targetName = resolved.name ?? ''
 
     let newOutcome: AddGroupOutcome
