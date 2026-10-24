@@ -509,12 +509,18 @@ export class AddExecutor {
 
     // D-13/D-14: end-of-run DM — attempted exactly once, only on 'complete', aggregating
     // links from every segment (seeded-from-disk plus this segment's).
-    const linkedOutcomes = outcomes.filter((o) => o.status === 'privacy-blocked' && o.link)
+    // WR-01: a link a retry already delivered (D-12, retryDmStatus 'sent') is never sent a
+    // second time in this DM; the retry also wrote its own add-log block for it.
+    const linkedOutcomes = outcomes.filter(
+      (o) => o.status === 'privacy-blocked' && o.link && o.retryDmStatus !== 'sent'
+    )
+    const anyRetryDmSent = outcomes.some((o) => o.retryDmStatus === 'sent')
     let dmStatus: AddDmStatus = 'pending'
 
     if (linkedOutcomes.length === 0) {
-      // D-13: no DM when the run produced zero links.
-      dmStatus = 'not-needed'
+      // D-13: no DM when the run has no undelivered links. If every link already went out via
+      // a retry DM, the target did get a DM — report 'sent', not 'not-needed'.
+      dmStatus = anyRetryDmSent ? 'sent' : 'not-needed'
     } else {
       // Regenerate any link older than 5 days before sending (D-13).
       for (const o of linkedOutcomes) {

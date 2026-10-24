@@ -2095,6 +2095,54 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(executor.getState().step).toBe('idle')
   })
 
+  it('WR-01: end-of-run DM after a Resume never re-sends a link a retry DM already delivered', async () => {
+    const ts = new Date().toISOString()
+    const dialogIds = ['31010', '31011', '31012']
+    const auditStore = makeAddAuditStore(dialogIds, {
+      targetId: '99',
+      status: 'stopped',
+      outcomes: [
+        { dialogId: '31010', status: 'privacy-blocked', reason: 'privacy', link: 'https://t.me/+alreadySent', retryDmStatus: 'sent', timestamp: ts },
+        { dialogId: '31011', status: 'privacy-blocked', reason: 'privacy', link: 'https://t.me/+notYetSent', timestamp: ts },
+      ] as AddGroupOutcome[],
+    })
+    const { executor, mockClient } = makeExecutor({
+      dialogs: dialogIds.map((id) => makeDialog(id, 'supergroup')),
+      auditStore,
+      resolverNull: true,
+    })
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
+    expect(mockClient.sendMessageCalls[0]!.message).toContain('https://t.me/+notYetSent')
+    expect(mockClient.sendMessageCalls[0]!.message).not.toContain('https://t.me/+alreadySent')
+  })
+
+  it('WR-01: when every link already went out via retry DMs, no end-of-run DM and dmStatus is sent', async () => {
+    const ts = new Date().toISOString()
+    const dialogIds = ['31013', '31014']
+    const auditStore = makeAddAuditStore(dialogIds, {
+      targetId: '99',
+      status: 'stopped',
+      outcomes: [
+        { dialogId: '31013', status: 'privacy-blocked', reason: 'privacy', link: 'https://t.me/+alreadySent', retryDmStatus: 'sent', timestamp: ts },
+      ] as AddGroupOutcome[],
+    })
+    const { executor, mockClient } = makeExecutor({
+      dialogs: dialogIds.map((id) => makeDialog(id, 'supergroup')),
+      auditStore,
+      resolverNull: true,
+    })
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    expect(mockClient.sendMessageCalls).toHaveLength(0)
+    expect(executor.getState().dmStatus).toBe('sent')
+  })
+
   it("job dmStatus 'not-needed' becomes the retry DM result; other values are left alone", async () => {
     const a = await setupFailedThenPrivacy('31006', {}, 'not-needed')
     await a.executor.retryGroup('31006')
