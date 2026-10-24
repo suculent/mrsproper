@@ -44,6 +44,7 @@ import {
   SEVERITY_SET,
   LANGUAGE_GET,
   LANGUAGE_SET,
+  LANGUAGE_SET_DETECTED,
   THEME_GET,
   THEME_SET,
   ADD_START,
@@ -214,6 +215,8 @@ contextBridge.exposeInMainWorld('mrsproper', {
     ipcRenderer.invoke(LANGUAGE_GET) as Promise<'en' | 'cs' | null>,
   setLanguage: (language: 'en' | 'cs'): Promise<'en' | 'cs'> =>
     ipcRenderer.invoke(LANGUAGE_SET, { language }) as Promise<'en' | 'cs'>,
+  setDetectedLanguage: (language: 'en' | 'cs'): Promise<'en' | 'cs'> =>
+    ipcRenderer.invoke(LANGUAGE_SET_DETECTED, { language }) as Promise<'en' | 'cs'>,
 
   // ── Theme preference bridge (Phase 8, LOC-01) ─────────────────────────────
   // Non-secret pref channels; Zod-validated (z.enum(['light','dark'])) in themeChannels.ts.

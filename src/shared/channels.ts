@@ -94,6 +94,8 @@ export const SEVERITY_SET = 'severity:set' as const
 // LANGUAGE_GET returns null on first launch so renderer can detect OS locale default.
 export const LANGUAGE_GET = 'language:get' as const
 export const LANGUAGE_SET = 'language:set' as const
+// Non-persisted: renderer pushes its OS-detected language so main's default DM matches the preview (D-13).
+export const LANGUAGE_SET_DETECTED = 'language:setDetected' as const
 
 // Theme preference IPC channels (Phase 8, LOC-01). Non-secret;
 // Zod-validated (z.enum(['light','dark'])) in themeChannels.ts.
@@ -159,6 +161,7 @@ export const CHANNELS = {
   SEVERITY_SET,
   LANGUAGE_GET,
   LANGUAGE_SET,
+  LANGUAGE_SET_DETECTED,
   THEME_GET,
   THEME_SET,
 } as const

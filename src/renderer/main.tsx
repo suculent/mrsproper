@@ -6,6 +6,7 @@ import '@fontsource/inter/600.css'
 import './styles/globals.css'
 import App from './App'
 import { initI18n } from './i18n'
+import { languageClient } from './ipc/languageClient'
 
 async function main(): Promise<void> {
   // Fetch persisted prefs BEFORE React mounts — eliminates flash of wrong language/theme.
@@ -18,6 +19,8 @@ async function main(): Promise<void> {
   // Resolve language: stored pref → OS locale detection → 'en' fallback
   const lng = storedLang ?? (navigator.language.startsWith('cs') ? 'cs' : 'en')
   await initI18n(lng as 'en' | 'cs')
+  // D-13: tell main which language the renderer chose (not persisted) so the default DM matches the preview.
+  await languageClient.setDetectedLanguage(lng as 'en' | 'cs').catch(() => undefined)
 
   // Apply theme before first paint — main process syncRendererTheme fires on did-finish-load,
   // which is after paint. Direct classList toggle here is the only way to avoid flash.

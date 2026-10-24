@@ -10,6 +10,7 @@ declare global {
   interface MrsProperApi {
     getLanguage(): Promise<'en' | 'cs' | null>
     setLanguage(language: 'en' | 'cs'): Promise<'en' | 'cs'>
+    setDetectedLanguage(language: 'en' | 'cs'): Promise<'en' | 'cs'>
   }
 }
 
@@ -20,5 +21,9 @@ export const languageClient = {
 
   setLanguage(language: 'en' | 'cs'): Promise<'en' | 'cs'> {
     return window.mrsproper.setLanguage(language)
+  },
+
+  setDetectedLanguage(language: 'en' | 'cs'): Promise<'en' | 'cs'> {
+    return window.mrsproper.setDetectedLanguage(language)
   },
 }

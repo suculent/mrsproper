@@ -19,7 +19,7 @@
 
 import { ipcMain } from 'electron'
 import { z } from 'zod'
-import { LANGUAGE_GET, LANGUAGE_SET } from '@shared/channels'
+import { LANGUAGE_GET, LANGUAGE_SET, LANGUAGE_SET_DETECTED } from '@shared/channels'
 
 // ── Zod schema for inbound LANGUAGE_SET payload ────────────────────────────
 // T-08-01: strict enum — any non-'en'/'cs' value throws ZodError before
@@ -75,6 +75,15 @@ export function getCachedLanguage(): 'en' | 'cs' | null {
   return _cachedLanguage
 }
 
+/**
+ * Renderer-detected (OS-derived) language. Never persisted — 'unset means follow OS' (D-13).
+ */
+let _detectedLanguage: 'en' | 'cs' | null = null
+
+export function getEffectiveLanguage(): 'en' | 'cs' {
+  return _cachedLanguage ?? _detectedLanguage ?? 'en'
+}
+
 // ── IPC handler registration ───────────────────────────────────────────────
 
 /**
@@ -104,6 +113,14 @@ export function registerLanguageChannels(): void {
     const store = await getStore()
     store.set('language', language)
     _cachedLanguage = language
+    return language
+  })
+
+  // ── Handle: language:setDetected ───────────────────────────────────────
+  // T-17-21: Zod-validated. T-17-22: never writes the store; stored language wins.
+  ipcMain.handle(LANGUAGE_SET_DETECTED, async (_event, payload: unknown) => {
+    const { language } = LanguageSchema.parse(payload)
+    _detectedLanguage = language
     return language
   })
 }

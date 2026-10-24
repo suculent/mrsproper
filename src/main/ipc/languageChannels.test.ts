@@ -13,7 +13,7 @@
 
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { ZodError } from 'zod'
-import { LANGUAGE_GET, LANGUAGE_SET } from '@shared/channels'
+import { LANGUAGE_GET, LANGUAGE_SET, LANGUAGE_SET_DETECTED } from '@shared/channels'
 
 // Shared mock store instance — hoisted so the electron-store mock factory and
 // the tests below reference the SAME object (singleton parity with getStore()).
@@ -39,18 +39,20 @@ vi.mock('electron', () => ({
 }))
 
 import { ipcMain } from 'electron'
-import { registerLanguageChannels, preloadLanguageCache, getCachedLanguage } from './languageChannels'
+import { registerLanguageChannels, preloadLanguageCache, getCachedLanguage, getEffectiveLanguage } from './languageChannels'
 
 type IpcHandler = (event: unknown, payload?: unknown) => Promise<unknown>
 
 let getHandler: IpcHandler
 let setHandler: IpcHandler
+let detectedHandler: IpcHandler
 
 beforeAll(() => {
   registerLanguageChannels()
   const calls = vi.mocked(ipcMain.handle).mock.calls
   getHandler = calls.find(([ch]) => ch === LANGUAGE_GET)![1] as unknown as IpcHandler
   setHandler = calls.find(([ch]) => ch === LANGUAGE_SET)![1] as unknown as IpcHandler
+  detectedHandler = calls.find(([ch]) => ch === LANGUAGE_SET_DETECTED)![1] as unknown as IpcHandler
 })
 
 beforeEach(() => {
@@ -109,5 +111,24 @@ describe('languageChannels', () => {
     expect(getCachedLanguage()).toBe('en')
     await expect(setHandler({}, { language: 'de' })).rejects.toThrow(ZodError)
     expect(getCachedLanguage()).toBe('en')
+  })
+
+  it('LANGUAGE_SET_DETECTED rejects invalid payloads, never touches the store', async () => {
+    await expect(detectedHandler({}, { language: 'de' })).rejects.toThrow(ZodError)
+    await expect(detectedHandler({}, 'cs')).rejects.toThrow(ZodError)
+    expect(mocks.store.set).not.toHaveBeenCalled()
+  })
+
+  it('detected language is used when nothing stored; stored wins; store never written', async () => {
+    // Reset cache to "nothing stored" via preload from an empty store.
+    mocks.store.get.mockReturnValue(null)
+    await preloadLanguageCache()
+    expect(getEffectiveLanguage()).toBe('en')
+    await expect(detectedHandler({}, { language: 'cs' })).resolves.toBe('cs')
+    expect(getEffectiveLanguage()).toBe('cs')
+    await expect(getHandler({})).resolves.toBeNull()
+    expect(mocks.store.set).not.toHaveBeenCalled()
+    await setHandler({}, { language: 'en' })
+    expect(getEffectiveLanguage()).toBe('en')
   })
 })
