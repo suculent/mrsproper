@@ -209,10 +209,7 @@ export class AddExecutor {
    * still holds a live in-memory job (non-idle). With no resolver target ADD_START is rejected:
    * resuming without a reviewed target goes through the explicit ADD_RESUME channel only.
    */
-  checkResumeIdentity(
-    existing: AddJobFile | null,
-    _dialogIds: string[]
-  ): 'resume' | 'fresh' | 'reject' {
+  checkResumeIdentity(existing: AddJobFile | null): 'resume' | 'fresh' | 'reject' {
     const live = this._resolver.getResolvedUser()
     if (live === null) return 'reject'
     if (existing === null || existing.status === 'complete') return 'fresh'

@@ -1854,20 +1854,19 @@ describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-0
     const { executor } = makeExecutor(config)
     const job = jobFor(['30005'])
 
-    expect(executor.checkResumeIdentity(null, ['30005'])).toBe('fresh')
-    expect(executor.checkResumeIdentity(jobFor(['30005'], 'complete'), ['30005'])).toBe('fresh')
+    expect(executor.checkResumeIdentity(null)).toBe('fresh')
+    expect(executor.checkResumeIdentity(jobFor(['30005'], 'complete'))).toBe('fresh')
     config.resolverNull = true
     // ADD_START with no reviewed target never resumes — that is ADD_RESUME's job.
-    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('reject')
+    expect(executor.checkResumeIdentity(job)).toBe('reject')
     expect(executor.checkExplicitResume(job)).toBe('resume')
     expect(executor.checkExplicitResume(null)).toBe('reject')
     expect(executor.checkExplicitResume(jobFor(['30005'], 'complete'))).toBe('reject')
     config.resolverNull = false
-    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('resume') // id 99 == 99
+    expect(executor.checkResumeIdentity(job)).toBe('resume') // id 99 == 99
     expect(executor.checkExplicitResume(job)).toBe('resume')
     config.resolved = other
-    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('fresh') // idle, same set: fresh B (D-07)
-    expect(executor.checkResumeIdentity(job, ['30006'])).toBe('fresh') // idle, different set
+    expect(executor.checkResumeIdentity(job)).toBe('fresh') // idle, different identity: fresh B (D-07)
     expect(executor.checkExplicitResume(job)).toBe('reject') // Resume of A while B is confirmed
 
     // non-idle: run a job as 99 then switch identity
@@ -1877,7 +1876,7 @@ describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-0
     await p
     expect(executor.getState().step).toBe('complete')
     config.resolved = other
-    expect(executor.checkResumeIdentity(job, ['30006'])).toBe('reject')
+    expect(executor.checkResumeIdentity(job)).toBe('reject')
   })
 
   it('D-07: execute({resume:true}) with a different live identity never inits, never RPCs', async () => {

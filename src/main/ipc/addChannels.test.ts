@@ -94,7 +94,7 @@ function makeMockExecutor(
     checkExplicitResume: vi.fn((job: AddJobFile | null) =>
       explicitResume ?? (job !== null && job.status !== 'complete' ? 'resume' : 'reject')
     ),
-    checkResumeIdentity: vi.fn((existing: AddJobFile | null, _ids: string[]) =>
+    checkResumeIdentity: vi.fn((existing: AddJobFile | null) =>
       decision ?? (existing !== null && existing.status !== 'complete' ? 'resume' : 'fresh')
     ),
     execute: vi.fn(async () => {}),
@@ -332,10 +332,7 @@ describe('addChannels — ADD_START security gates', () => {
     const callArg = (executor.execute.mock.calls as unknown as Array<[Record<string, unknown>]>)[0][0]
     expect(callArg).toHaveProperty('dialogIds', ['111', '222'])
     expect(callArg.resume).toBe(true)
-    expect(executor.checkResumeIdentity).toHaveBeenCalledWith(expect.objectContaining({ status: 'stopped' }), [
-      '111',
-      '222',
-    ])
+    expect(executor.checkResumeIdentity).toHaveBeenCalledWith(expect.objectContaining({ status: 'stopped' }))
   })
 
   const startWith = async (decision: 'resume' | 'fresh' | 'reject') => {

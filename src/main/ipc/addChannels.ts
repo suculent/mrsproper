@@ -64,10 +64,7 @@ export interface AddExecutorLike {
    *  from auditStore.readJob() — never accepted from the renderer payload (T-14-16). */
   execute(args: { dialogIds: string[]; resume?: boolean }): Promise<void>
   /** D-07: identity-aware ADD_START decision. 'reject' = never act (job untouched, no RPC). */
-  checkResumeIdentity(
-    existing: AddJobFile | null,
-    dialogIds: string[]
-  ): 'resume' | 'fresh' | 'reject'
+  checkResumeIdentity(existing: AddJobFile | null): 'resume' | 'fresh' | 'reject'
   /** D-07: ADD_RESUME gate. 'reject' = no non-complete job, or a live resolver user that
    *  differs from the job's targetId. */
   checkExplicitResume(job: AddJobFile | null): 'resume' | 'reject'
@@ -188,7 +185,7 @@ export function registerAddChannels(
     // with the same dialog-id set continues its own job; a different reviewed target starts a
     // fresh job; a different identity is rejected only while a live in-memory job exists.
     // Resuming job A without a reviewed target goes through ADD_RESUME instead.
-    const decision = executor.checkResumeIdentity(existingJob, parsed.dialogIds)
+    const decision = executor.checkResumeIdentity(existingJob)
     if (decision === 'reject') {
       return executor.getState()
     }
