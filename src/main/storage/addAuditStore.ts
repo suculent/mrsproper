@@ -109,6 +109,7 @@ const AddGroupOutcomeSchema = z.object({
   reason: z.enum(['privacy', 'channel-full']).optional(),
   link: z.string().optional(),
   premiumWouldAllow: z.boolean().optional(),
+  retryDmStatus: z.enum(['sent', 'refused']).optional(),
   timestamp: z.string(),
 })
 
@@ -124,6 +125,7 @@ const AddJobFileSchema = z.object({
   startedAt: z.string(),
   completedAt: z.string().optional(),
   status: z.enum(['running', 'complete', 'stopped', 'hard-stopped']),
+  bannedDialogIds: z.array(z.string()).optional(),
 })
 
 // ── Factory ─────────────────────────────────────────────────────────────────

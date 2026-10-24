@@ -232,7 +232,7 @@ export function registerAddChannels(
     // Destructure to exclude the access hash field — TypeScript verifies the remainder
     // matches AddJobFileSafe (which Omits it from AddJobFile).
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { targetAccessHash: _stripped, ...safe } = job
+    const { targetAccessHash: _stripped, bannedDialogIds: _banned, ...safe } = job
     return safe
   })
 

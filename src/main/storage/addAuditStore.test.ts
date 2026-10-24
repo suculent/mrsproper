@@ -228,6 +228,27 @@ describe('AddAuditStore', () => {
     expect(fakeFs._lastWriteOpts).toMatchObject({ mode: 0o600 })
   })
 
+  it('readJob round-trips bannedDialogIds and retryDmStatus through Zod', () => {
+    const store = createAddAuditStore({ fs: fakeFs, app: fakeApp })
+    store.initJob(
+      makeAddJob({
+        bannedDialogIds: ['-100'],
+        outcomes: [makeOutcome('111', { status: 'privacy-blocked', retryDmStatus: 'refused' })],
+      })
+    )
+    const job = store.readJob()
+    expect(job?.bannedDialogIds).toEqual(['-100'])
+    expect(job?.outcomes[0]?.retryDmStatus).toBe('refused')
+  })
+
+  it('readJob parses an old job file lacking the new fields', () => {
+    const store = createAddAuditStore({ fs: fakeFs, app: fakeApp })
+    store.initJob(makeAddJob())
+    const job = store.readJob()
+    expect(job).not.toBeNull()
+    expect(job?.bannedDialogIds).toBeUndefined()
+  })
+
   it('sameDialogIdSet: returns true for the same ids in different order', () => {
     expect(sameDialogIdSet(['1', '2', '3'], ['3', '1', '2'])).toBe(true)
   })

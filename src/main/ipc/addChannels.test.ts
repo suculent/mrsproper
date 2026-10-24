@@ -490,7 +490,7 @@ describe('addChannels — ADD_GET_JOB', () => {
     const win = makeMockWin()
     const executor = makeMockExecutor()
     const enumerator = makeMockEnumerator()
-    const auditStore = makeMockAuditStore(makeJobFile())
+    const auditStore = makeMockAuditStore(makeJobFile({ bannedDialogIds: ['-100'] }))
     const contactService = makeMockContactService()
     const getAuthState = makeGetAuthState('authorized')
 
@@ -508,6 +508,7 @@ describe('addChannels — ADD_GET_JOB', () => {
 
     expect(result).not.toBeNull()
     expect(result).not.toHaveProperty('targetAccessHash')
+    expect(result).not.toHaveProperty('bannedDialogIds')
     const job = result as Record<string, unknown>
     expect(job).toHaveProperty('jobId')
     expect(job).toHaveProperty('targetId')

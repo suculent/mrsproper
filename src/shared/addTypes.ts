@@ -62,6 +62,8 @@ export interface AddGroupOutcome {
   link?: string
   /** Missing invitee flagged premium_would_allow_invite — D-09. */
   premiumWouldAllow?: boolean
+  /** Result of the per-retry DM carrying the invite link (D-12). */
+  retryDmStatus?: 'sent' | 'refused'
   /** ISO timestamp of when this outcome was recorded. */
   timestamp: string
 }
@@ -156,6 +158,8 @@ export interface AddJobFile {
   completedAt?: string
   /** Current persistence status — 'running' means the job is incomplete and will prompt Resume/Discard. */
   status: 'running' | 'complete' | 'stopped' | 'hard-stopped'
+  /** Main-only (D-10): dialogIds where the target was banned at scan time — drives unban-first across relaunch. */
+  bannedDialogIds?: string[]
 }
 
 /**
@@ -166,7 +170,7 @@ export interface AddJobFile {
  * This type is used as the return type of ADD_GET_JOB so TypeScript enforces the
  * boundary at the call sites in both addChannels.ts and any renderer store.
  */
-export type AddJobFileSafe = Omit<AddJobFile, 'targetAccessHash'>
+export type AddJobFileSafe = Omit<AddJobFile, 'targetAccessHash' | 'bannedDialogIds'>
 
 /**
  * One plain-text log block appended to add-log.txt at a run's terminal state (D-17/D-18).
