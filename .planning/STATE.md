@@ -100,6 +100,7 @@ Last activity: 2026-10-04
 ### Roadmap Evolution
 
 - Phase 16 added: Close gap: ADD-08 resume path and ADD-02 empty state (from v1.7 milestone audit)
+- Phase 17 added: Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock (from 2026-10-24 v1.7 re-audit)
 
 ### Decisions
 
