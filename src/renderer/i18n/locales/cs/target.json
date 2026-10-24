@@ -9,7 +9,7 @@
   },
   "invalidUsernameFormat": "Toto nevypadá jako platné uživatelské jméno. Uživatelská jména mají 5–32 písmen, číslic a podtržítek.",
   "invalidPhoneFormat": "Toto telefonní číslo nevypadá správně. Zkontrolujte zemi a číslo a zkuste to znovu.",
-  "inputHeading": "Koho odebíráte?",
+  "inputHeading": "Koho spravujete?",
   "inputDescription": "Zadejte jejich @uživatelské jméno nebo telefonní číslo. Než se cokoli stane, potvrdíte, že jde o správnou osobu.",
   "inputLabel": "Uživatelské jméno nebo telefonní číslo",
   "inputPlaceholder": "@uživatelské jméno nebo telefonní číslo",

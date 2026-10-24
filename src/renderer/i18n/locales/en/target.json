@@ -9,7 +9,7 @@
   },
   "invalidUsernameFormat": "That doesn't look like a valid username. Usernames have 5–32 letters, numbers, and underscores.",
   "invalidPhoneFormat": "That phone number doesn't look right. Check the country and number, then try again.",
-  "inputHeading": "Who are you removing?",
+  "inputHeading": "Who are you managing?",
   "inputDescription": "Enter their @username or phone number. You'll confirm it's the right person before anything happens.",
   "inputLabel": "Username or phone number",
   "inputPlaceholder": "@username or phone number",
