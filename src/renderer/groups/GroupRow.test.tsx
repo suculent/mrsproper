@@ -169,7 +169,7 @@ describe('GroupRow — Add-mode mode-aware grey rendering (15-14)', () => {
 
 type AddRunProps = Pick<
   GroupRowProps,
-  'addStatus' | 'addErrorCode' | 'addLink' | 'premiumWouldAllow' | 'onRetryAdd'
+  'addStatus' | 'addErrorCode' | 'addLink' | 'premiumWouldAllow' | 'onRetryAdd' | 'addRetryDmStatus' | 'addTargetName' | 'jobView'
 >
 
 function renderAddRun(extra: AddRunProps): string {
@@ -304,5 +304,31 @@ describe('GroupRow — banned rows and unban right (16-05, D-09/D-11)', () => {
   it('member: already-member unchanged', () => {
     const html = render(base, 'member', false, 'add')
     expect(html).toContain('greyReason.already-member')
+  })
+})
+
+describe('GroupRow — retry DM status line and job view (17-06, D-12/D-03)', () => {
+  it('sent renders the sent key; refused renders the refused key in foreground', () => {
+    const sent = renderAddRun({ addStatus: 'privacy-blocked', addLink: 'l', addRetryDmStatus: 'sent', addTargetName: 'Mallory' })
+    expect(sent).toContain('rowStatus.retryDmSent')
+    expect(sent).not.toContain('rowStatus.retryDmRefused')
+    const refused = renderAddRun({ addStatus: 'privacy-blocked', addLink: 'l', addRetryDmStatus: 'refused', addTargetName: 'Mallory' })
+    expect(refused).toContain('rowStatus.retryDmRefused')
+    expect(refused).toMatch(/text-foreground[^>]*>rowStatus\.retryDmRefused/)
+    expect(refused).not.toMatch(/text-destructive[^>]*>rowStatus\.retryDmRefused/)
+    expect(refused.indexOf('rowStatus.linkCreated')).toBeLessThan(refused.indexOf('rowStatus.retryDmRefused'))
+  })
+
+  it('undefined retry status renders no DM line', () => {
+    const html = renderAddRun({ addStatus: 'privacy-blocked', addLink: 'l' })
+    expect(html).not.toContain('retryDm')
+  })
+
+  it('jobView queued row renders no checkbox', () => {
+    const html = renderAddRun({ addStatus: 'queued', jobView: true })
+    expect(html).not.toContain('queuedAddAria')
+    expect(html).not.toContain('role="checkbox"')
+    const normal = renderAddRun({ addStatus: 'queued' })
+    expect(normal).toContain('queuedAddAria')
   })
 })

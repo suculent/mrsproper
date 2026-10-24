@@ -103,6 +103,12 @@ export interface GroupRowProps {
   premiumWouldAllow?: boolean
   /** Called when user clicks the "retry" link for a failed Add row (D-18). */
   onRetryAdd?: (dialogId: string) => void
+  /** Outcome of the retry DM carrying the invite link — present on privacy-blocked rows (D-12). */
+  addRetryDmStatus?: 'sent' | 'refused'
+  /** Main-provided target display name for the retry DM line (T-17-20). */
+  addTargetName?: string
+  /** Job view (D-03): status-only row, never renders a selection/queued checkbox. */
+  jobView?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +134,9 @@ export function GroupRow({
   addLink,
   premiumWouldAllow,
   onRetryAdd,
+  addRetryDmStatus,
+  addTargetName,
+  jobView = false,
 }: GroupRowProps): React.JSX.Element {
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
@@ -180,7 +189,10 @@ export function GroupRow({
   // Checkbox slot — Phase 5 removal status branch is FIRST
   // ---------------------------------------------------------------------------
 
-  function renderCheckboxSlot(): React.JSX.Element {
+  function renderCheckboxSlot(): React.JSX.Element | null {
+    // D-03: job-view rows carry no checkbox at all (queued/idle would otherwise render one).
+    if (jobView && (addStatus == null || addStatus === 'queued')) return null
+
     // 1. removalStatus branch (non-null): switch on removalStatus
     if (removalStatus != null) {
       switch (removalStatus) {
@@ -483,6 +495,16 @@ export function GroupRow({
                 {justCopied && <span className="ml-1" aria-hidden="true">{tAdd('rowStatus.linkCopied')}</span>}
               </Button>
             </span>
+            {addRetryDmStatus === 'sent' && (
+              <span className="text-label font-normal text-muted-foreground">
+                {tAdd('rowStatus.retryDmSent', { name: addTargetName })}
+              </span>
+            )}
+            {addRetryDmStatus === 'refused' && (
+              <span className="text-label font-normal text-foreground">
+                {tAdd('rowStatus.retryDmRefused', { name: addTargetName })}
+              </span>
+            )}
             {premiumWouldAllow === true && (
               <span className="text-label text-muted-foreground">
                 {tAdd('rowStatus.premiumHint')}
