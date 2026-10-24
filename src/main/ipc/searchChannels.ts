@@ -74,7 +74,9 @@ export function registerSearchChannels(
   win: BrowserWindow,
   searcher: ParticipantSearcher,
   resolver: TargetResolver,
-  getAddStep?: () => string // D-05/D-07: lazy getter (AddExecutor is built after this registration)
+  // D-05/D-07: lazy getter (AddExecutor is built after this registration). IN-03: required,
+  // so a caller can never silently drop the name-search lookup lock.
+  getAddStep: () => string
 ): void {
   // Suppress unused warning — win used by emitSearchState wired in main/index.ts
   void win
@@ -111,7 +113,7 @@ export function registerSearchChannels(
     const parsed = ResolveCandidateSchema.parse(payload)
 
     // D-05/D-07: name search cannot bypass the add-job lookup lock.
-    if (getAddStep && getAddStep() !== 'idle') return resolver.getState()
+    if (getAddStep() !== 'idle') return resolver.getState()
 
     // Layer 2: Security gate — userId must be in the current candidate set.
     // getCandidateAccessHash() returns null for unknown userIds or after abortSearch().
@@ -123,7 +125,7 @@ export function registerSearchChannels(
     // Proceed with resolution — accessHash stays in main process (T-03-01)
     await resolver.resolveByCandidate(BigInt(parsed.userId), accessHash)
     // WR-05: re-check after the await — an add job may have started while resolving.
-    if (getAddStep && getAddStep() !== 'idle') resolver.reset()
+    if (getAddStep() !== 'idle') resolver.reset()
     return resolver.getState()
   })
 }

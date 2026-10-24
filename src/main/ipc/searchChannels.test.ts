@@ -82,7 +82,7 @@ describe('registerSearchChannels — SEARCH_START (TGT-05h)', () => {
     const searcher = makeMockSearcher()
     const resolver = makeMockResolver()
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     expect(capturedHandlers['search:start']).toBeDefined()
 
@@ -99,7 +99,7 @@ describe('registerSearchChannels — SEARCH_START (TGT-05h)', () => {
     const searcher = makeMockSearcher()
     const resolver = makeMockResolver()
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     // 1-char query must fail Zod min(2) before reaching searcher
     await expect(
@@ -113,7 +113,7 @@ describe('registerSearchChannels — SEARCH_START (TGT-05h)', () => {
     const searcher = makeMockSearcher()
     const resolver = makeMockResolver()
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     await expect(
       capturedHandlers['search:start']({}, {})
@@ -126,7 +126,7 @@ describe('registerSearchChannels — SEARCH_START (TGT-05h)', () => {
     const searcher = makeMockSearcher()
     const resolver = makeMockResolver()
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     // '  Bob  ' trims to 'Bob' — >= 2 chars, must proceed
     await capturedHandlers['search:start']({}, { query: '  Bob  ' })
@@ -138,7 +138,7 @@ describe('registerSearchChannels — SEARCH_START (TGT-05h)', () => {
     const searcher = makeMockSearcher()
     const resolver = makeMockResolver()
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     // '   ' trims to '' — must fail .min(2)
     await expect(
@@ -166,7 +166,7 @@ describe('registerSearchChannels — TARGET_RESOLVE_CANDIDATE gate', () => {
     // getCandidateAccessHash returns null for unknown userId
     searcher.getCandidateAccessHash.mockReturnValue(null)
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     await expect(
       capturedHandlers['target:resolveCandidate']({}, { userId: '99999' })
@@ -183,7 +183,7 @@ describe('registerSearchChannels — TARGET_RESOLVE_CANDIDATE gate', () => {
     const fakeHash = BigInt('12345678901234')
     searcher.getCandidateAccessHash.mockReturnValue(fakeHash)
 
-    registerSearchChannels(win as never, searcher as never, resolver as never)
+    registerSearchChannels(win as never, searcher as never, resolver as never, () => 'idle')
 
     await capturedHandlers['target:resolveCandidate']({}, { userId: '123456' })
     expect(resolver.resolveByCandidate).toHaveBeenCalledWith(BigInt('123456'), fakeHash)

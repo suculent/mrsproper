@@ -64,8 +64,8 @@ const ResolveTargetSchema = z.object({
  *                    RemovalExecutor and creating a circular dependency (CR-01 for removal).
  * @param tagExecutor Structural type — only abortExecution() is needed; avoids importing
  *                    TagExecutor and creating a circular dependency (CR-03 for tag run abort).
- * @param addExecutor Structural type — only abortExecution() is needed; avoids importing
- *                    AddExecutor and creating a circular dependency (T-14-19 for add run abort).
+ * @param addExecutor Structural type — abortExecution() (T-14-19 add run abort) and getState()
+ *                    (D-05 lookup lock); avoids importing AddExecutor (circular dependency).
  */
 export function registerTargetChannels(
   win: BrowserWindow,
@@ -74,7 +74,9 @@ export function registerTargetChannels(
   searcher: { abortSearch(): void },
   executor?: { abortExecution(): void },
   tagExecutor?: { abortExecution(): void },
-  addExecutor?: { abortExecution(): void; getState?(): { step: string } }
+  // IN-03: getState is REQUIRED whenever an add executor is passed — an object without it
+  // would otherwise silently disable the D-05 lookup lock.
+  addExecutor?: { abortExecution(): void; getState(): { step: string } }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
@@ -82,7 +84,7 @@ export function registerTargetChannels(
   // D-05: while an add job is live (step !== 'idle'), target lookup is locked in main.
   // TARGET_RESET is the only exit (it aborts the job and clears state).
   const addIsActive = (): boolean => {
-    const step = addExecutor?.getState?.().step
+    const step = addExecutor?.getState().step
     return step !== undefined && step !== 'idle'
   }
 

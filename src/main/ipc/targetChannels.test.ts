@@ -377,12 +377,9 @@ describe('registerTargetChannels — add-job lookup lock (D-05)', () => {
     Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
   })
 
-  function setup(step?: string) {
+  function setup(step: string) {
     const resolver = makeMockResolver()
-    const addExecutor = {
-      abortExecution: vi.fn(),
-      ...(step !== undefined ? { getState: vi.fn(() => ({ step })) } : {}),
-    }
+    const addExecutor = { abortExecution: vi.fn(), getState: vi.fn(() => ({ step })) }
     registerTargetChannels(
       makeMockWin() as never, resolver as never, makeMockScanner() as never,
       makeMockSearcher() as never, undefined, undefined, addExecutor as never
@@ -410,8 +407,11 @@ describe('registerTargetChannels — add-job lookup lock (D-05)', () => {
     expect(resolver.confirm).toHaveBeenCalled()
   })
 
-  it('addExecutor without getState behaves as idle', async () => {
-    const { resolver } = setup(undefined)
+  it('no addExecutor at all behaves as idle', async () => {
+    const resolver = makeMockResolver()
+    registerTargetChannels(
+      makeMockWin() as never, resolver as never, makeMockScanner() as never, makeMockSearcher() as never
+    )
     await capturedHandlers['target:resolve']({}, { input: '@x' })
     expect(resolver.resolve).toHaveBeenCalled()
   })
