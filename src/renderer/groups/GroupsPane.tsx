@@ -25,7 +25,7 @@ import { useAddStore, addActions } from '../store/addStore'
 import { addClient } from '../ipc/addClient'
 import { GroupRow } from './GroupRow'
 import { ModeSwitch } from './ModeSwitch'
-import { getAddEmptyState, isAddStatusInJob } from './addPaneState'
+import { getAddEmptyState, isAddStatusInJob, getPaneView, getJobRows } from './addPaneState'
 import { isActionableForMode, type GroupMode } from './modeRules'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
@@ -72,7 +72,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const { onNavigateToReview, onNavigateToTarget } = props
   // D-01: AppShell always passes activeMode/onModeChange; the 'remove' default and no-op
   // fallback below only protect callers (e.g. tests) that mount GroupsPane without them.
-  const activeMode = props.activeMode ?? 'remove'
+  const requestedMode = props.activeMode ?? 'remove'
   const handleModeChange = props.onModeChange ?? (() => {})
   const { t: tG } = useTranslation('groups')
   const { t: tR } = useTranslation('removal')
@@ -86,32 +86,41 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const { state: tag } = useTagStore()
   const { state: add } = useAddStore()
 
+  // D-02: a non-idle add job always renders Add branches, even before AppShell's effect
+  // has switched the mode (first render after relaunch Resume).
+  const activeMode: GroupMode = add.step !== 'idle' ? 'add' : requestedMode
+  // D-01/T-17-16: labels come from the job's main-provided identity, never the renderer target.
+  const addTargetName = add.targetName
+
   const [sort, setSort] = useState<SortMode>('az')
   const [filter, setFilter] = useState('')
   // D-20: transient "No add log yet" inline message next to the Export add log button
   const [exportLogMessage, setExportLogMessage] = useState<string | null>(null)
 
   // D-12: mode derivation
-  const mode = targetState.target.step === 'confirmed' ? 'checklist' : 'browse'
+  // D-04: 'job' = non-idle add job with no confirmed target (relaunch resume).
+  const view = getPaneView(add.step, targetState.target.step)
+  const isJob = view === 'job'
+  const mode: 'browse' | 'checklist' = view === 'checklist' ? 'checklist' : 'browse'
 
   // D-13: when mode changes to browse (target reset/change), abort any in-progress scan.
   // CR-01-RENDERER: also fires when scan.step === 'complete' so that a completed scan
   // from target A is aborted when the user resets/changes targets. Belt-and-suspenders
   // alongside CR-01-MAIN (scanner.abortScan() in TARGET_RESET IPC handler).
   useEffect(() => {
-    if (mode === 'browse' && (scan.step === 'scanning' || scan.step === 'complete')) {
+    if (view === 'browse' && (scan.step === 'scanning' || scan.step === 'complete')) {
       void groupsActions.abortScan()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  }, [view])
 
   // D-13/D-15: when target is confirmed and scan is idle, auto-start scan
   useEffect(() => {
-    if (mode === 'checklist' && scan.step === 'idle') {
+    if (view === 'checklist' && scan.step === 'idle') {
       void groupsActions.startScan()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  }, [view])
 
   // ---------------------------------------------------------------------------
   // Derived values from target state
@@ -141,7 +150,14 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
 
   let displayedDialogs: AdminDialogDTO[]
 
-  if (mode === 'browse') {
+  if (isJob) {
+    // D-03: only the job's groups, in job order; filter narrows, sort toggle ignored
+    const jobRows = getJobRows(allDialogs, add.dialogIds)
+    displayedDialogs =
+      filter === ''
+        ? jobRows
+        : jobRows.filter((d) => d.title.toLowerCase().includes(filter.toLowerCase()))
+  } else if (mode === 'browse') {
     // Browse mode: filter by title, sort all
     const filtered =
       filter === ''
@@ -265,6 +281,19 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   // ---------------------------------------------------------------------------
 
   function renderEmptyState(): React.JSX.Element | null {
+    // D-03: the job view never shows browse/scan empty states
+    if (isJob) return null
+
+    // D-14: zero dialogs in Add checklist mode must not render a blank list
+    if (mode === 'checklist' && activeMode === 'add' && groups.step === 'loaded' && allDialogs.length === 0) {
+      return (
+        <div className="px-4 py-8 flex flex-col gap-1">
+          <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
+          <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
+        </div>
+      )
+    }
+
     if (mode === 'browse') {
       if (groups.step === 'loading') {
         return (
@@ -311,6 +340,14 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           (id) => scan.results.find((r) => r.dialogId === id)?.status ?? null,
           failedCount
         )
+        if (addEmpty === 'no-groups') {
+          return (
+            <div className="px-4 py-8 flex flex-col gap-1">
+              <span className="text-label font-semibold">{tG('emptyState.noGroups.heading')}</span>
+              <span className="text-body text-muted-foreground">{tG('emptyState.noGroups.body')}</span>
+            </div>
+          )
+        }
         if (addEmpty !== 'none') {
           return (
             <div className="px-4 py-8 flex flex-col gap-1">
@@ -347,8 +384,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   // ---------------------------------------------------------------------------
 
   function renderProgressSlot(): React.JSX.Element | null {
-    // Only in checklist mode
-    if (mode !== 'checklist') return null
+    // Only in checklist mode, or the add job view (D-04: the Add slot is never hidden)
+    if (mode !== 'checklist' && !isJob) return null
 
     // TAG BRANCHES — gated on activeMode === 'tag'; placed before removal branches
     if (activeMode === 'tag') {
@@ -491,7 +528,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           <div className="px-4 py-2 shrink-0" role="status" aria-live="polite">
             <div className="flex items-center justify-between mb-1">
               <span className="text-label text-muted-foreground">
-                {tAdd('progressLabel', { name: targetName, x: processed + 1, n: total })}
+                {tAdd('progressLabel', { name: addTargetName, x: processed + 1, n: total })}
               </span>
               <Button
                 variant="ghost"
@@ -614,12 +651,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               {/* D-19: DM status line — sent/refused render a line, not-needed renders nothing */}
               {add.dmStatus === 'sent' && (
                 <span className="text-label text-muted-foreground">
-                  {tAdd('dmStatusSent', { name: targetName })}
+                  {tAdd('dmStatusSent', { name: addTargetName })}
                 </span>
               )}
               {add.dmStatus === 'refused' && (
                 <span className="text-label text-foreground">
-                  {tAdd('dmStatusRefused', { name: targetName })}
+                  {tAdd('dmStatusRefused', { name: addTargetName })}
                 </span>
               )}
               {exportLogMessage != null && (
@@ -850,18 +887,19 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
         <ModeSwitch
           mode={activeMode}
           onChange={handleModeChange}
-          disabled={scan.step === 'scanning' || isRunActive || props.stage === 'run' || props.stage === 'report'}
+          disabled={scan.step === 'scanning' || isRunActive || props.stage === 'run' || props.stage === 'report' || add.step !== 'idle'}
+          lockedByAddJob={add.step !== 'idle'}
         />
 
-        {/* Sort toggle (both modes) */}
-        <Button
+        {/* Sort toggle (browse and checklist; the job view keeps job order) */}
+        {!isJob && <Button
           variant="ghost"
           size="sm"
           onClick={() => setSort((s) => (s === 'az' ? 'size' : 'az'))}
           aria-pressed={sort === 'size'}
         >
           {sort === 'az' ? tG('sortAz') : tG('sortBySize')}
-        </Button>
+        </Button>}
 
         {/* Refresh button — disabled during removal run */}
         <Button
@@ -870,8 +908,8 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
           onClick={() => void groupsActions.refreshGroups()}
           aria-label={tG('refreshAria')}
           title={isRunActive ? tG('refreshBlockedTooltip') : tG('refreshTooltip')}
-          aria-disabled={isRunActive}
-          disabled={isRunActive}
+          aria-disabled={isRunActive || add.step !== 'idle'}
+          disabled={isRunActive || add.step !== 'idle'}
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -939,9 +977,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   key={dialog.id}
                   dialog={dialog}
                   membershipStatus={getMembershipStatus(dialog.id)}
-                  isChecked={checkedDialogIds.has(dialog.id)}
+                  isChecked={isJob ? false : checkedDialogIds.has(dialog.id)}
                   activeMode={activeMode}
-                  onToggle={isRunActive ? () => {} : groupsActions.toggleGroup}
+                  onToggle={isRunActive || isJob ? () => {} : groupsActions.toggleGroup}
                   onRetry={isRunActive ? () => {} : (dialogId) => void groupsActions.retryScanGroup(dialogId)}
                   removalStatus={rowRemovalStatus}
                   removalNote={activeMode === 'remove' ? (outcome?.note ?? null) : null}
