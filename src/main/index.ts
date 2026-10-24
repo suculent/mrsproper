@@ -303,7 +303,7 @@ app.whenReady().then(async () => {
     },
   })
 
-  registerSearchChannels(currentWin, searcher, resolver)
+  registerSearchChannels(currentWin, searcher, resolver, () => addExecutorRef?.getState().step ?? 'idle')
 
   // ── Wire AuditStore ───────────────────────────────────────────────────────
   // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
