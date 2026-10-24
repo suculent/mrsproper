@@ -82,11 +82,11 @@ function seedJob(): AddJobFile {
   } as AddJobFile
 }
 
-function build(resolverNull: boolean, mockConfig: MockClientConfig) {
+function build(resolverNull: boolean, mockConfig: MockClientConfig, seed: AddJobFile = seedJob()) {
   const dialogs = ['21001', '21002', '21003'].map(makeDialog)
   const mockClient = createMockTelegramClient(mockConfig)
   const governor = new RateLimitGovernor({ client: mockClient as never })
-  const auditStore = makeAuditStore(seedJob())
+  const auditStore = makeAuditStore(seed)
   const appendBlockCalls: AddLogBlockEntry[] = []
   const dmTexts: string[] = []
   const states: AddState[] = []
@@ -175,6 +175,25 @@ describe('cross-process resume: stopped job -> renderer resume call -> AddExecut
       expect(appendBlockCalls).toHaveLength(1)
       expect(appendBlockCalls[0]!.isFollowUp).toBe(true)
       expect(appendBlockCalls[0]!.jobId).toBe('ORIGINAL-JOB-ID')
+    })
+  }
+
+  // WR-02: BigInt('') === 0n does not throw — a malformed job must fall into the idle path.
+  for (const bad of [
+    { targetAccessHash: '' },
+    { targetAccessHash: 'abc' },
+    { targetId: '' },
+  ] as Partial<AddJobFile>[]) {
+    it(`rejects a malformed job file on relaunch resume (${JSON.stringify(bad)})`, async () => {
+      const { executor, mockClient, auditStore, states } = build(true, {}, { ...seedJob(), ...bad })
+
+      const p = executor.execute({ dialogIds: getResumeDialogIds(seedJob()), resume: true })
+      await vi.runAllTimersAsync()
+      await p
+
+      expect(auditStore.initJobCalls).toHaveLength(0)
+      expect(mockClient.sendMessageCalls).toHaveLength(0)
+      expect(states[states.length - 1]!.step).toBe('idle')
     })
   }
 })

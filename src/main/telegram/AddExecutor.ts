@@ -217,16 +217,22 @@ export class AddExecutor {
       existing.status !== 'complete' &&
       sameDialogIdSet(existing.dialogIds, params.dialogIds)
     ) {
-      try {
-        resolved = {
-          id: BigInt(existing.targetId),
-          accessHash: BigInt(existing.targetAccessHash),
-          name: existing.targetName,
-          deleted: false,
-          bot: false,
+      // WR-02: BigInt('') is 0n (no throw), so validate both ids as integer strings first —
+      // a malformed/truncated job file must fall into the idle path, never reach Telegram
+      // with an invalid InputPeerUser.
+      const isIntString = (v: unknown): v is string => typeof v === 'string' && /^-?\d+$/.test(v)
+      if (isIntString(existing.targetId) && isIntString(existing.targetAccessHash)) {
+        try {
+          resolved = {
+            id: BigInt(existing.targetId),
+            accessHash: BigInt(existing.targetAccessHash),
+            name: typeof existing.targetName === 'string' ? existing.targetName : '',
+            deleted: false,
+            bot: false,
+          }
+        } catch {
+          resolved = null
         }
-      } catch {
-        resolved = null
       }
     }
     if (resolved === null) {
