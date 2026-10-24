@@ -296,7 +296,7 @@ Plans:
 **Goal:** Close the two critical findings from the 2026-10-24 v1.7 re-audit (.planning/v1.7-MILESTONE-AUDIT.md, F1/F2): after a relaunch resume the renderer must show the running add job (progress bar, Stop, PEER_FLOOD Resume banner, summary/report band) even though no target was confirmed in this session, and the job's target identity must be locked so resolving/confirming a different person cannot retry, resume or start an add run against job A's groups without review.
 **Requirements**: ADD-08, ADD-12
 **Depends on:** Phase 16
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 17 to break down)
@@ -322,4 +322,4 @@ Plans:
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 14/14 | Complete   | 2026-10-04 |
 | 16. Close gap: ADD-08 resume path and ADD-02 empty state | v1.7 | 5/5 | Complete    | 2026-10-04 |
-| 17. Close gap: ADD-08/ADD-12 relaunch-resume UI and identity lock | v1.7 | 2/8 | In Progress|  |
+| 17. Close gap: ADD-08/ADD-12 relaunch-resume UI and identity lock | v1.7 | 3/8 | In Progress|  |
