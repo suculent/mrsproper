@@ -128,4 +128,47 @@ describe('GroupsPane job view (relaunch resume)', () => {
     expect(mocks.abortScan).not.toHaveBeenCalled()
     expect(mocks.startScan).not.toHaveBeenCalled()
   })
+
+  it('stopped with resumable rows shows Resume before export and addSomeoneElse', () => {
+    setAdd('stopped')
+    const html = render()
+    expect(html).toContain('peerFloodResumeLabel')
+    expect(html).toContain('resumeStoppedAria')
+    expect(html.indexOf('resumeStoppedAria')).toBeLessThan(html.indexOf('exportLogButton'))
+    expect(html.indexOf('exportLogButton')).toBeLessThan(html.indexOf('addSomeoneElse'))
+    expect(html).not.toContain('resumeFailedBand')
+  })
+
+  it('no Resume for complete or for a stopped job with nothing resumable', () => {
+    setAdd('complete', { summary: { added: 1, alreadyMember: 0, privacyBlocked: 0, failed: 0, skipped: 0 } })
+    expect(render()).not.toContain('resumeStoppedAria')
+    setAdd('stopped', {
+      outcomes: [
+        { dialogId: '3', status: 'done' },
+        { dialogId: '1', status: 'done' },
+      ],
+    })
+    expect(render()).not.toContain('resumeStoppedAria')
+  })
+
+  it('job-view rows render no checkbox element at all', () => {
+    setAdd('stopped')
+    const html = render()
+    expect(html).not.toContain('queuedAddAria')
+    expect(html).not.toContain('role="checkbox"')
+    expect(html).not.toContain('type="checkbox"')
+  })
+
+  it('rows show the retry DM line named from add.targetName', () => {
+    setAdd('stopped', {
+      outcomes: [
+        { dialogId: '3', status: 'privacy-blocked', link: 'x', retryDmStatus: 'refused' },
+        { dialogId: '1', status: 'privacy-blocked', link: 'y', retryDmStatus: 'sent' },
+      ],
+    })
+    const html = render()
+    expect(html).toContain('rowStatus.retryDmRefused')
+    expect(html).toContain('rowStatus.retryDmSent')
+    expect(html).toContain('Mallory')
+  })
 })

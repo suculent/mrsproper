@@ -26,6 +26,7 @@ import { addClient } from '../ipc/addClient'
 import { GroupRow } from './GroupRow'
 import { ModeSwitch } from './ModeSwitch'
 import { getAddEmptyState, isAddStatusInJob, getPaneView, getJobRows } from './addPaneState'
+import { isJobFinished } from '@shared/addResume'
 import { isActionableForMode, type GroupMode } from './modeRules'
 import type { AdminDialogDTO, MembershipStatus } from '@shared/groupTypes'
 import type { WizardStage } from '../wizard/StepIndicator'
@@ -96,6 +97,13 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
   const [filter, setFilter] = useState('')
   // D-20: transient "No add log yet" inline message next to the Export add log button
   const [exportLogMessage, setExportLogMessage] = useState<string | null>(null)
+  // D-11: shared in-flight/failed state for the stopped-band and PEER_FLOOD Resume buttons.
+  const [resumeState, setResumeState] = useState<'idle' | 'inflight' | 'failed'>('idle')
+  async function handleResumeAdd(): Promise<void> {
+    setResumeState('inflight')
+    const ok = await addActions.resumeJobFromDisk()
+    setResumeState(ok ? 'idle' : 'failed')
+  }
 
   // D-12: mode derivation
   // D-04: 'job' = non-idle add job with no confirmed target (relaunch resume).
@@ -581,11 +589,25 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => void addActions.resumeJobFromDisk()}
+                    disabled={resumeState === 'inflight'}
+                    aria-describedby={resumeState === 'failed' ? 'add-resume-failed-peerflood' : undefined}
+                    onClick={() => void handleResumeAdd()}
                   >
-                    {tAdd('peerFloodResumeLabel')}
+                    {resumeState === 'inflight' ? (
+                      <>
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                        {tAdd('confirmDispatching')}
+                      </>
+                    ) : (
+                      tAdd('peerFloodResumeLabel')
+                    )}
                   </Button>
                 </div>
+                {resumeState === 'failed' && (
+                  <div id="add-resume-failed-peerflood" className="mt-2 text-label font-normal text-destructive">
+                    {tAdd('resumeFailedBand')}
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           </div>
@@ -617,6 +639,13 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
             console.error('Failed to export add log', err)
           }
         }
+
+        // D-11: Resume only for a stopped job that still has unprocessed groups; never 'complete'.
+        const canResume =
+          add.step === 'stopped' &&
+          (add.dialogIds?.length ?? 0) > 0 &&
+          !isJobFinished({ dialogIds: add.dialogIds ?? [], outcomes: add.outcomes })
+        const resumeDisabled = resumeState === 'inflight' || groups.step !== 'loaded'
 
         return (
           <div className="px-4 py-2 shrink-0 border-t border-border flex items-center justify-between gap-2 flex-wrap" role="status">
@@ -662,8 +691,33 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               {exportLogMessage != null && (
                 <span className="text-label text-muted-foreground">{exportLogMessage}</span>
               )}
+              {canResume && resumeState === 'failed' && (
+                <span id="add-resume-failed-band" className="text-label font-normal text-destructive">
+                  {tAdd('resumeFailedBand')}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
+              {canResume && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  aria-label={tAdd('resumeStoppedAria')}
+                  aria-describedby={resumeState === 'failed' ? 'add-resume-failed-band' : undefined}
+                  disabled={resumeDisabled}
+                  title={groups.step !== 'loaded' ? tAdd('resumeLoadingGroups') : undefined}
+                  onClick={() => void handleResumeAdd()}
+                >
+                  {resumeState === 'inflight' ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                      {tAdd('confirmDispatching')}
+                    </>
+                  ) : (
+                    tAdd('peerFloodResumeLabel')
+                  )}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -993,6 +1047,9 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   addLink={activeMode === 'add' ? (addOutcome?.link ?? null) : null}
                   premiumWouldAllow={activeMode === 'add' ? (addOutcome?.premiumWouldAllow ?? false) : false}
                   onRetryAdd={(id) => void addActions.retryGroup(id)}
+                  addRetryDmStatus={activeMode === 'add' ? addOutcome?.retryDmStatus : undefined}
+                  addTargetName={addTargetName}
+                  jobView={isJob}
                 />
               )
             })}
