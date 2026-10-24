@@ -172,15 +172,24 @@ export const addActions = {
    * Resume a stopped/hard-stopped job by re-reading the disk job file for
    * the authoritative job; sends the FULL dialogIds set (D-01) (mirrors tagStore/removalStore resumeJobFromDisk).
    * addActions.startAdd takes only dialogIds — no second classification argument.
+   * Returns true only when the run actually started.
    */
-  async resumeJobFromDisk(): Promise<void> {
+  async resumeJobFromDisk(): Promise<boolean> {
     try {
+      // D-11: always re-read the job (never the first-subscribe pendingJob) so a Resume after
+      // a user Stop sees the latest outcomes.
       const freshJob = await addClient.getAddJob()
-      if (!freshJob || freshJob.status === 'complete') return
-      if (isJobFinished(freshJob)) return
-      await addActions.startAdd(getResumeDialogIds(freshJob))
+      if (!freshJob || freshJob.status === 'complete') return false
+      if (isJobFinished(freshJob)) return false
+      const stepBefore = currentState.step
+      const started = await addActions.startAdd(getResumeDialogIds(freshJob))
+      if (!started) return false
+      // A main-side rejection returns the unchanged executor state; that is a failure.
+      const stepAfter = currentState.step
+      return stepAfter === 'running' || stepAfter === 'stopping' || stepAfter !== stepBefore
     } catch (err) {
       console.error('[addStore] resumeJobFromDisk:', err)
+      return false
     }
   },
 }

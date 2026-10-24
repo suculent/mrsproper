@@ -328,6 +328,62 @@ describe('addActions.resumeJobFromDisk', () => {
   })
 })
 
+describe('addActions.resumeJobFromDisk — return value and re-read (D-11)', () => {
+  it('re-reads the job on every call and returns true when the run started', async () => {
+    const { useAddStore, addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValueOnce(makeSafeJob({ dialogIds: ['1'] }))
+    useAddStore()
+    await Promise.resolve()
+    await Promise.resolve()
+    mockClient.getAddJob.mockClear()
+    mockClient.getAddJob.mockResolvedValue(
+      makeSafeJob({
+        dialogIds: ['1', '2'],
+        outcomes: [{ dialogId: '1', status: 'done', timestamp: '2026-10-04T00:00:00.000Z' }],
+      })
+    )
+    mockClient.startAdd.mockResolvedValue({ ...makeCompletedAddState(), step: 'running' })
+
+    const ok = await addActions.resumeJobFromDisk()
+
+    expect(mockClient.getAddJob).toHaveBeenCalledTimes(1)
+    expect(mockClient.startAdd).toHaveBeenCalledWith(['1', '2'])
+    expect(ok).toBe(true)
+  })
+
+  it('returns false when the job is missing, complete or finished', async () => {
+    const { addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(null)
+    expect(await addActions.resumeJobFromDisk()).toBe(false)
+    mockClient.getAddJob.mockResolvedValue(makeSafeJob({ status: 'complete' }))
+    expect(await addActions.resumeJobFromDisk()).toBe(false)
+  })
+
+  it('returns false when startAdd returns idle or throws', async () => {
+    const { addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(makeSafeJob())
+    mockClient.startAdd.mockResolvedValueOnce(makeIdleAddState())
+    expect(await addActions.resumeJobFromDisk()).toBe(false)
+    mockClient.startAdd.mockRejectedValueOnce(new Error('boom'))
+    expect(await addActions.resumeJobFromDisk()).toBe(false)
+  })
+
+  it('returns false when main rejection leaves the executor in the same stopped step', async () => {
+    const { useAddStore, addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(makeSafeJob())
+    mockClient.abortAdd.mockResolvedValue({ ...makeCompletedAddState(), step: 'stopped' })
+    await addActions.abortAdd()
+    expect(useAddStore().state.step).toBe('stopped')
+    mockClient.startAdd.mockResolvedValue({ ...makeCompletedAddState(), step: 'stopped' })
+
+    expect(await addActions.resumeJobFromDisk()).toBe(false)
+  })
+})
+
 describe('addActions.startAdd — pendingJob retention (D-04)', () => {
   it('retains pendingJob when the returned state is idle', async () => {
     const { useAddStore, addActions, mockClient } = await loadFreshStore()
