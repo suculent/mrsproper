@@ -28,24 +28,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import type { LastSeenDTO } from '@shared/targetTypes'
 import i18n from '@renderer/i18n'
-
-// ---------------------------------------------------------------------------
-// Avatar color palette (RESEARCH Pattern, UI-SPEC — 7 hues for deterministic color)
-// ---------------------------------------------------------------------------
-
-const AVATAR_COLORS = [
-  '#E17076',
-  '#FAA774',
-  '#A695E7',
-  '#7BC862',
-  '#6EC9CB',
-  '#65AADD',
-  '#EE7AAE',
-]
-
-function getAvatarColor(numericId: string): string {
-  return AVATAR_COLORS[Number(BigInt(numericId) % 7n)]
-}
+import { getAvatarColor, getInitials } from './avatarFallback'
 
 // ---------------------------------------------------------------------------
 // bytesToDataUrl — convert Uint8Array to a data: URL for <img>
@@ -61,16 +44,6 @@ function bytesToDataUrl(bytes: Uint8Array | null): string | null {
   }
   const b64 = btoa(binary)
   return `data:image/jpeg;base64,${b64}`
-}
-
-// ---------------------------------------------------------------------------
-// getInitials — first letter of first and last word, uppercase
-// ---------------------------------------------------------------------------
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 // ---------------------------------------------------------------------------
