@@ -1,10 +1,10 @@
 // On-launch Resume / Discard dialog for incomplete add jobs.
 // Mirrors TagResumeJobDialog.tsx exactly (D-21) — add namespace, variant=default for resume
-// (add is non-destructive, same as tag), addActions.startAdd instead of tagActions.startTag.
+// (add is non-destructive, same as tag), addActions.resumeAdd (ADD_RESUME) instead of tagActions.startTag.
 // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the add job.
 //
-// Resume sends the WHOLE job.dialogIds (not the remaining subset): AddExecutor's continuation
-// gate compares the full dialog-id set (Phase 14 D-20) and reuses prior outcomes itself.
+// Resume goes through ADD_RESUME (D-07): main reads the job and continues it with the WHOLE
+// job.dialogIds; AddExecutor's continuation gate reuses prior outcomes itself (Phase 14 D-20).
 // Resume stays disabled until groups are loaded (D-04) and the dialog closes only once a run started.
 
 import React, { useCallback, useState } from 'react'
@@ -20,7 +20,7 @@ import { Button } from '@renderer/components/ui/button'
 import { useTranslation } from 'react-i18next'
 import type { AddJobFileSafe } from '@shared/addTypes'
 import { addActions } from '@renderer/store/addStore'
-import { countProcessedOutcomes, getResumeDialogIds } from '@shared/addResume'
+import { countProcessedOutcomes } from '@shared/addResume'
 import { getResumeDialogState } from './resumeDialogState'
 
 interface AddResumeJobDialogProps {
@@ -42,7 +42,7 @@ export function AddResumeJobDialog({
   const processedCount = countProcessedOutcomes(job)
   const totalCount = job.dialogIds.length
   const { resumeDisabled, showLoadingHint } = getResumeDialogState(groupsLoaded)
-  // WR-01: startAdd returns false when main rejects the resume (e.g. a job group is no longer
+  // WR-01: resumeAdd returns false when main rejects the resume (e.g. a job group is no longer
   // in the enumeration, auth/target not ready). Surface it instead of dead-ending silently —
   // the dialog cannot be dismissed (CR-04), so the user needs to know to retry or discard.
   const [resumeFailed, setResumeFailed] = useState(false)
@@ -54,14 +54,15 @@ export function AddResumeJobDialog({
 
   const handleResume = useCallback(async () => {
     setResumeFailed(false)
-    const started = await addActions.startAdd(getResumeDialogIds(job))
+    // D-07: explicit ADD_RESUME — main reads the job and checks identity; no payload.
+    const started = await addActions.resumeAdd()
     if (started) {
       onOpenChange(false)
       onResume?.()
     } else {
       setResumeFailed(true)
     }
-  }, [job, onOpenChange, onResume])
+  }, [onOpenChange, onResume])
 
   return (
     // CR-04: onOpenChange wired to no-op — Escape/backdrop must NOT silently discard the job.

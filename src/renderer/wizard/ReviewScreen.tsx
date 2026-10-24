@@ -122,6 +122,28 @@ export function computeActionableTagCount(tagGroupActions: TagGroupAction[]): nu
 // ReviewScreen component props
 // ---------------------------------------------------------------------------
 
+/**
+ * CR-01: the Add confirm sequence. startAdd's boolean is authoritative — when main refused the
+ * start (no run), the target is NOT written to contacts and the stage does NOT advance.
+ * Returns true when the run started and the caller moved on.
+ */
+export async function runAddConfirm(
+  dialogIds: string[],
+  deps: {
+    startAdd: (dialogIds: string[]) => Promise<boolean>
+    maybeAddToContacts: () => Promise<unknown>
+    onConfirm: () => void
+  }
+): Promise<boolean> {
+  // D-15: startAdd(dialogIds) only — no identity, access hash or resume flag.
+  const started = await deps.startAdd(dialogIds)
+  if (!started) return false
+  // D-09: idempotent — a no-op if the checkbox trigger on TargetCard already fired.
+  await deps.maybeAddToContacts()
+  deps.onConfirm()
+  return true
+}
+
 interface ReviewScreenProps {
   /** Read-only — D-01 moved the Remove/Tag/Add picker to GroupsPane's ModeSwitch. */
   mode?: 'remove' | 'tag' | 'add'
@@ -150,6 +172,9 @@ export function ReviewScreen(props: ReviewScreenProps): React.JSX.Element {
   const { target: targetState } = useTargetStore()
 
   const [isDispatching, setIsDispatching] = useState(false)
+  // CR-01: main can refuse ADD_START (auth/groups not ready, live job for someone else).
+  // Stay on review and say so instead of advancing to a run stage with no run.
+  const [addStartFailed, setAddStartFailed] = useState(false)
 
   // Tag local state
   const [tagValue, setTagValue] = useState('')
@@ -265,14 +290,19 @@ export function ReviewScreen(props: ReviewScreenProps): React.JSX.Element {
 
   const handleConfirm = useCallback(async () => {
     setIsDispatching(true)
+    setAddStartFailed(false)
     try {
       if (mode === 'tag') {
         await tagActions.startTag(tagValue.trim(), actionableTagDialogIds.map(d => d.id))
       } else if (mode === 'add') {
-        // D-15: startAdd(dialogIds) only — no identity, access hash or resume flag.
-        await addActions.startAdd(addGroupActions.map(g => g.dialog.id))
-        // D-09: idempotent — a no-op if the checkbox trigger on TargetCard already fired.
-        await targetActions.maybeAddToContacts()
+        const started = await runAddConfirm(addGroupActions.map(g => g.dialog.id), {
+          startAdd: (ids) => addActions.startAdd(ids),
+          maybeAddToContacts: () => targetActions.maybeAddToContacts(),
+          onConfirm,
+        })
+        // CR-01: no run started — stay on review and say so.
+        if (!started) setAddStartFailed(true)
+        return
       } else {
         await removalActions.startRemoval(severity, plannedActions.map(p => p.dialog.id))
       }
@@ -572,6 +602,9 @@ export function ReviewScreen(props: ReviewScreenProps): React.JSX.Element {
           </Button>
           {isTargetInvalidForAdd && (
             <p className="text-label text-destructive">{tA('confirmDisabledInvalidTarget')}</p>
+          )}
+          {mode === 'add' && addStartFailed && (
+            <p role="alert" className="text-label text-destructive">{tA('startFailed')}</p>
           )}
         </div>
       </div>

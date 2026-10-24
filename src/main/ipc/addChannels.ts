@@ -37,6 +37,7 @@ import { z } from 'zod'
 import type { GroupEnumerator } from '../telegram/GroupEnumerator'
 import {
   ADD_START,
+  ADD_RESUME,
   ADD_ABORT,
   ADD_RETRY_GROUP,
   ADD_GET_STATE,
@@ -61,11 +62,14 @@ export interface AddExecutorLike {
   /** Called fire-and-forget from the ADD_START handler. `resume` is computed by THIS module
    *  from auditStore.readJob() — never accepted from the renderer payload (T-14-16). */
   execute(args: { dialogIds: string[]; resume?: boolean }): Promise<void>
-  /** D-07: identity-aware resume decision. 'reject' = never act (job untouched, no RPC). */
+  /** D-07: identity-aware ADD_START decision. 'reject' = never act (job untouched, no RPC). */
   checkResumeIdentity(
     existing: AddJobFile | null,
     dialogIds: string[]
   ): 'resume' | 'fresh' | 'reject'
+  /** D-07: ADD_RESUME gate. 'reject' = no non-complete job, or a live resolver user that
+   *  differs from the job's targetId. */
+  checkExplicitResume(job: AddJobFile | null): 'resume' | 'reject'
 }
 
 // ── ContactServiceLike interface ─────────────────────────────────────────────
@@ -105,6 +109,9 @@ const AddRetryGroupSchema = z.object({
  *   ADD_START         — Zod-validates payload, auth gate, double-start guard, dialog-map gate,
  *                        computes `resume` from auditStore.readJob(), calls executor.execute()
  *                        (fire-and-forget), returns AddState
+ *   ADD_RESUME        — no payload; auth gate, double-start guard, explicit-resume identity
+ *                        gate, enumeration gate; continues the on-disk job with its full
+ *                        dialogIds (fire-and-forget), returns AddState
  *   ADD_ABORT         — calls executor.abortExecution(), returns AddState
  *   ADD_RETRY_GROUP   — Zod-validates payload, auth gate, job-dialogId gate,
  *                        calls executor.retryGroup(dialogId) (fire-and-forget), returns AddState
@@ -176,8 +183,10 @@ export function registerAddChannels(
     // AddExecutor independently re-validates targetId/dialogId-set equality (D-20) before
     // actually continuing — this handler only signals intent via a boolean.
     const existingJob = auditStore.readJob()
-    // D-07: identity is checked in main — a Resume of job A while a different target B is
-    // confirmed is rejected here (job untouched, no execute); a reviewed new target starts fresh.
+    // D-07: ADD_START always means "start what the admin reviewed". The same confirmed target
+    // with the same dialog-id set continues its own job; a different reviewed target starts a
+    // fresh job; a different identity is rejected only while a live in-memory job exists.
+    // Resuming job A without a reviewed target goes through ADD_RESUME instead.
     const decision = executor.checkResumeIdentity(existingJob, parsed.dialogIds)
     if (decision === 'reject') {
       return executor.getState()
@@ -191,6 +200,39 @@ export function registerAddChannels(
       // Errors handled inside execute() which emits error/stopped state via onStateChange
     })
 
+    return executor.getState()
+  })
+
+  // ── Handle: add:resume ───────────────────────────────────────────────────
+  // D-07: explicit, main-owned resume intent. No payload — the job (and therefore the dialog
+  // set and the identity) is read from disk here, never from the renderer (T-14-16, T-05-04-B).
+  // Every rejection returns executor.getState() with no execute, no initJob and no RPC.
+  ipcMain.handle(ADD_RESUME, async () => {
+    if (getAuthState().step !== 'authorized') {
+      return executor.getState()
+    }
+    const currentStep = executor.getState().step
+    if (currentStep === 'running' || currentStep === 'stopping') {
+      return executor.getState()
+    }
+    const job = auditStore.readJob()
+    if (job === null || executor.checkExplicitResume(job) === 'reject') {
+      return executor.getState()
+    }
+    // Enumeration gate (Phase 16 D-04): every job group must still be in the loaded
+    // enumeration, otherwise the continuation would silently drop groups.
+    const groupsState = enumerator.getState()
+    if (groupsState.step !== 'loaded') {
+      return executor.getState()
+    }
+    const knownIds = new Set(groupsState.dialogs.map((d) => d.id))
+    if (!job.dialogIds.every((id) => knownIds.has(id))) {
+      return executor.getState()
+    }
+    // D-01 (Phase 16): always the FULL job dialog-id set so the continuation gate matches.
+    executor.execute({ dialogIds: [...job.dialogIds], resume: true }).catch(() => {
+      // Errors handled inside execute() which emits error/stopped state via onStateChange
+    })
     return executor.getState()
   })
 

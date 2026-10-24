@@ -111,5 +111,6 @@
     "aria": "Úloha přidávání pro {{name}}"
   },
   "resumeStoppedAria": "Pokračovat v zastavené úloze přidávání",
-  "resumeFailedBand": "Úlohu se nepodařilo obnovit. Možná již nespravujete některou z jejích skupin nebo váš účet ještě není připraven. Zkuste to znovu, nebo zvolte „Přidat někoho jiného“ a úlohu opusťte."
+  "resumeFailedBand": "Úlohu se nepodařilo obnovit. Možná již nespravujete některou z jejích skupin nebo váš účet ještě není připraven. Zkuste to znovu, nebo zvolte „Přidat někoho jiného“ a úlohu opusťte.",
+  "startFailed": "Přidávání se nepodařilo spustit. Váš účet nebo vaše skupiny možná ještě nejsou připraveny. Zkuste to znovu, nebo se vraťte a upravte výběr."
 }

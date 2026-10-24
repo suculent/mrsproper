@@ -1855,12 +1855,18 @@ describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-0
     expect(executor.checkResumeIdentity(null, ['30005'])).toBe('fresh')
     expect(executor.checkResumeIdentity(jobFor(['30005'], 'complete'), ['30005'])).toBe('fresh')
     config.resolverNull = true
-    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('resume')
+    // ADD_START with no reviewed target never resumes — that is ADD_RESUME's job.
+    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('reject')
+    expect(executor.checkExplicitResume(job)).toBe('resume')
+    expect(executor.checkExplicitResume(null)).toBe('reject')
+    expect(executor.checkExplicitResume(jobFor(['30005'], 'complete'))).toBe('reject')
     config.resolverNull = false
     expect(executor.checkResumeIdentity(job, ['30005'])).toBe('resume') // id 99 == 99
+    expect(executor.checkExplicitResume(job)).toBe('resume')
     config.resolved = other
-    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('reject') // idle, same set
+    expect(executor.checkResumeIdentity(job, ['30005'])).toBe('fresh') // idle, same set: fresh B (D-07)
     expect(executor.checkResumeIdentity(job, ['30006'])).toBe('fresh') // idle, different set
+    expect(executor.checkExplicitResume(job)).toBe('reject') // Resume of A while B is confirmed
 
     // non-idle: run a job as 99 then switch identity
     config.resolved = undefined
@@ -1872,19 +1878,29 @@ describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-0
     expect(executor.checkResumeIdentity(job, ['30006'])).toBe('reject')
   })
 
-  it('D-07: execute() with a different live identity and the same set never inits, never RPCs', async () => {
+  it('D-07: execute({resume:true}) with a different live identity never inits, never RPCs', async () => {
     const dialogs = [makeDialog('30007', 'supergroup'), makeDialog('30008', 'supergroup')]
     const dialogIds = ['30007', '30008']
-    for (const resume of [true, false]) {
-      const auditStore = makeAddAuditStore(dialogIds, { targetId: '99', status: 'stopped' })
-      const { executor, mockClient } = makeExecutor({ dialogs, auditStore, resolved: other })
-      const before = auditStore._job
-      const spy = vi.spyOn(mockClient, 'invoke')
-      await executor.execute({ dialogIds, resume })
-      expect(auditStore.initJobCalls).toHaveLength(0)
-      expect(auditStore._job).toBe(before)
-      expect(spy).not.toHaveBeenCalled()
-    }
+    const auditStore = makeAddAuditStore(dialogIds, { targetId: '99', status: 'stopped' })
+    const { executor, mockClient } = makeExecutor({ dialogs, auditStore, resolved: other })
+    const before = auditStore._job
+    const spy = vi.spyOn(mockClient, 'invoke')
+    await executor.execute({ dialogIds, resume: true })
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(auditStore._job).toBe(before)
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('D-07: idle fresh execute() for a different reviewed target with the same set starts a fresh job', async () => {
+    const dialogs = [makeDialog('30007', 'supergroup'), makeDialog('30008', 'supergroup')]
+    const dialogIds = ['30007', '30008']
+    const auditStore = makeAddAuditStore(dialogIds, { targetId: '99', status: 'stopped' })
+    const { executor } = makeExecutor({ dialogs, auditStore, resolved: other })
+    const p = executor.execute({ dialogIds, resume: false })
+    await vi.runAllTimersAsync()
+    await p
+    expect(auditStore.initJobCalls).toHaveLength(1)
+    expect(auditStore.initJobCalls[0]!.targetId).toBe(other.id.toString())
   })
 
   it('D-07: a non-idle state is not reset to idle by a rejected execute()', async () => {

@@ -86,10 +86,14 @@ const IDLE_ADD_STATE: AddState = {
 /** Create a mock AddExecutorLike with controllable state and call tracking. */
 function makeMockExecutor(
   initialState: AddState = IDLE_ADD_STATE,
-  decision?: 'resume' | 'fresh' | 'reject'
+  decision?: 'resume' | 'fresh' | 'reject',
+  explicitResume?: 'resume' | 'reject'
 ) {
   const state = { current: initialState }
   return {
+    checkExplicitResume: vi.fn((job: AddJobFile | null) =>
+      explicitResume ?? (job !== null && job.status !== 'complete' ? 'resume' : 'reject')
+    ),
     checkResumeIdentity: vi.fn((existing: AddJobFile | null, _ids: string[]) =>
       decision ?? (existing !== null && existing.status !== 'complete' ? 'resume' : 'fresh')
     ),
@@ -365,6 +369,64 @@ describe('addChannels — ADD_START security gates', () => {
   it('5e. ADD_START — checkResumeIdentity fresh with a leftover job: execute called with resume:false', async () => {
     const { executor } = await startWith('fresh')
     expect(executor.execute).toHaveBeenCalledWith({ dialogIds: ['111', '222'], resume: false })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ADD_RESUME (D-07: explicit, main-owned resume — no payload)
+// ---------------------------------------------------------------------------
+
+describe('addChannels — ADD_RESUME', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  const resumeWith = async (opts: {
+    job?: AddJobFile | null
+    explicit?: 'resume' | 'reject'
+    auth?: string
+    state?: AddState
+    enumerated?: string[]
+  }) => {
+    const executor = makeMockExecutor(opts.state ?? IDLE_ADD_STATE, undefined, opts.explicit)
+    const auditStore = makeMockAuditStore(opts.job === undefined ? makeJobFile({ status: 'stopped' }) : opts.job)
+    registerAddChannels(
+      makeMockWin() as never,
+      executor as never,
+      makeMockEnumerator(opts.enumerated ?? ['111', '222']) as never,
+      auditStore as never,
+      makeMockContactService() as never,
+      makeMockAddLogStore() as never,
+      makeGetAuthState(opts.auth ?? 'authorized')
+    )
+    const result = await capturedHandlers['add:resume']({}, undefined)
+    return { executor, auditStore, result }
+  }
+
+  it('R1. continues the on-disk job with its FULL dialogIds and resume:true', async () => {
+    const { executor } = await resumeWith({})
+    expect(executor.execute).toHaveBeenCalledWith({ dialogIds: ['111', '222'], resume: true })
+  })
+
+  it('R2. identity reject (live resolver user differs from job.targetId): no execute, job untouched', async () => {
+    const { executor, auditStore, result } = await resumeWith({ explicit: 'reject' })
+    expect(executor.execute).not.toHaveBeenCalled()
+    expect(auditStore.initJob).not.toHaveBeenCalled()
+    expect(auditStore.clearJob).not.toHaveBeenCalled()
+    expect(result).toBe(executor.getState())
+  })
+
+  it('R3. no job or a complete job: no execute', async () => {
+    expect((await resumeWith({ job: null })).executor.execute).not.toHaveBeenCalled()
+    expect((await resumeWith({ job: makeJobFile({ status: 'complete' }) })).executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('R4. unauthenticated, running, or a job group missing from the enumeration: no execute', async () => {
+    expect((await resumeWith({ auth: 'idle' })).executor.execute).not.toHaveBeenCalled()
+    expect(
+      (await resumeWith({ state: { ...IDLE_ADD_STATE, step: 'running' } })).executor.execute
+    ).not.toHaveBeenCalled()
+    expect((await resumeWith({ enumerated: ['111'] })).executor.execute).not.toHaveBeenCalled()
   })
 })
 

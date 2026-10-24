@@ -13,6 +13,7 @@ import type { AddState, AddJobFileSafe } from '@shared/addTypes'
 declare global {
   interface MrsProperApi {
     startAdd(dialogIds: string[]): Promise<AddState>
+    resumeAdd(): Promise<AddState>
     abortAdd(): Promise<AddState>
     retryAddGroup(dialogId: string): Promise<void>
     getAddState(): Promise<AddState>
@@ -26,6 +27,11 @@ declare global {
 export const addClient = {
   startAdd(dialogIds: string[]): Promise<AddState> {
     return window.mrsproper.startAdd(dialogIds)
+  },
+
+  /** D-07: explicit, main-owned resume of the on-disk job (no payload). */
+  resumeAdd(): Promise<AddState> {
+    return window.mrsproper.resumeAdd()
   },
 
   abortAdd(): Promise<AddState> {

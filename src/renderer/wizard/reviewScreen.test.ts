@@ -2,8 +2,8 @@
 // No jsdom needed (node env). SAF-01/02/03 mechanic derivation oracle plus
 // tag action count-derivation (Phase 12 Plan 03 extension).
 
-import { describe, it, expect } from 'vitest'
-import { computePlannedActions, computeActionableTagCount } from './ReviewScreen'
+import { describe, it, expect, vi } from 'vitest'
+import { computePlannedActions, computeActionableTagCount, runAddConfirm } from './ReviewScreen'
 import { computeTagGroups } from './tagValidation'
 import type { AdminDialogDTO } from '@shared/groupTypes'
 
@@ -172,5 +172,38 @@ describe('computeActionableTagCount', () => {
   it('returns 0 for empty tag group actions', () => {
     const count = computeActionableTagCount([])
     expect(count).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CR-01: runAddConfirm honours startAdd's boolean
+// ---------------------------------------------------------------------------
+
+describe('runAddConfirm (CR-01)', () => {
+  it('startAdd false: no contact write, no stage advance, returns false', async () => {
+    const startAdd = vi.fn(async () => false)
+    const maybeAddToContacts = vi.fn(async () => {})
+    const onConfirm = vi.fn()
+    const ok = await runAddConfirm(['1', '2'], { startAdd, maybeAddToContacts, onConfirm })
+    expect(ok).toBe(false)
+    expect(startAdd).toHaveBeenCalledWith(['1', '2'])
+    expect(maybeAddToContacts).not.toHaveBeenCalled()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('startAdd true: adds to contacts, then advances, returns true', async () => {
+    const order: string[] = []
+    const ok = await runAddConfirm(['1'], {
+      startAdd: async () => {
+        order.push('start')
+        return true
+      },
+      maybeAddToContacts: async () => {
+        order.push('contacts')
+      },
+      onConfirm: () => order.push('confirm'),
+    })
+    expect(ok).toBe(true)
+    expect(order).toEqual(['start', 'contacts', 'confirm'])
   })
 })

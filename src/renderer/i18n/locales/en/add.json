@@ -103,5 +103,6 @@
     "aria": "Add job for {{name}}"
   },
   "resumeStoppedAria": "Resume the stopped add job",
-  "resumeFailedBand": "Couldn't resume this job. You may no longer manage one of its groups, or your account isn't ready yet. Try again, or choose \"Add someone else\" to leave it."
+  "resumeFailedBand": "Couldn't resume this job. You may no longer manage one of its groups, or your account isn't ready yet. Try again, or choose \"Add someone else\" to leave it.",
+  "startFailed": "Couldn't start adding. Your account or your groups may not be ready yet. Try again, or go back and edit the selection."
 }

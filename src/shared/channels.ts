@@ -65,7 +65,8 @@ export const TAG_GET_JOB     = 'tag:getJob' as const
 export const TAG_DISCARD_JOB = 'tag:discardJob' as const
 
 // Add execution IPC channels (Phase 14, ADD-06..ADD-11). Pattern mirrors the REMOVAL_*/TAG_* blocks above.
-export const ADD_START        = 'add:start' as const        // { dialogIds, resume? }
+export const ADD_START        = 'add:start' as const        // { dialogIds } — always "start what was reviewed"
+export const ADD_RESUME       = 'add:resume' as const       // no payload — main continues the on-disk job (D-07)
 export const ADD_ABORT        = 'add:abort' as const
 export const ADD_RETRY_GROUP  = 'add:retryGroup' as const   // { dialogId }
 export const ADD_GET_STATE    = 'add:getState' as const
@@ -146,6 +147,7 @@ export const CHANNELS = {
   TAG_GET_JOB,
   TAG_DISCARD_JOB,
   ADD_START,
+  ADD_RESUME,
   ADD_ABORT,
   ADD_RETRY_GROUP,
   ADD_GET_STATE,

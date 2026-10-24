@@ -2,7 +2,7 @@
  * IPC-level relaunch resume + identity lock test (Phase 17, D-14).
  * Drives the REAL registerAddChannels + registerTargetChannels handlers (captured from a mocked
  * ipcMain) over a REAL AddExecutor, so F1 (relaunch resume with no resolver target, Stop works)
- * and F2 (identity lock while a job is live / Resume-of-A while B is confirmed) are guarded at
+ * and F2 (identity lock while a job is live / ADD_RESUME of A while B is confirmed) are guarded at
  * the same boundary the renderer uses.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -15,6 +15,7 @@ import type { AddAuditStore } from '../storage/addAuditStore'
 import { getResumeDialogIds } from '@shared/addResume'
 import {
   ADD_START,
+  ADD_RESUME,
   ADD_ABORT,
   ADD_RETRY_GROUP,
   TARGET_RESOLVE,
@@ -181,7 +182,7 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
 
   it('F1: relaunch resume with no resolver target runs the job; state carries targetName and the full dialogIds', async () => {
     const { auditStore, states } = build({})
-    const state = (await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })) as AddState
+    const state = (await capturedHandlers[ADD_RESUME]!({})) as AddState
     expect(state).toBeDefined()
     await vi.runAllTimersAsync()
     expect(auditStore.initJobCalls).toHaveLength(0)
@@ -194,7 +195,7 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
 
   it('F1 Stop: ADD_ABORT during a resumed run transitions to stopped', async () => {
     const { states } = build({})
-    await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })
+    await capturedHandlers[ADD_RESUME]!({})
     await vi.advanceTimersByTimeAsync(0)
     await capturedHandlers[ADD_ABORT]!({})
     await vi.runAllTimersAsync()
@@ -204,7 +205,7 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
 
   it('F2: live job + different resolver user: ADD_START and ADD_RETRY_GROUP are no-ops', async () => {
     const { auditStore, executor, holder, clientCalls } = build({})
-    await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })
+    await capturedHandlers[ADD_RESUME]!({})
     await vi.advanceTimersByTimeAsync(0)
     await capturedHandlers[ADD_ABORT]!({})
     await vi.runAllTimersAsync()
@@ -226,7 +227,7 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
 
   it('F2 lookup: TARGET_RESOLVE/CONFIRM are no-ops while the job is live; TARGET_RESET releases the lock', async () => {
     const { executor, resolver } = build({})
-    await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })
+    await capturedHandlers[ADD_RESUME]!({})
     await vi.runAllTimersAsync()
     expect(executor.getState().step).not.toBe('idle')
 
@@ -250,15 +251,38 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
     expect(auditStore.initJobCalls[0]!.targetId).toBe('77')
   })
 
-  it("D-07 Resume-of-A hole: relaunch, idle, B confirmed, ADD_START with A's exact ids is rejected", async () => {
+  it('D-07 Resume-of-A: relaunch, idle, B confirmed, ADD_RESUME is rejected (job untouched, no RPC)', async () => {
     const { auditStore, holder, executor, clientCalls } = build({})
     holder.user = USER_77
+    const jobBefore = JSON.stringify(auditStore.readJob())
+    const state = (await capturedHandlers[ADD_RESUME]!({})) as AddState
+    await vi.runAllTimersAsync()
+    expect(state.step).toBe('idle')
+    expect(auditStore.initJobCalls).toHaveLength(0)
+    expect(clientCalls()).toBe(0)
+    expect(JSON.stringify(auditStore.readJob())).toBe(jobBefore)
+    expect(executor.getState().step).toBe('idle')
+  })
+
+  it("D-07 fresh B: relaunch, idle, B confirmed, ADD_START with A's exact ids starts a fresh job for B", async () => {
+    const { auditStore, holder } = build({})
+    holder.user = USER_77
+    const state = (await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })) as AddState
+    expect(state.step).toBe('running')
+    expect(state.targetId).toBe('77')
+    await vi.runAllTimersAsync()
+    expect(auditStore.initJobCalls).toHaveLength(1)
+    expect(auditStore.initJobCalls[0]!.targetId).toBe('77')
+    expect(auditStore.initJobCalls[0]!.jobId).not.toBe('ORIGINAL-JOB-ID')
+  })
+
+  it('ADD_START with no reviewed target never resumes job A (resume goes through ADD_RESUME only)', async () => {
+    const { auditStore, clientCalls } = build({})
     const jobBefore = JSON.stringify(auditStore.readJob())
     await capturedHandlers[ADD_START]!({}, { dialogIds: getResumeDialogIds(seedJob()) })
     await vi.runAllTimersAsync()
     expect(auditStore.initJobCalls).toHaveLength(0)
     expect(clientCalls()).toBe(0)
     expect(JSON.stringify(auditStore.readJob())).toBe(jobBefore)
-    expect(executor.getState().step).toBe('idle')
   })
 })

@@ -14,7 +14,7 @@
 import { useSyncExternalStore } from 'react'
 import type { AddState, AddJobFileSafe } from '@shared/addTypes'
 import { addClient } from '../ipc/addClient'
-import { getResumeDialogIds, isJobFinished } from '@shared/addResume'
+import { isJobFinished } from '@shared/addResume'
 
 type Listener = () => void
 
@@ -169,9 +169,33 @@ export const addActions = {
   },
 
   /**
-   * Resume a stopped/hard-stopped job by re-reading the disk job file for
-   * the authoritative job; sends the FULL dialogIds set (D-01) (mirrors tagStore/removalStore resumeJobFromDisk).
-   * addActions.startAdd takes only dialogIds — no second classification argument.
+   * D-07: explicit, main-owned resume of the on-disk job (ADD_RESUME, no payload). Main reads
+   * the job, checks identity, and continues it with the job's FULL dialog-id set (D-01).
+   * Returns true only when a run actually started; a main-side rejection returns the
+   * unchanged executor state, which is a failure.
+   */
+  async resumeAdd(): Promise<boolean> {
+    try {
+      const stepBefore = currentState.step
+      const s = await addClient.resumeAdd()
+      setState(s)
+      const started =
+        s.step === 'running' || s.step === 'stopping' || (s.step !== 'idle' && s.step !== stepBefore)
+      if (!started) return false
+      // CR-05 analog: clear pendingJob once a run started so AddResumeJobDialog unmounts
+      pendingJob = null
+      notify()
+      return true
+    } catch (err) {
+      console.error('[addStore] resumeAdd:', err)
+      return false
+    }
+  },
+
+  /**
+   * Resume a stopped/hard-stopped job (stopped band, PEER_FLOOD banner). Re-reads the disk
+   * job only to skip a finished/complete job; the resume itself goes through ADD_RESUME, so
+   * main — not the renderer — decides which job and identity are continued (D-07).
    * Returns true only when the run actually started.
    */
   async resumeJobFromDisk(): Promise<boolean> {
@@ -181,12 +205,7 @@ export const addActions = {
       const freshJob = await addClient.getAddJob()
       if (!freshJob || freshJob.status === 'complete') return false
       if (isJobFinished(freshJob)) return false
-      const stepBefore = currentState.step
-      const started = await addActions.startAdd(getResumeDialogIds(freshJob))
-      if (!started) return false
-      // A main-side rejection returns the unchanged executor state; that is a failure.
-      const stepAfter = currentState.step
-      return stepAfter === 'running' || stepAfter === 'stopping' || stepAfter !== stepBefore
+      return await addActions.resumeAdd()
     } catch (err) {
       console.error('[addStore] resumeJobFromDisk:', err)
       return false

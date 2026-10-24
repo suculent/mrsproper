@@ -194,22 +194,37 @@ export class AddExecutor {
   }
 
   /**
-   * D-07 (narrow rule): decide how ADD_START should treat an on-disk job relative to the
-   * live resolved target. 'reject' = never act (job untouched, no RPC); 'resume' = continue
-   * job A; 'fresh' = start a new job (replacing any leftover file).
+   * D-07 (narrow rule), ADD_START semantics: ADD_START always means "start what the admin
+   * reviewed". 'resume' = the confirmed target owns the non-complete job A (same id) — the
+   * continuation gate in execute() then decides by dialog-id set; 'fresh' = start a new job
+   * (replacing any leftover file); 'reject' = never act (job untouched, no RPC).
+   *
+   * A different identity is never treated as a resume. It is rejected only while the executor
+   * still holds a live in-memory job (non-idle). With no resolver target ADD_START is rejected:
+   * resuming without a reviewed target goes through the explicit ADD_RESUME channel only.
    */
   checkResumeIdentity(
     existing: AddJobFile | null,
-    dialogIds: string[]
+    _dialogIds: string[]
   ): 'resume' | 'fresh' | 'reject' {
-    if (existing === null || existing.status === 'complete') return 'fresh'
     const live = this._resolver.getResolvedUser()
-    if (live === null) return 'resume'
+    if (live === null) return 'reject'
+    if (existing === null || existing.status === 'complete') return 'fresh'
     if (live.id.toString() === existing.targetId) return 'resume'
-    if (this._currentState.step !== 'idle' || sameDialogIdSet(existing.dialogIds, dialogIds)) {
-      return 'reject'
-    }
-    return 'fresh'
+    return this._currentState.step !== 'idle' ? 'reject' : 'fresh'
+  }
+
+  /**
+   * D-07, ADD_RESUME semantics: may the on-disk job be continued? 'reject' when there is no
+   * non-complete job, or when the live resolver holds a user whose id differs from the job's
+   * targetId (a Resume of job A while B is confirmed). Identity comes only from the job file
+   * or a matching resolver — never from the renderer.
+   */
+  checkExplicitResume(job: AddJobFile | null): 'resume' | 'reject' {
+    if (job === null || job.status === 'complete') return 'reject'
+    const live = this._resolver.getResolvedUser()
+    if (live !== null && live.id.toString() !== job.targetId) return 'reject'
+    return 'resume'
   }
 
   /** D-10: live scan status wins; else a persisted ban flag from the job file. */
@@ -236,15 +251,15 @@ export class AddExecutor {
     const existing = this._auditStore.readJob()
     let resolved: ResolvedAddUser | null = this._resolver.getResolvedUser()
 
-    // D-07 defense-in-depth: a start whose dialog-id set equals a non-complete job A's set
-    // under a different live identity is by shape a Resume of A while B is confirmed. Reject
-    // before any state change, initJob, or RPC; never fall through to initJob for B.
+    // D-07 defense-in-depth: a different live identity must never continue job A (resume
+    // intent) and must never replace a live in-memory job (non-idle). Reject before any state
+    // change, initJob, or RPC. An idle fresh start for a reviewed target B is allowed.
     if (
       resolved !== null &&
       existing !== null &&
       existing.status !== 'complete' &&
       resolved.id.toString() !== existing.targetId &&
-      sameDialogIdSet(existing.dialogIds, params.dialogIds)
+      (params.resume === true || this._currentState.step !== 'idle')
     ) {
       // Pitfall 3: never wipe a live job view — only emit idle when already idle.
       if (this._currentState.step === 'idle') this._emitEarlyIdle()

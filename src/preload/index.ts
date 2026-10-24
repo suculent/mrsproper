@@ -48,6 +48,7 @@ import {
   THEME_GET,
   THEME_SET,
   ADD_START,
+  ADD_RESUME,
   ADD_ABORT,
   ADD_RETRY_GROUP,
   ADD_GET_STATE,
@@ -233,6 +234,10 @@ contextBridge.exposeInMainWorld('mrsproper', {
   // wired here so the full surface is reachable end-to-end once that UI exists.
   startAdd: (dialogIds: string[]): Promise<AddState> =>
     ipcRenderer.invoke(ADD_START, { dialogIds }) as Promise<AddState>,
+  // add:resume — no payload. Main reads the on-disk job and continues it with the job's full
+  // dialog-id set; identity comes only from the job file or a matching resolver (D-07, T-14-16).
+  resumeAdd: (): Promise<AddState> =>
+    ipcRenderer.invoke(ADD_RESUME) as Promise<AddState>,
   abortAdd: (): Promise<AddState> =>
     ipcRenderer.invoke(ADD_ABORT) as Promise<AddState>,
   // add:retryGroup carries only { dialogId }; Zod-validated + job-dialogId-gated.
