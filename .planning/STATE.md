@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Add Mode
 status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-10-24T20:16:31.696Z"
-last_activity: 2026-10-24 -- Phase 17 planning complete
+last_updated: "2026-10-24T20:17:58.431Z"
+last_activity: 2026-10-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 41
-  completed_plans: 33
+  completed_plans: 34
   percent: 44
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Milestone complete
+**Current focus:** Phase 17 — Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
+Phase: 17 (Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-10-24 -- Phase 17 planning complete
+Last activity: 2026-10-24
 
 ## Performance Metrics
 
@@ -222,9 +222,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-24T19:58:45.205Z
+Last session: 2026-10-24T20:17:58.427Z
 Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-close-gap-add-08-add-12-relaunch-resume-ui-visibility-and-ta/17-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 
