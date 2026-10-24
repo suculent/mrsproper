@@ -92,5 +92,6 @@
   "resumeDestructive": "Resume adding",
   "resumeDestructiveAria": "Resume add job",
   "resumeLoadingGroups": "Loading your groups…",
+  "resumeFailed": "Couldn't resume this job. You may no longer manage one of its groups, or your account isn't ready yet. Try again, or discard the job.",
   "resumeNeutral": "Discard job"
 }

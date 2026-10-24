@@ -7,7 +7,7 @@
 // gate compares the full dialog-id set (Phase 14 D-20) and reuses prior outcomes itself.
 // Resume stays disabled until groups are loaded (D-04) and the dialog closes only once a run started.
 
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,10 @@ export function AddResumeJobDialog({
   const processedCount = countProcessedOutcomes(job)
   const totalCount = job.dialogIds.length
   const { resumeDisabled, showLoadingHint } = getResumeDialogState(groupsLoaded)
+  // WR-01: startAdd returns false when main rejects the resume (e.g. a job group is no longer
+  // in the enumeration, auth/target not ready). Surface it instead of dead-ending silently —
+  // the dialog cannot be dismissed (CR-04), so the user needs to know to retry or discard.
+  const [resumeFailed, setResumeFailed] = useState(false)
 
   const handleDiscard = useCallback(() => {
     void addActions.discardJob()
@@ -49,10 +53,13 @@ export function AddResumeJobDialog({
   }, [onOpenChange])
 
   const handleResume = useCallback(async () => {
+    setResumeFailed(false)
     const started = await addActions.startAdd(getResumeDialogIds(job))
     if (started) {
       onOpenChange(false)
       onResume?.()
+    } else {
+      setResumeFailed(true)
     }
   }, [job, onOpenChange, onResume])
 
@@ -76,6 +83,10 @@ export function AddResumeJobDialog({
 
         {showLoadingHint && (
           <p className="text-label text-muted-foreground">{t('resumeLoadingGroups')}</p>
+        )}
+
+        {resumeFailed && (
+          <p role="alert" className="text-label text-destructive">{t('resumeFailed')}</p>
         )}
 
         <DialogFooter className="flex-row justify-end gap-2 sm:gap-2">
