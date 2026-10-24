@@ -698,6 +698,59 @@ export class AddExecutor {
       outcomes: updatedOutcomes,
       summary: this._buildSummary(updatedOutcomes, new Date().toISOString()),
     })
+
+    // D-12: a retry that ends privacy-blocked with a fresh link logs it and DMs it at once.
+    // The link is already checkpointed above (Pitfall 2) so a failed DM never loses it.
+    if (newOutcome.status !== 'privacy-blocked' || !newOutcome.link) return
+
+    let dm: 'sent' | 'refused'
+    let hardStop = false
+    try {
+      dm = await this._sendDm(resolved, newOutcome.link, job.targetName)
+    } catch (err) {
+      if (classifyRpcError(err).disposition === 'hard-stop') {
+        hardStop = true
+      } else {
+        console.error('[AddExecutor] retry DM send failed')
+      }
+      dm = 'refused'
+    }
+
+    // Generation guard AFTER the DM await, BEFORE any state write.
+    if (gen !== this._generation) return
+
+    this._addLogStore.appendBlock({
+      jobId: job.jobId,
+      isFollowUp: true,
+      targetId: job.targetId,
+      targetName: job.targetName,
+      addedDialogs: [],
+      linkedDialogs: [{ dialogId, link: newOutcome.link, title: dialog.title ?? dialogId }],
+      dmStatus: dm,
+      timestamp: new Date().toISOString(),
+    })
+
+    if (hardStop) {
+      // CR-03: never continue after a hard-stop.
+      this._hardStopRetry(dialogId)
+      return
+    }
+
+    const withDm: AddGroupOutcome = { ...newOutcome, retryDmStatus: dm }
+    this._auditStore.checkpoint(dialogId, withDm)
+    if (job.dmStatus === 'not-needed') {
+      this._auditStore.setStatus(job.status, undefined, dm)
+    }
+
+    const finalOutcomes = this._currentState.outcomes.map((o) =>
+      o.dialogId === dialogId ? { ...o, ...withDm, dialogId } : o
+    )
+    this._emit({
+      ...this._currentState,
+      outcomes: finalOutcomes,
+      summary: this._buildSummary(finalOutcomes, new Date().toISOString()),
+      ...(job.dmStatus === 'not-needed' ? { dmStatus: dm } : {}),
+    })
   }
 
   /** Return the current AddState. */

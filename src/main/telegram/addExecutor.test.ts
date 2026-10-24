@@ -114,10 +114,15 @@ function makeAddAuditStore(
         state.job = { ...state.job, outcomes: [...state.job.outcomes, { ...outcome, dialogId }] }
       }
     },
-    setStatus(status: AddJobFile['status'], completedAt?: string): void {
+    setStatus(status: AddJobFile['status'], completedAt?: string, dmStatus?: AddJobFile['dmStatus']): void {
       setStatusCalls.push({ status, completedAt })
       if (state.job) {
-        state.job = { ...state.job, status, ...(completedAt !== undefined ? { completedAt } : {}) }
+        state.job = {
+          ...state.job,
+          status,
+          ...(completedAt !== undefined ? { completedAt } : {}),
+          ...(dmStatus !== undefined ? { dmStatus } : {}),
+        }
       }
     },
     readJob(): AddJobFile | null {
@@ -1957,5 +1962,131 @@ describe('AddExecutor — identity lock and persisted banned (Phase 17, D-06/D-0
     await p2
     expect(seeded.initJobCalls).toHaveLength(0)
     expect(seeded._job?.bannedDialogIds).toEqual(['30012'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AddExecutor — retry privacy-blocked log + DM (Phase 17, D-12)
+// ---------------------------------------------------------------------------
+
+describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  async function setupFailedThenPrivacy(
+    id: string,
+    extra: Partial<MockClientConfig> = {},
+    jobDm?: AddJobFile['dmStatus']
+  ) {
+    const mockConfig: MockClientConfig = {
+      inviteToChannelErrorDialogIds: { [id]: 'CHAT_ADMIN_REQUIRED' },
+      exportChatInviteResult: { [id]: { link: 'https://t.me/+retryLink' } },
+      ...extra,
+    }
+    const auditStore = makeAddAuditStore([id])
+    const ctx = makeExecutor({ dialogs: [makeDialog(id, 'supergroup')], mockConfig, auditStore })
+    const p = ctx.executor.execute({ dialogIds: [id] })
+    await vi.runAllTimersAsync()
+    await p
+    expect(ctx.executor.getState().step).toBe('complete')
+    if (jobDm) auditStore.setStatus('complete', undefined, jobDm)
+    ctx.addLogStore.appendBlockCalls.length = 0
+    mockConfig.inviteToChannelErrorDialogIds = { [id]: 'USER_PRIVACY_RESTRICTED' }
+    return { ...ctx, mockConfig, auditStore }
+  }
+
+  it('logs one follow-up block and DMs the link; checkpoint precedes SendMessage', async () => {
+    const { executor, mockClient, auditStore, addLogStore } = await setupFailedThenPrivacy('31001')
+    const order: string[] = []
+    const origCp = auditStore.checkpoint.bind(auditStore)
+    auditStore.checkpoint = (d, o) => {
+      if (o.status === 'privacy-blocked' && !o.retryDmStatus) order.push('checkpoint')
+      origCp(d, o)
+    }
+    const origInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = ((req: unknown) => {
+      if (ctorNameOf(req).includes('SendMessage')) order.push('send')
+      return origInvoke(req as never)
+    }) as never
+
+    await executor.retryGroup('31001')
+
+    expect(order).toEqual(['checkpoint', 'send'])
+    expect(addLogStore.appendBlockCalls).toHaveLength(1)
+    const b = addLogStore.appendBlockCalls[0]!
+    expect(b.isFollowUp).toBe(true)
+    expect(b.addedDialogs).toEqual([])
+    expect(b.linkedDialogs).toEqual([{ dialogId: '31001', title: 'Group 31001', link: 'https://t.me/+retryLink' }])
+    expect(b.dmStatus).toBe('sent')
+    expect(b.targetId).toBe('99')
+    expect(b.targetName).toBe('Jan Novák')
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
+    expect(mockClient.sendMessageCalls[0]!.message).toBe('Hi Jan Novák\nhttps://t.me/+retryLink')
+    expect(mockClient.sendMessageCalls[0]!.peerId).toContain('99')
+    expect(executor.getState().outcomes.find((o) => o.dialogId === '31001')?.retryDmStatus).toBe('sent')
+  })
+
+  it('refused DM records retryDmStatus refused', async () => {
+    const { executor, mockClient, addLogStore, auditStore } = await setupFailedThenPrivacy('31002', {
+      sendMessageError: 'USER_PRIVACY_RESTRICTED',
+    })
+    await executor.retryGroup('31002')
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
+    expect(addLogStore.appendBlockCalls[0]!.dmStatus).toBe('refused')
+    expect(auditStore.checkpointCalls.at(-1)!.outcome.retryDmStatus).toBe('refused')
+    expect(executor.getState().outcomes.find((o) => o.dialogId === '31002')?.retryDmStatus).toBe('refused')
+  })
+
+  it('PEER_FLOOD on the retry DM hard-stops with the link and log block already persisted', async () => {
+    const { executor, mockClient, addLogStore, auditStore } = await setupFailedThenPrivacy('31003', {
+      sendMessageError: 'PEER_FLOOD',
+    })
+    await executor.retryGroup('31003')
+    expect(executor.getState().step).toBe('hard-stopped')
+    expect(auditStore.checkpointCalls.some((c) => c.outcome.link === 'https://t.me/+retryLink')).toBe(true)
+    expect(addLogStore.appendBlockCalls).toHaveLength(1)
+    expect(mockClient.sendMessageCalls).toHaveLength(1)
+  })
+
+  it('no DM and no log block when the retry ends done / already-member / failed', async () => {
+    const ctx = await setupFailedThenPrivacy('31004')
+    ctx.mockConfig.inviteToChannelErrorDialogIds = {}
+    await ctx.executor.retryGroup('31004')
+    expect(ctx.mockClient.sendMessageCalls).toHaveLength(0)
+    expect(ctx.addLogStore.appendBlockCalls).toHaveLength(0)
+
+    ctx.mockConfig.inviteToChannelErrorDialogIds = { '31004': 'CHAT_ADMIN_REQUIRED' }
+    await ctx.executor.retryGroup('31004')
+    expect(ctx.mockClient.sendMessageCalls).toHaveLength(0)
+    expect(ctx.addLogStore.appendBlockCalls).toHaveLength(0)
+  })
+
+  it('generation change during the DM await: no state write afterwards', async () => {
+    const { executor, mockClient, addLogStore, auditStore } = await setupFailedThenPrivacy('31005')
+    const origInvoke = mockClient.invoke.bind(mockClient)
+    mockClient.invoke = (async (req: unknown) => {
+      const r = await origInvoke(req as never)
+      if (ctorNameOf(req).includes('SendMessage')) executor.abortExecution()
+      return r
+    }) as never
+    await executor.retryGroup('31005')
+    expect(addLogStore.appendBlockCalls).toHaveLength(0)
+    expect(auditStore.checkpointCalls.some((c) => c.outcome.retryDmStatus !== undefined)).toBe(false)
+    expect(executor.getState().step).toBe('idle')
+  })
+
+  it("job dmStatus 'not-needed' becomes the retry DM result; other values are left alone", async () => {
+    const a = await setupFailedThenPrivacy('31006', {}, 'not-needed')
+    await a.executor.retryGroup('31006')
+    expect(a.auditStore._job!.dmStatus).toBe('sent')
+    expect(a.executor.getState().dmStatus).toBe('sent')
+
+    const b = await setupFailedThenPrivacy('31007', {}, 'refused')
+    await b.executor.retryGroup('31007')
+    expect(b.auditStore._job!.dmStatus).toBe('refused')
   })
 })
