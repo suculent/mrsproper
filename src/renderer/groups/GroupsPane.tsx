@@ -1056,7 +1056,12 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                   addErrorCode={activeMode === 'add' ? (addOutcome?.errorCode ?? null) : null}
                   addLink={activeMode === 'add' ? (addOutcome?.link ?? null) : null}
                   premiumWouldAllow={activeMode === 'add' ? (addOutcome?.premiumWouldAllow ?? false) : false}
-                  onRetryAdd={(id) => void addActions.retryGroup(id)}
+                  onRetryAdd={(id) => {
+                    // WR-04: no row retry while a Resume is being dispatched (main also refuses
+                    // to start a Resume while a retry is in flight).
+                    if (resumeState === 'inflight') return
+                    void addActions.retryGroup(id)
+                  }}
                   addRetryDmStatus={activeMode === 'add' ? addOutcome?.retryDmStatus : undefined}
                   addTargetName={addTargetName}
                   jobView={isJob}

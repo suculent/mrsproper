@@ -2131,6 +2131,33 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(executor.getState().step).toBe('hard-stopped')
   })
 
+  it('WR-04: execute() (Resume) is refused while a retry is in flight; the retry outcome is kept', async () => {
+    const ctx = await setupFailedThenPrivacy('31030')
+    ctx.mockConfig.inviteToChannelErrorDialogIds = {}
+    ctx.auditStore.setStatus('stopped')
+    const origInvoke = ctx.mockClient.invoke.bind(ctx.mockClient)
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    ctx.mockClient.invoke = (async (req: unknown) => {
+      if (ctorNameOf(req).includes('InviteToChannel')) await gate
+      return origInvoke(req as never)
+    }) as never
+
+    const retry = ctx.executor.retryGroup('31030')
+    await vi.advanceTimersByTimeAsync(0)
+    const stepBefore = ctx.executor.getState().step
+    await ctx.executor.execute({ dialogIds: ['31030'], resume: true })
+    expect(ctx.executor.getState().step).toBe(stepBefore)
+    expect(ctx.auditStore.initJobCalls).toHaveLength(1) // only the original run
+
+    release()
+    await vi.runAllTimersAsync()
+    await retry
+    expect(ctx.executor.getState().outcomes.find((o) => o.dialogId === '31030')?.status).toBe('done')
+  })
+
   it('WR-01: end-of-run DM after a Resume never re-sends a link a retry DM already delivered', async () => {
     const ts = new Date().toISOString()
     const dialogIds = ['31010', '31011', '31012']

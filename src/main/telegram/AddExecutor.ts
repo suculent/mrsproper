@@ -160,6 +160,8 @@ export class AddExecutor {
   private _resolvedTarget: ResolvedAddUser | null = null
   /** Dialog ids of the active job, merged into emitted AddState (D-16). */
   private _jobDialogIds: string[] | null = null
+  /** WR-04: number of retryGroup() calls currently awaiting Telegram. */
+  private _retriesInFlight = 0
 
   constructor(options: AddExecutorOptions) {
     this._client = options.client
@@ -247,6 +249,11 @@ export class AddExecutor {
    * `params.resume` is true; otherwise a fresh job is started via initJob().
    */
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
+    // WR-04: never start/resume while a single-group retry is still awaiting Telegram — the
+    // generation bump would discard the retry's real outcome, and the two runs would overlap.
+    // State is left untouched; the caller sees the unchanged step as a refusal.
+    if (this._retriesInFlight > 0) return
+
     // T-05-04-B: read target from resolver, never from params
     const existing = this._auditStore.readJob()
     let resolved: ResolvedAddUser | null = this._resolver.getResolvedUser()
@@ -648,7 +655,16 @@ export class AddExecutor {
     ) {
       return
     }
+    // WR-04: tracked so execute() refuses to start a Resume while this retry is in flight.
+    this._retriesInFlight++
+    try {
+      await this._retryGroupInner(dialogId)
+    } finally {
+      this._retriesInFlight--
+    }
+  }
 
+  private async _retryGroupInner(dialogId: string): Promise<void> {
     const gen = this._generation
 
     // D-06: act only on the job's target — never on a live resolver user for someone else.
