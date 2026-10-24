@@ -19,7 +19,7 @@ import { registerTagChannels, emitTagState } from './ipc/tagChannels'
 import { TagExecutor } from './telegram/TagExecutor'
 import { createTagAuditStore } from './storage/tagAuditStore'
 import { registerSeverityChannels } from './ipc/severityChannels'
-import { registerLanguageChannels, preloadLanguageCache, getCachedLanguage } from './ipc/languageChannels'
+import { registerLanguageChannels, preloadLanguageCache, getEffectiveLanguage } from './ipc/languageChannels'
 import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { AddExecutor } from './telegram/AddExecutor'
@@ -370,7 +370,7 @@ app.whenReady().then(async () => {
   const getDmText = (vars: { name: string; links: string }): string =>
     renderTemplate(
       getCachedTemplate() ??
-        ((getCachedLanguage() ?? 'en') === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN),
+        (getEffectiveLanguage() === 'cs' ? DEFAULT_TEMPLATE_CS : DEFAULT_TEMPLATE_EN),
       vars
     )
 
