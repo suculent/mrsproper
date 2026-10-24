@@ -16,7 +16,8 @@ export type GroupMode = 'remove' | 'tag' | 'add'
  *   this is today's existing Remove behavior, unchanged).
  * - add is the inverted rule (D-05) — true iff `dialog.canAdd` and the scan status is
  *   `not-member`, or `banned` AND `dialog.canUnban` (D-09/D-10: a banned target can only
- *   be added if the admin can lift the ban first; otherwise the row is greyed). A `null`/pending status is deliberately NOT actionable in Add mode —
+ *   be added if the admin can lift the ban first; otherwise the row is greyed).
+ *   A `null`/pending status is deliberately NOT actionable in Add mode —
  *   this asymmetry with remove/tag is intentional (D-05: rows become pre-checked only
  *   once their status resolves), not a bug to unify away.
  */

@@ -198,7 +198,8 @@ export class AddExecutor {
    *
    * Security (T-05-04-B): reads target from this._resolver.getResolvedUser() — never from
    * params. On a relaunch resume (resolver null, resume:true, matching non-complete job) the
-   * target is rebuilt from add-job.json inside main only (D-03). D-20: a matching on-disk job (same targetId + dialogId set) is continued when
+   * target is rebuilt from add-job.json inside main only (D-03). D-20: a matching on-disk job
+   * (same targetId + dialogId set) is continued when
    * `params.resume` is true; otherwise a fresh job is started via initJob().
    */
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
