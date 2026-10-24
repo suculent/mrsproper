@@ -585,7 +585,7 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <AlertDescription className="text-body">
                 {tAdd('peerFloodBanner')}
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <Button
                     variant="default"
                     size="sm"
@@ -601,6 +601,16 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
                     ) : (
                       tAdd('peerFloodResumeLabel')
                     )}
+                  </Button>
+                  {/* CR-02 (D-09): the only exit from a hard-stopped job — in the relaunch job
+                      view nothing else (toolbar, target card, lookup) can leave it. */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={resumeState === 'inflight'}
+                    onClick={async () => { await targetActions.resetTarget(); onNavigateToTarget() }}
+                  >
+                    {tAdd('addSomeoneElse')}
                   </Button>
                 </div>
                 {resumeState === 'failed' && (

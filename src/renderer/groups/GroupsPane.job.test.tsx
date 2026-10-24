@@ -113,6 +113,17 @@ describe('GroupsPane job view (relaunch resume)', () => {
     expect(render()).toContain('peerFloodBanner')
   })
 
+  it('CR-02: every non-running job-view band offers the addSomeoneElse exit; running/stopping do not', () => {
+    for (const step of ['hard-stopped', 'stopped', 'complete']) {
+      setAdd(step)
+      expect(render()).toContain('addSomeoneElse')
+    }
+    for (const step of ['running', 'stopping']) {
+      setAdd(step)
+      expect(render()).not.toContain('addSomeoneElse')
+    }
+  })
+
   it('stopped and complete render the summary bands', () => {
     setAdd('stopped')
     expect(render()).toContain('summaryStopped')
