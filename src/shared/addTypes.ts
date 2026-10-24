@@ -196,8 +196,10 @@ export interface AddLogBlockEntry {
   addedDialogs: Array<{ dialogId: string; title?: string }>
   /** Groups that received a privacy-fallback invite link in this segment. */
   linkedDialogs: Array<{ dialogId: string; title?: string; link: string }>
-  /** Status of the end-of-run DM — never 'pending' once a terminal-state block is written. */
-  dmStatus: Exclude<AddDmStatus, 'pending'>
+  /** Status of the end-of-run DM — never 'pending' once a terminal-state block is written.
+   *  'hard-stopped' (retry tail only, IN-04): the DM send hit PEER_FLOOD and was not delivered —
+   *  distinct from a privacy 'refused'. */
+  dmStatus: Exclude<AddDmStatus, 'pending'> | 'hard-stopped'
   /** ISO timestamp of when this block was written. */
   timestamp: string
 }

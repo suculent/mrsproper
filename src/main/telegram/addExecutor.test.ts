@@ -2065,6 +2065,8 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(executor.getState().step).toBe('hard-stopped')
     expect(auditStore.checkpointCalls.some((c) => c.outcome.link === 'https://t.me/+retryLink')).toBe(true)
     expect(addLogStore.appendBlockCalls).toHaveLength(1)
+    // IN-04: logged as a hard-stop, not as a privacy refusal.
+    expect(addLogStore.appendBlockCalls[0]!.dmStatus).toBe('hard-stopped')
     expect(mockClient.sendMessageCalls).toHaveLength(1)
   })
 

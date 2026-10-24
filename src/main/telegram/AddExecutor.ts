@@ -232,7 +232,7 @@ export class AddExecutor {
   /** D-10: live scan status wins; else a persisted ban flag from the job file. */
   private _effectiveScanStatus(
     dialogId: string,
-    job: AddJobFile | null,
+    job: { bannedDialogIds?: string[] } | null,
     live: string | undefined
   ): string | undefined {
     if (live !== undefined) return live
@@ -430,7 +430,7 @@ export class AddExecutor {
     const scanStatusFor = (dialogId: string): string | undefined =>
       this._effectiveScanStatus(
         dialogId,
-        persistedBanned ? ({ bannedDialogIds: persistedBanned } as AddJobFile) : null,
+        persistedBanned ? { bannedDialogIds: persistedBanned } : null,
         scanResults.find((r) => r.dialogId === dialogId)?.status
       )
 
@@ -763,7 +763,8 @@ export class AddExecutor {
       targetName: job.targetName,
       addedDialogs: [],
       linkedDialogs: [{ dialogId, link: newOutcome.link, title: dialog.title ?? dialogId }],
-      dmStatus: dm,
+      // IN-04: a PEER_FLOOD during the send is an account hard-stop, not a privacy refusal.
+      dmStatus: hardStop ? 'hard-stopped' : dm,
       timestamp: new Date().toISOString(),
     })
 
