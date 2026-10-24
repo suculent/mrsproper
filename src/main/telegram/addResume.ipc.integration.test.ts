@@ -65,11 +65,22 @@ function makeAuditStore(seed: AddJobFile): AddAuditStore & { initJobCalls: AddJo
       initJobCalls.push(job)
       state.job = job
     },
+    // IN-05: mirror the real addAuditStore — checkpoint REPLACES any entry for the same
+    // dialogId (CR-01 dedup) instead of appending, and setStatus persists dmStatus.
     checkpoint(dialogId: string, outcome: AddGroupOutcome): void {
-      if (state.job) state.job = { ...state.job, outcomes: [...state.job.outcomes, { ...outcome, dialogId }] }
+      if (!state.job) return
+      const deduped = state.job.outcomes.filter((o) => o.dialogId !== dialogId)
+      state.job = { ...state.job, outcomes: [...deduped, { ...outcome, dialogId }] }
     },
-    setStatus(status: AddJobFile['status'], completedAt?: string): void {
-      if (state.job) state.job = { ...state.job, status, ...(completedAt !== undefined ? { completedAt } : {}) }
+    setStatus(status: AddJobFile['status'], completedAt?: string, dmStatus?: AddJobFile['dmStatus']): void {
+      if (state.job) {
+        state.job = {
+          ...state.job,
+          status,
+          ...(completedAt !== undefined ? { completedAt } : {}),
+          ...(dmStatus !== undefined ? { dmStatus } : {}),
+        }
+      }
     },
     readJob(): AddJobFile | null {
       return state.job
@@ -191,6 +202,10 @@ describe('relaunch resume through real IPC handlers (D-14)', () => {
     expect(final.step).toBe('complete')
     expect(final.targetName).toBe('Jan Novák')
     expect(final.dialogIds).toEqual(['21001', '21002', '21003'])
+    // IN-05: the reprocessed 'skipped' row is replaced, never duplicated.
+    const rows21003 = auditStore._job!.outcomes.filter((o) => o.dialogId === '21003')
+    expect(rows21003).toHaveLength(1)
+    expect(rows21003[0]!.status).not.toBe('skipped')
   })
 
   it('F1 Stop: ADD_ABORT during a resumed run transitions to stopped', async () => {
