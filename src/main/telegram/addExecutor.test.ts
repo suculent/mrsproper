@@ -2081,7 +2081,7 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(ctx.addLogStore.appendBlockCalls).toHaveLength(0)
   })
 
-  it('generation change during the DM await: no state write afterwards', async () => {
+  it('generation change during the DM await: add-log record kept (WR-03), no state write afterwards', async () => {
     const { executor, mockClient, addLogStore, auditStore } = await setupFailedThenPrivacy('31005')
     const origInvoke = mockClient.invoke.bind(mockClient)
     mockClient.invoke = (async (req: unknown) => {
@@ -2090,9 +2090,45 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
       return r
     }) as never
     await executor.retryGroup('31005')
-    expect(addLogStore.appendBlockCalls).toHaveLength(0)
+    // WR-03: the DM really went out, so its append-only add-log record is still written.
+    expect(addLogStore.appendBlockCalls).toHaveLength(1)
+    expect(addLogStore.appendBlockCalls[0]!.dmStatus).toBe('sent')
     expect(auditStore.checkpointCalls.some((c) => c.outcome.retryDmStatus !== undefined)).toBe(false)
     expect(executor.getState().step).toBe('idle')
+  })
+
+  it('WR-02: a concurrent retry stops (no DM, no stale status) once another retry hard-stops', async () => {
+    const ids = ['31020', '31021']
+    const mockConfig: MockClientConfig = {
+      inviteToChannelErrorDialogIds: { '31020': 'CHAT_ADMIN_REQUIRED', '31021': 'CHAT_ADMIN_REQUIRED' },
+      exportChatInviteResult: { '31021': { link: 'https://t.me/+concurrent' } },
+    }
+    const auditStore = makeAddAuditStore(ids)
+    const { executor, mockClient, addLogStore } = makeExecutor({
+      dialogs: ids.map((id) => makeDialog(id, 'supergroup')),
+      mockConfig,
+      auditStore,
+    })
+    const p = executor.execute({ dialogIds: ids })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    addLogStore.appendBlockCalls.length = 0
+
+    // Y (31021) ends privacy-blocked and would DM; X (31020) hits PEER_FLOOD meanwhile.
+    mockConfig.inviteToChannelErrorDialogIds = { '31020': 'PEER_FLOOD', '31021': 'USER_PRIVACY_RESTRICTED' }
+    // Both retries in flight at once: the governor serializes Y's invite, X's invite
+    // (PEER_FLOOD → hard-stop), then Y's link export — Y must drop out afterwards.
+    const sendsBefore = mockClient.sendMessageCalls.length
+    const y = executor.retryGroup('31021')
+    const x = executor.retryGroup('31020')
+    await vi.runAllTimersAsync()
+    await Promise.all([x, y])
+    expect(mockClient.sendMessageCalls.length).toBe(sendsBefore)
+
+    expect(mockClient.sendMessageCalls).toHaveLength(0)
+    expect(auditStore._job!.status).toBe('hard-stopped')
+    expect(executor.getState().step).toBe('hard-stopped')
   })
 
   it('WR-01: end-of-run DM after a Resume never re-sends a link a retry DM already delivered', async () => {

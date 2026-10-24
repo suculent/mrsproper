@@ -681,7 +681,7 @@ export class AddExecutor {
       // .catch() at the IPC boundary with zero feedback — explicitly transition to
       // hard-stopped instead.
       if (classifyRpcError(err).disposition === 'hard-stop') {
-        this._hardStopRetry(dialogId)
+        this._hardStopRetry(dialogId, gen)
         return
       }
       try {
@@ -690,7 +690,7 @@ export class AddExecutor {
         // CR-03: _classifyAddError's own privacy/channel-full branches can also
         // surface a hard-stop via their inline ExportChatInvite call.
         if (classifyRpcError(err2).disposition === 'hard-stop') {
-          this._hardStopRetry(dialogId)
+          this._hardStopRetry(dialogId, gen)
           return
         }
         throw err2
@@ -737,9 +737,9 @@ export class AddExecutor {
       dm = 'refused'
     }
 
-    // Generation guard AFTER the DM await, BEFORE any state write.
-    if (gen !== this._generation) return
-
+    // WR-03: the DM attempt already happened — record it in the append-only add log BEFORE the
+    // generation guard, so a message that really went out is never missing from the admin's
+    // durable record. The guard below protects state emission only.
     this._addLogStore.appendBlock({
       jobId: job.jobId,
       isFollowUp: true,
@@ -752,15 +752,22 @@ export class AddExecutor {
     })
 
     if (hardStop) {
-      // CR-03: never continue after a hard-stop.
-      this._hardStopRetry(dialogId)
+      // CR-03: never continue after a hard-stop (_hardStopRetry applies its own gen guard).
+      this._hardStopRetry(dialogId, gen)
       return
     }
 
+    // Generation guard AFTER the DM await, BEFORE any state write.
+    if (gen !== this._generation) return
+
     const withDm: AddGroupOutcome = { ...newOutcome, retryDmStatus: dm }
     this._auditStore.checkpoint(dialogId, withDm)
-    if (job.dmStatus === 'not-needed') {
-      this._auditStore.setStatus(job.status, undefined, dm)
+    // WR-02: re-read the job after the awaits — never write back a status captured before
+    // them (a concurrent hard-stop or resume may have changed it on disk).
+    const fresh = this._auditStore.readJob()
+    const jobDmWasNotNeeded = fresh !== null && fresh.dmStatus === 'not-needed'
+    if (fresh !== null && jobDmWasNotNeeded) {
+      this._auditStore.setStatus(fresh.status, undefined, dm)
     }
 
     const finalOutcomes = this._currentState.outcomes.map((o) =>
@@ -770,7 +777,7 @@ export class AddExecutor {
       ...this._currentState,
       outcomes: finalOutcomes,
       summary: this._buildSummary(finalOutcomes, new Date().toISOString()),
-      ...(job.dmStatus === 'not-needed' ? { dmStatus: dm } : {}),
+      ...(jobDmWasNotNeeded ? { dmStatus: dm } : {}),
     })
   }
 
@@ -784,9 +791,16 @@ export class AddExecutor {
    * error during a single-group retry must be surfaced (logged + state transition)
    * rather than silently discarded by the fire-and-forget .catch() at the IPC boundary.
    * The retried group's prior outcome is left unchanged (no checkpoint write).
+   *
+   * WR-02: a superseded retry (abort / new run since it started) never writes over the newer
+   * state. Otherwise the generation is bumped so any OTHER in-flight retry drops out at its
+   * post-await guard — no further Telegram call (no retry DM) on a PEER_FLOOD-flagged account,
+   * and no stale status written over 'hard-stopped' on disk.
    */
-  private _hardStopRetry(dialogId: string): void {
+  private _hardStopRetry(dialogId: string, gen: number): void {
     console.error('[AddExecutor] retryGroup hard-stopped (PEER_FLOOD-classified error) for dialog:', dialogId)
+    if (gen !== this._generation) return
+    this._generation++
     this._auditStore.setStatus('hard-stopped')
     this._emit({ ...this._currentState, step: 'hard-stopped', floodWaitRemaining: null })
   }
