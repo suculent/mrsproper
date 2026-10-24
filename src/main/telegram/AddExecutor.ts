@@ -253,7 +253,11 @@ export class AddExecutor {
     // WR-04: never start/resume while a single-group retry is still awaiting Telegram — the
     // generation bump would discard the retry's real outcome, and the two runs would overlap.
     // State is left untouched; the caller sees the unchanged step as a refusal.
-    if (this._retriesInFlight > 0) return
+    if (this._retriesInFlight > 0) {
+      // IN-03 (iter 2): leave a trace — the renderer only sees the generic start/resume failure.
+      console.warn('[AddExecutor] start refused: retry in flight')
+      return
+    }
 
     // T-05-04-B: read target from resolver, never from params
     const existing = this._auditStore.readJob()
