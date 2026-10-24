@@ -9,6 +9,7 @@ import IdentityDisplay from './IdentityDisplay'
 import SettingsMenu from './SettingsMenu'
 import TargetInput from '../target/TargetInput'
 import TargetCard from '../target/TargetCard'
+import { JobTargetCard } from '../target/JobTargetCard'
 import { CandidateList } from '../target/CandidateList'
 import { GroupsPane } from '../groups/GroupsPane'
 import { StepIndicator } from '../wizard/StepIndicator'
@@ -22,6 +23,7 @@ import { useRemovalStore } from '../store/removalStore'
 import { useTagStore } from '../store/tagStore'
 import { useAddStore } from '../store/addStore'
 import { useGroupsStore } from '../store/groupsStore'
+import { useTargetStore } from '../store/targetStore'
 import { severityClient } from '../ipc/severityClient'
 
 interface AppShellProps {
@@ -100,6 +102,15 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
 
   const { state: add, pendingJob: pendingAddJob } = useAddStore()
   const { groups: groupsState } = useGroupsStore()
+  const targetState = useTargetStore()
+
+  // D-02: a non-idle add job forces Add mode (ModeSwitch is locked meanwhile).
+  useEffect(() => {
+    if (add.step !== 'idle' && mode !== 'add') setMode('add')
+  }, [add.step, mode])
+
+  const addJobActive = add.step !== 'idle'
+  const showJobCard = addJobActive && targetState.target.step !== 'confirmed'
 
   // Add auto-advance run→report — CRITICAL: gate on mode === 'add' to prevent
   // cross-contamination with removal/tag auto-advance (RESEARCH Pitfall 3)
@@ -147,16 +158,19 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           <>
             {/* Left pane: target input + candidate list or identity card (flex-[1] = 1/3 width) */}
             <div className="flex flex-col flex-[1] min-w-0 border-r border-border overflow-y-auto p-4">
-              <TargetInput />
+              <TargetInput locked={addJobActive} />
               <div className="mt-4">
-                {/* CandidateList renders when a name search is active or has results */}
-                {search.step !== 'idle' && <CandidateList />}
-                {/* TargetCard renders when a target has been resolved/confirmed */}
-                <TargetCard
-                  mode={mode}
-                  onTargetConfirmed={() => setStage('groups')}
-                  onNavigateToTarget={() => setStage('target')}
-                />
+                {/* CandidateList hidden while an add job is non-idle (D-05) */}
+                {!addJobActive && search.step !== 'idle' && <CandidateList />}
+                {showJobCard ? (
+                  <JobTargetCard targetId={add.targetId} targetName={add.targetName} />
+                ) : (
+                  <TargetCard
+                    mode={mode}
+                    onTargetConfirmed={() => setStage('groups')}
+                    onNavigateToTarget={() => setStage('target')}
+                  />
+                )}
               </div>
             </div>
 
