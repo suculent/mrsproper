@@ -189,6 +189,39 @@ describe('registerSearchChannels — TARGET_RESOLVE_CANDIDATE gate', () => {
   })
 })
 
+describe('registerSearchChannels — TARGET_RESOLVE_CANDIDATE add lock (D-05/D-07)', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  it('returns resolver state without resolving when add step is non-idle', async () => {
+    const searcher = makeMockSearcher()
+    const resolver = makeMockResolver()
+    searcher.getCandidateAccessHash.mockReturnValue(BigInt(1))
+    registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => 'running')
+    const r = await capturedHandlers['target:resolveCandidate']({}, { userId: '123' })
+    expect(resolver.resolveByCandidate).not.toHaveBeenCalled()
+    expect(r).toEqual(resolver.getState())
+  })
+
+  it('still resolves when add step is idle', async () => {
+    const searcher = makeMockSearcher()
+    const resolver = makeMockResolver()
+    searcher.getCandidateAccessHash.mockReturnValue(BigInt(1))
+    registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => 'idle')
+    await capturedHandlers['target:resolveCandidate']({}, { userId: '123' })
+    expect(resolver.resolveByCandidate).toHaveBeenCalled()
+  })
+
+  it('malformed payload throws before the guard', async () => {
+    const searcher = makeMockSearcher()
+    const resolver = makeMockResolver()
+    registerSearchChannels(makeMockWin() as never, searcher as never, resolver as never, () => 'running')
+    await expect(capturedHandlers['target:resolveCandidate']({}, {})).rejects.toThrow()
+    expect(resolver.resolveByCandidate).not.toHaveBeenCalled()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // emitSearchState — win.isDestroyed() guard
 // ---------------------------------------------------------------------------

@@ -369,6 +369,68 @@ describe('registerTargetChannels — TARGET_RESOLVE_CANDIDATE not registered her
 })
 
 // ---------------------------------------------------------------------------
+// D-05 — lookup lock while add job is non-idle
+// ---------------------------------------------------------------------------
+
+describe('registerTargetChannels — add-job lookup lock (D-05)', () => {
+  beforeEach(() => {
+    Object.keys(capturedHandlers).forEach((k) => delete capturedHandlers[k])
+  })
+
+  function setup(step?: string) {
+    const resolver = makeMockResolver()
+    const addExecutor = {
+      abortExecution: vi.fn(),
+      ...(step !== undefined ? { getState: vi.fn(() => ({ step })) } : {}),
+    }
+    registerTargetChannels(
+      makeMockWin() as never, resolver as never, makeMockScanner() as never,
+      makeMockSearcher() as never, undefined, undefined, addExecutor as never
+    )
+    return { resolver, addExecutor }
+  }
+
+  for (const step of ['confirming', 'running', 'stopping', 'stopped', 'hard-stopped', 'complete']) {
+    it(`TARGET_RESOLVE and TARGET_CONFIRM are no-ops when add step is ${step}`, async () => {
+      const { resolver } = setup(step)
+      const r1 = await capturedHandlers['target:resolve']({}, { input: '@x' })
+      const r2 = await capturedHandlers['target:confirm']({}, undefined)
+      expect(resolver.resolve).not.toHaveBeenCalled()
+      expect(resolver.confirm).not.toHaveBeenCalled()
+      expect(r1).toBe(resolver.getState())
+      expect(r2).toBe(resolver.getState())
+    })
+  }
+
+  it('idle add step leaves resolve/confirm unchanged', async () => {
+    const { resolver } = setup('idle')
+    await capturedHandlers['target:resolve']({}, { input: '@x' })
+    await capturedHandlers['target:confirm']({}, undefined)
+    expect(resolver.resolve).toHaveBeenCalledWith('@x')
+    expect(resolver.confirm).toHaveBeenCalled()
+  })
+
+  it('addExecutor without getState behaves as idle', async () => {
+    const { resolver } = setup(undefined)
+    await capturedHandlers['target:resolve']({}, { input: '@x' })
+    expect(resolver.resolve).toHaveBeenCalled()
+  })
+
+  it('Zod still runs first while locked', async () => {
+    const { resolver } = setup('running')
+    await expect(capturedHandlers['target:resolve']({}, {})).rejects.toThrow()
+    expect(resolver.resolve).not.toHaveBeenCalled()
+  })
+
+  it('TARGET_RESET still aborts add executor while non-idle', async () => {
+    const { resolver, addExecutor } = setup('running')
+    await capturedHandlers['target:reset']({}, undefined)
+    expect(addExecutor.abortExecution).toHaveBeenCalled()
+    expect(resolver.reset).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Window destroyed guard
 // ---------------------------------------------------------------------------
 

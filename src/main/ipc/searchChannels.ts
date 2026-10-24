@@ -73,7 +73,8 @@ const ResolveCandidateSchema = z.object({
 export function registerSearchChannels(
   win: BrowserWindow,
   searcher: ParticipantSearcher,
-  resolver: TargetResolver
+  resolver: TargetResolver,
+  getAddStep?: () => string // D-05/D-07: lazy getter (AddExecutor is built after this registration)
 ): void {
   // Suppress unused warning — win used by emitSearchState wired in main/index.ts
   void win
@@ -108,6 +109,9 @@ export function registerSearchChannels(
   ipcMain.handle(TARGET_RESOLVE_CANDIDATE, async (_event, payload: unknown) => {
     // Layer 1: Zod validation — throws ZodError on malformed input
     const parsed = ResolveCandidateSchema.parse(payload)
+
+    // D-05/D-07: name search cannot bypass the add-job lookup lock.
+    if (getAddStep && getAddStep() !== 'idle') return resolver.getState()
 
     // Layer 2: Security gate — userId must be in the current candidate set.
     // getCandidateAccessHash() returns null for unknown userIds or after abortSearch().

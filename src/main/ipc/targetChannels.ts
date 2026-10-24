@@ -74,20 +74,29 @@ export function registerTargetChannels(
   searcher: { abortSearch(): void },
   executor?: { abortExecution(): void },
   tagExecutor?: { abortExecution(): void },
-  addExecutor?: { abortExecution(): void }
+  addExecutor?: { abortExecution(): void; getState?(): { step: string } }
 ): void {
   // Suppress unused warning — win is used indirectly by push helpers wired in main/index.ts
   void win
 
+  // D-05: while an add job is live (step !== 'idle'), target lookup is locked in main.
+  // TARGET_RESET is the only exit (it aborts the job and clears state).
+  const addIsActive = (): boolean => {
+    const step = addExecutor?.getState?.().step
+    return step !== undefined && step !== 'idle'
+  }
+
   // ── Handle: target:resolve ───────────────────────────────────────────────
   ipcMain.handle(TARGET_RESOLVE, async (_event, payload: unknown) => {
     const parsed = ResolveTargetSchema.parse(payload) // throws ZodError on malformed input
+    if (addIsActive()) return resolver.getState() // D-05: locked during add job
     await resolver.resolve(parsed.input)
     return resolver.getState()
   })
 
   // ── Handle: target:confirm ───────────────────────────────────────────────
   ipcMain.handle(TARGET_CONFIRM, () => {
+    if (addIsActive()) return resolver.getState() // D-05: locked during add job
     resolver.confirm()
     return resolver.getState()
   })
