@@ -230,7 +230,7 @@ export class MembershipScanner {
    * Dispatch:
    *   - Supergroup/channel: channels.GetParticipant
    *     - USER_NOT_PARTICIPANT error → 'not-member'
-   *     - ChannelParticipantBanned with left unset/false → 'banned'; with left===true → 'not-member' (D-01)
+   *     - ChannelParticipantBanned with left === true → 'banned'; otherwise (restricted but still a participant) → 'member' (D-01)
    *     - ChannelParticipantLeft → 'not-member' (RESEARCH Pitfall 1)
    *     - Any other participant type → 'member'
    *   - Basic group: messages.GetFullChat

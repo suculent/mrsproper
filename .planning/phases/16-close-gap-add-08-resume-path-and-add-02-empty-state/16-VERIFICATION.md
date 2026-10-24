@@ -1,8 +1,8 @@
 ---
 phase: 16-close-gap-add-08-resume-path-and-add-02-empty-state
 verified: 2026-10-04T22:45:00Z
-status: human_needed
-score: 9/9 must-haves verified (automated); 2 manual-only items outstanding
+status: passed
+score: 9/9 must-haves verified (automated); manual UAT 3/3 passed
 overrides_applied: 0
 human_verification:
   - test: "Start an Add run, Stop it, quit and relaunch the app, choose Resume on the launch prompt"
@@ -19,7 +19,7 @@ human_verification:
 # Phase 16 Verification Report
 
 **Goal:** Close the two v1.7 audit blockers (ADD-08 resume path, ADD-02 empty state) plus the orphaned grey reason and small tech debt.
-**Status:** human_needed. All automated checks pass; no gaps found. Manual-only items remain.
+**Status:** passed. All automated checks pass; no gaps found. Manual UAT 3/3 passed (16-HUMAN-UAT.md).
 **Re-verification:** No (initial).
 
 ## Automated Baseline

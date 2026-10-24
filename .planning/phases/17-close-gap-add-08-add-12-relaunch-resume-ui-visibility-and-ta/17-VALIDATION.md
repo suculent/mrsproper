@@ -42,17 +42,17 @@ The planner fills in task IDs. The decision-level map is in `17-RESEARCH.md` § 
 
 | Decision | Requirement | Test Type | Automated Command | File Exists | Status |
 |----------|-------------|-----------|-------------------|-------------|--------|
-| D-01/D-03/D-04 job view | ADD-08 | unit + static render | `npx vitest run src/renderer/groups/addPaneState.test.ts src/renderer/groups/GroupsPane.job.test.tsx` | ❌ W0 (GroupsPane test) | ⬜ pending |
-| D-02 mode lock | ADD-08 | static render | `npx vitest run src/renderer/groups/ModeSwitch.test.tsx` | ✅ | ⬜ pending |
-| D-05 lookup lock | ADD-12 | unit (ipc handlers) | `npx vitest run src/main/ipc/targetChannels.test.ts src/main/ipc/searchChannels.test.ts` | ✅ | ⬜ pending |
-| D-06/D-08 retry identity | ADD-12 | unit | `npx vitest run src/main/telegram/addExecutor.test.ts` | ✅ | ⬜ pending |
-| D-07 mismatch reject (narrow) | ADD-12 | unit + IPC integration | `npx vitest run src/main/ipc/addChannels.test.ts src/main/telegram/addExecutor.test.ts` | ✅ | ⬜ pending |
-| D-10 F3 persisted banned | ADD-07/08 | unit + store round trip | `npx vitest run src/main/storage/addAuditStore.test.ts src/main/telegram/addExecutor.test.ts` | ✅ | ⬜ pending |
-| D-11 F4 stopped Resume | ADD-08 | unit (store) | `npx vitest run src/renderer/store/addStore.test.ts` | ✅ | ⬜ pending |
-| D-12 F5 retry log + DM | ADD-11/14 | unit | `npx vitest run src/main/telegram/addExecutor.test.ts` | ✅ | ⬜ pending |
-| D-13 F6 detected language | ADD-16 | unit | `npx vitest run src/main/ipc/languageChannels.test.ts` | ✅ | ⬜ pending |
-| D-14 relaunch IPC test | ADD-08/12 | integration | `npx vitest run src/main/telegram/addResume.ipc.integration.test.ts` | ❌ W0 | ⬜ pending |
-| D-14 no-groups empty | ADD-02 | unit | `npx vitest run src/renderer/groups/addPaneState.test.ts` | ✅ | ⬜ pending |
+| D-01/D-03/D-04 job view (17-04-T1, 17-05-T1) | ADD-08 | unit + static render | `npx vitest run src/renderer/groups/addPaneState.test.ts src/renderer/groups/GroupsPane.job.test.tsx` | ✅ (GroupsPane test) | ✅ green |
+| D-02 mode lock (17-04-T1) | ADD-08 | static render | `npx vitest run src/renderer/groups/ModeSwitch.test.tsx` | ✅ | ✅ green |
+| D-05 lookup lock (17-02-T1) | ADD-12 | unit (ipc handlers) | `npx vitest run src/main/ipc/targetChannels.test.ts src/main/ipc/searchChannels.test.ts` | ✅ | ✅ green |
+| D-06/D-08 retry identity (17-02-T2) | ADD-12 | unit | `npx vitest run src/main/telegram/addExecutor.test.ts` | ✅ | ✅ green |
+| D-07 mismatch reject (narrow) (17-03-T1, 17-08-T1) | ADD-12 | unit + IPC integration | `npx vitest run src/main/ipc/addChannels.test.ts src/main/telegram/addExecutor.test.ts` | ✅ | ✅ green |
+| D-10 F3 persisted banned (17-01-T1) | ADD-07/08 | unit + store round trip | `npx vitest run src/main/storage/addAuditStore.test.ts src/main/telegram/addExecutor.test.ts` | ✅ | ✅ green |
+| D-11 F4 stopped Resume (17-06-T1) | ADD-08 | unit (store) | `npx vitest run src/renderer/store/addStore.test.ts` | ✅ | ✅ green |
+| D-12 F5 retry log + DM (17-06-T2) | ADD-11/14 | unit | `npx vitest run src/main/telegram/addExecutor.test.ts` | ✅ | ✅ green |
+| D-13 F6 detected language (17-07-T1) | ADD-16 | unit | `npx vitest run src/main/ipc/languageChannels.test.ts` | ✅ | ✅ green |
+| D-14 relaunch IPC test (17-08-T1) | ADD-08/12 | integration | `npx vitest run src/main/telegram/addResume.ipc.integration.test.ts` | ✅ | ✅ green |
+| D-14 no-groups empty (17-08-T2) | ADD-02 | unit | `npx vitest run src/renderer/groups/addPaneState.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -60,8 +60,8 @@ The planner fills in task IDs. The decision-level map is in `17-RESEARCH.md` § 
 
 ## Wave 0 Requirements
 
-- [ ] `src/main/telegram/addResume.ipc.integration.test.ts`: relaunch through real `registerAddChannels` + `registerTargetChannels` + `AddExecutor`. Covers F1 (Stop works) and F2 (mismatch rejected, lookup blocked).
-- [ ] `src/renderer/groups/GroupsPane.job.test.tsx` (or a pure `getPaneView` test plus an extracted Add band component test)
+- [x] `src/main/telegram/addResume.ipc.integration.test.ts`: relaunch through real `registerAddChannels` + `registerTargetChannels` + `AddExecutor`. Covers F1 (Stop works) and F2 (mismatch rejected, lookup blocked).
+- [x] `src/renderer/groups/GroupsPane.job.test.tsx` (or a pure `getPaneView` test plus an extracted Add band component test)
 - [ ] Job card static-render test (`JobTargetCard`)
 - [ ] Real-store Zod round-trip case in `addAuditStore.test.ts` for the new persisted fields
 
@@ -82,7 +82,7 @@ The planner fills in task IDs. The decision-level map is in `17-RESEARCH.md` § 
 - [ ] All tasks have `<automated>` verify or Wave 0 dependencies
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
+- [x] No watch-mode flags
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 

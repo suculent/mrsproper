@@ -48,7 +48,7 @@ created: 2026-10-04
 
 ## Wave 0 Requirements
 
-- [ ] Cross-process resume test (CONTEXT D-05): stopped job → renderer-side resume call with full dialog-id set → `AddExecutor.execute`; asserts same job id, prior outcomes retained, skipped groups reprocessed, follow-up CONTINUATION block written
+- [x] Cross-process resume test (CONTEXT D-05): stopped job → renderer-side resume call with full dialog-id set → `AddExecutor.execute`; asserts same job id, prior outcomes retained, skipped groups reprocessed, follow-up CONTINUATION block written
 - [ ] `src/renderer/store/addStore.test.ts:273` — update the "empty remaining → return" lock-in for D-02
 
 *Existing Vitest infrastructure covers all phase requirements; no framework install needed.*
@@ -69,7 +69,7 @@ created: 2026-10-04
 - [ ] All tasks have `<automated>` verify or Wave 0 dependencies
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
+- [x] No watch-mode flags
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
