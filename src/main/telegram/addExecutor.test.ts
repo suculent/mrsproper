@@ -1702,6 +1702,30 @@ describe('AddExecutor — relaunch resume (D-03, D-14, D-16)', () => {
     expect(mockClient.inviteToChannelCalls).toHaveLength(0)
   })
 
+  it('WR-03: an early-return idle after a completed run is a clean idle (no stale dialogIds/outcomes/target)', async () => {
+    const dialogs = [makeDialog('20010', 'supergroup')]
+    const dialogIds = ['20010']
+    const config: Parameters<typeof makeExecutor>[0] = { dialogs }
+    const { executor, states } = makeExecutor(config)
+
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+    expect(states[states.length - 1]!.step).toBe('complete')
+
+    // Resolver lost (relaunch-like) and no resume intent → early idle exit.
+    config.resolverNull = true
+    await executor.execute({ dialogIds, resume: false })
+
+    const idle = states[states.length - 1]!
+    expect(idle.step).toBe('idle')
+    expect(idle.dialogIds).toBeUndefined()
+    expect(idle.outcomes).toEqual([])
+    expect(idle.targetId).toBe('')
+    expect(idle.targetName).toBe('')
+    expect(idle.progress).toEqual({ processed: 0, total: 0 })
+  })
+
   it('emitted running and complete states carry dialogIds equal to params.dialogIds', async () => {
     const dialogs = [makeDialog('20006', 'supergroup')]
     const dialogIds = ['20006']

@@ -204,8 +204,6 @@ export class AddExecutor {
   async execute(params: { dialogIds: string[]; resume?: boolean }): Promise<void> {
     const gen = ++this._generation
     this._runActive = true
-    this._abortController = new AbortController()
-    const signal = this._abortController.signal
 
     // T-05-04-B: read target from resolver, never from params
     const existing = this._auditStore.readJob()
@@ -236,17 +234,20 @@ export class AddExecutor {
       }
     }
     if (resolved === null) {
-      this._runActive = false
-      this._emit({ ...this._currentState, step: 'idle', floodWaitRemaining: null })
+      this._emitEarlyIdle()
       return
     }
 
     const groupsState = this._enumerator.getState()
     if (groupsState.step !== 'loaded') {
-      this._runActive = false
-      this._emit({ ...this._currentState, step: 'idle', floodWaitRemaining: null })
+      this._emitEarlyIdle()
       return
     }
+
+    // WR-03: the AbortController is only created once the run is actually going ahead —
+    // the early-idle exits above must not leave a live controller behind.
+    this._abortController = new AbortController()
+    const signal = this._abortController.signal
 
     this._resolvedTarget = resolved
     this._jobDialogIds = [...params.dialogIds]
@@ -981,6 +982,26 @@ export class AddExecutor {
   /**
    * PEER_FLOOD hard-stop: remaining groups left pending (NOT skipped), run resumable.
    */
+  /**
+   * WR-03: early-return idle from execute() (no target / enumerator not loaded). Emits a CLEAN
+   * idle state — mirrors abortExecution()'s idle reset — so a prior complete/stopped run's
+   * dialogIds, outcomes and target identity never leak into idle, and clears run bookkeeping.
+   */
+  private _emitEarlyIdle(): void {
+    this._runActive = false
+    this._abortController = null
+    this._resolvedTarget = null
+    this._jobDialogIds = null
+    this._emit({
+      step: 'idle',
+      targetId: '',
+      targetName: '',
+      progress: { processed: 0, total: 0 },
+      outcomes: [],
+      floodWaitRemaining: null,
+    })
+  }
+
   private _emitHardStopped(
     outcomes: AddGroupOutcome[],
     ctx: { targetId: string; targetName: string; total: number }
