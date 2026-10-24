@@ -64,7 +64,6 @@
     "linkCopied": "Zkopírováno!",
     "premiumHint": "Telegram Premium by umožnil přímé přidání.",
     "skipped": "Přeskočeno — přidávání zastaveno",
-    "retryDmSending": "Odesílám odkaz pro {{name}}…",
     "retryDmSent": "Odkaz byl odeslán osobě {{name}} ve zprávě.",
     "retryDmRefused": "Nastavení soukromí osoby {{name}} zprávu odmítlo — zkopírujte odkaz a předejte jej jinou cestou."
   },

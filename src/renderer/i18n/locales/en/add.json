@@ -57,7 +57,6 @@
     "linkCopied": "Copied!",
     "premiumHint": "Telegram Premium would allow a direct add.",
     "skipped": "Skipped — adding stopped",
-    "retryDmSending": "Sending the link to {{name}}…",
     "retryDmSent": "Link sent to {{name}} in a message.",
     "retryDmRefused": "{{name}}'s privacy settings refused the message — copy the link and pass it along."
   },
