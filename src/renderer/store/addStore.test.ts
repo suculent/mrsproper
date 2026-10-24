@@ -447,6 +447,22 @@ describe('addActions.startAdd — pendingJob retention (D-04)', () => {
     expect(started).toBe(true)
     expect(useAddStore().pendingJob).toBeNull()
   })
+
+  it('IN-01 (iter 2): an unchanged non-idle state (main refusal) is not counted as started', async () => {
+    const { useAddStore, addActions, mockClient } = await loadFreshStore()
+    mockClient.getAddState.mockReturnValue(new Promise(() => {}))
+    mockClient.getAddJob.mockResolvedValue(null)
+    mockClient.startAdd.mockResolvedValue(makeCompletedAddState())
+    useAddStore()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(await addActions.startAdd(['1', '2', '3'])).toBe(true) // idle -> complete
+    // Main refuses and returns the unchanged 'complete' state.
+    expect(await addActions.startAdd(['1', '2', '3'])).toBe(false)
+    // A real start from a non-idle state still counts.
+    mockClient.startAdd.mockResolvedValue({ ...makeCompletedAddState(), step: 'running' })
+    expect(await addActions.startAdd(['1', '2', '3'])).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------

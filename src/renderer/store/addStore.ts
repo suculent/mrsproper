@@ -119,14 +119,20 @@ export function useAddStore(): { state: AddState; pendingJob: AddJobFileSafe | n
 //       parameter and no argument-order flip (T-15-07) — unlike tagActions.startTag.
 export const addActions = {
   /**
-   * Returns true when a run actually started (returned state is not idle). An idle result
-   * (e.g. main could not resolve the target yet) keeps pendingJob so the resume dialog stays.
+   * Returns true when a run actually started. An idle result (e.g. main could not resolve the
+   * target yet) keeps pendingJob so the resume dialog stays. IN-01 (iter 2): several main
+   * refusals return the UNCHANGED executor state, so a non-idle result only counts as started
+   * when it is running/stopping or differs from the step before the call (same rule as
+   * resumeAdd).
    */
   async startAdd(dialogIds: string[]): Promise<boolean> {
     try {
+      const stepBefore = currentState.step
       const s = await addClient.startAdd(dialogIds)
       setState(s)
-      if (s.step === 'idle') return false
+      const started =
+        s.step === 'running' || s.step === 'stopping' || (s.step !== 'idle' && s.step !== stepBefore)
+      if (!started) return false
       // CR-05 analog: clear pendingJob once a run started so AddResumeJobDialog unmounts
       pendingJob = null
       notify()
