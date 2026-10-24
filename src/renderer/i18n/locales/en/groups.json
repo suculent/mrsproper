@@ -59,5 +59,6 @@
   "retryScanLabel": "retry",
   "includeInRemovalAria": "{{title}} — include in removal",
   "retryRemovalAria": "Retry removal for {{title}}",
-  "retryScanAria": "Retry membership check for {{title}}"
+  "retryScanAria": "Retry membership check for {{title}}",
+  "modeSwitchLockedAddJobTooltip": "Leave this add job to switch modes"
 }

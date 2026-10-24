@@ -113,7 +113,12 @@ function buildDispatchValue(
 // TargetInput component
 // ---------------------------------------------------------------------------
 
-export function TargetInput(): React.JSX.Element {
+interface TargetInputProps {
+  /** 17 D-05: lookup locked while an add job is open. */
+  locked?: boolean
+}
+
+export function TargetInput({ locked }: TargetInputProps = {}): React.JSX.Element {
   const { t } = useTranslation('target')
   const { target, governorFloodRemaining } = useTargetStore()
   const search = useSearchStore()
@@ -144,6 +149,7 @@ export function TargetInput(): React.JSX.Element {
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (locked) return
       const value = e.target.value
       // Normalize pasted links inline
       const norm = normalizeInput(value)
@@ -159,7 +165,7 @@ export function TargetInput(): React.JSX.Element {
       setRawInput(isLink ? norm : value)
       if (localError) setLocalError(null)
     },
-    [localError]
+    [localError, locked]
   )
 
   const handleCountryChange = useCallback(
@@ -173,7 +179,7 @@ export function TargetInput(): React.JSX.Element {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
-      if (mode === 'none' || isResolving || isFlood || isNameSearchRunning) return
+      if (locked || mode === 'none' || isResolving || isFlood || isNameSearchRunning) return
 
       // Name mode: dispatch to searchActions.startSearch — never calls resolveTarget
       if (mode === 'name') {
@@ -209,10 +215,10 @@ export function TargetInput(): React.JSX.Element {
     },
     // WR-05: t must be a dep — react-i18next mints a new t on language change,
     // otherwise the memoized closure renders validation errors in the old language.
-    [mode, normalized, isResolving, isFlood, isNameSearchRunning, country, t]
+    [locked, mode, normalized, isResolving, isFlood, isNameSearchRunning, country, t]
   )
 
-  const isFindDisabled = mode === 'none' || isResolving || isFlood || isNameSearchRunning
+  const isFindDisabled = Boolean(locked) || mode === 'none' || isResolving || isFlood || isNameSearchRunning
   const hasError = Boolean(displayError)
 
   // ---------------------------------------------------------------------------
@@ -265,7 +271,7 @@ export function TargetInput(): React.JSX.Element {
             <CountryPicker
               value={country}
               onChange={handleCountryChange}
-              disabled={isResolving}
+              disabled={isResolving || Boolean(locked)}
             />
           )}
 
@@ -278,13 +284,14 @@ export function TargetInput(): React.JSX.Element {
               placeholder={t('inputPlaceholder')}
               value={rawInput}
               onChange={handleInputChange}
-              disabled={isResolving}
+              disabled={isResolving || Boolean(locked)}
               aria-invalid={hasError}
               aria-describedby={
                 [
                   hasError ? 'target-error' : '',
-                  isPhoneMode ? 'phone-hint' : '',
+                  isPhoneMode && !locked ? 'phone-hint' : '',
                   isFlood ? 'flood-subtext' : '',
+                  locked ? 'lookup-locked-hint' : '',
                 ]
                   .filter(Boolean)
                   .join(' ') || undefined
@@ -338,14 +345,20 @@ export function TargetInput(): React.JSX.Element {
         </span>
 
         {/* Phone disclosure hint (D-10) — shown when phone mode is active */}
-        {isPhoneMode && (
+        {locked && (
+          <p id="lookup-locked-hint" className="text-label font-normal text-muted-foreground">
+            {t('lookupLockedAddJob')}
+          </p>
+        )}
+
+        {!locked && isPhoneMode && (
           <p id="phone-hint" className="text-label text-muted-foreground">
             {t('phoneModeDisclosureHint')}
           </p>
         )}
 
         {/* Name-mode hint — shown when name mode is active */}
-        {isNameMode && (
+        {!locked && isNameMode && (
           <p className="text-label text-muted-foreground">
             {t('search.nameHint')}
           </p>

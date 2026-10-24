@@ -15,9 +15,11 @@ interface ModeSwitchProps {
   mode: GroupMode
   onChange: (mode: GroupMode) => void
   disabled: boolean
+  /** D-02: lock is due to an open add job (dedicated tooltip). */
+  lockedByAddJob?: boolean
 }
 
-export function ModeSwitch({ mode, onChange, disabled }: ModeSwitchProps): React.JSX.Element {
+export function ModeSwitch({ mode, onChange, disabled, lockedByAddJob }: ModeSwitchProps): React.JSX.Element {
   const { t: tG } = useTranslation('groups')
 
   function handleSelect(next: GroupMode): void {
@@ -27,7 +29,12 @@ export function ModeSwitch({ mode, onChange, disabled }: ModeSwitchProps): React
   }
 
   const disabledProps = disabled
-    ? { disabled: true, title: tG('modeSwitchDisabledTooltip') }
+    ? {
+        disabled: true,
+        title: lockedByAddJob
+          ? tG('modeSwitchLockedAddJobTooltip')
+          : tG('modeSwitchDisabledTooltip'),
+      }
     : {}
 
   return (

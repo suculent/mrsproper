@@ -114,3 +114,24 @@ describe('ModeSwitch — disabled prop (ADD-01)', () => {
     expect(html).not.toContain('modeSwitchDisabledTooltip')
   })
 })
+
+describe('ModeSwitch — lockedByAddJob tooltip (17 D-02)', () => {
+  it('uses the add-job tooltip when locked by an add job', () => {
+    const html = renderToStaticMarkup(
+      <ModeSwitch mode="add" onChange={() => {}} disabled lockedByAddJob />
+    )
+    const buttons = getButtons(html)
+    for (const b of buttons) {
+      expect(hasDisabledAttribute(b.openTag)).toBe(true)
+      expect(getAttr(b.openTag, 'title')).toBe('modeSwitchLockedAddJobTooltip')
+    }
+  })
+  it('keeps the generic tooltip when disabled without the flag, none when enabled', () => {
+    const d = getButtons(render('add', true))
+    expect(getAttr(d[0].openTag, 'title')).toBe('modeSwitchDisabledTooltip')
+    const e = getButtons(
+      renderToStaticMarkup(<ModeSwitch mode="add" onChange={() => {}} disabled={false} lockedByAddJob />)
+    )
+    expect(getAttr(e[0].openTag, 'title')).toBeNull()
+  })
+})

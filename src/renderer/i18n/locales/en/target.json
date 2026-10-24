@@ -70,5 +70,6 @@
   "lastSeenLongAgo": "Last seen a long time ago",
   "candidateRowAria_one": "{{name}} — found in {{count}} of your groups",
   "candidateRowAria_other": "{{name}} — found in {{count}} of your groups",
-  "foundInMore": "+{{count}} more"
+  "foundInMore": "+{{count}} more",
+  "lookupLockedAddJob": "Looking up someone else is locked while this add job is open. Choose \"Add someone else\" when you're done."
 }

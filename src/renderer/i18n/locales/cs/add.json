@@ -63,7 +63,10 @@
     "copyLink": "Kopírovat odkaz",
     "linkCopied": "Zkopírováno!",
     "premiumHint": "Telegram Premium by umožnil přímé přidání.",
-    "skipped": "Přeskočeno — přidávání zastaveno"
+    "skipped": "Přeskočeno — přidávání zastaveno",
+    "retryDmSending": "Odesílám odkaz pro {{name}}…",
+    "retryDmSent": "Odkaz byl odeslán osobě {{name}} ve zprávě.",
+    "retryDmRefused": "Nastavení soukromí osoby {{name}} zprávu odmítlo — zkopírujte odkaz a předejte jej jinou cestou."
   },
   "rowError": {
     "ADD_NO_RIGHTS": "Nemáte oprávnění přidávat členy do této skupiny.",
@@ -101,5 +104,12 @@
   "resumeDestructiveAria": "Pokračovat v úloze přidávání",
   "resumeLoadingGroups": "Načítám vaše skupiny…",
   "resumeFailed": "Úlohu se nepodařilo obnovit. Možná již nespravujete některou z jejích skupin nebo váš účet ještě není připraven. Zkuste to znovu, nebo úlohu zrušte.",
-  "resumeNeutral": "Zrušit úlohu"
+  "resumeNeutral": "Zrušit úlohu",
+  "jobCard": {
+    "kicker": "Uložená úloha přidávání",
+    "note": "Obnoveno z uložené úlohy — fotografie a podrobnosti profilu se znovu nenačítají.",
+    "aria": "Úloha přidávání pro {{name}}"
+  },
+  "resumeStoppedAria": "Pokračovat v zastavené úloze přidávání",
+  "resumeFailedBand": "Úlohu se nepodařilo obnovit. Možná již nespravujete některou z jejích skupin nebo váš účet ještě není připraven. Zkuste to znovu, nebo zvolte „Přidat někoho jiného“ a úlohu opusťte."
 }

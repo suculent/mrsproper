@@ -73,5 +73,6 @@
   "candidateRowAria_one": "{{name}} — nalezen v {{count}} z vašich skupin",
   "candidateRowAria_few": "{{name}} — nalezen v {{count}} z vašich skupin",
   "candidateRowAria_other": "{{name}} — nalezen v {{count}} z vašich skupin",
-  "foundInMore": "+{{count}} dalších"
+  "foundInMore": "+{{count}} dalších",
+  "lookupLockedAddJob": "Vyhledání jiné osoby je uzamčeno, dokud je tato úloha přidávání otevřená. Až budete hotovi, zvolte „Přidat někoho jiného“."
 }

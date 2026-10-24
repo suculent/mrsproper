@@ -60,5 +60,6 @@
   "retryScanLabel": "zkusit znovu",
   "includeInRemovalAria": "{{title}} — zahrnout do odebrání",
   "retryRemovalAria": "Zkusit znovu odebrat {{title}}",
-  "retryScanAria": "Zkusit znovu ověřit členství pro {{title}}"
+  "retryScanAria": "Zkusit znovu ověřit členství pro {{title}}",
+  "modeSwitchLockedAddJobTooltip": "Pro přepnutí režimu nejprve opusťte tuto úlohu přidávání"
 }
