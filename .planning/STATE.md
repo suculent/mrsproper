@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: Add Mode
 status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-10-24T20:28:59.109Z"
+last_updated: "2026-10-24T20:31:03.757Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 41
-  completed_plans: 39
+  completed_plans: 40
   percent: 44
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-20)
 ## Current Position
 
 Phase: 17 (Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-10-24
 
@@ -222,7 +222,7 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-24T20:28:59.104Z
+Last session: 2026-10-24T20:31:03.751Z
 Stopped at: Phase 17 context gathered
 Resume file: None
 
