@@ -104,6 +104,11 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
     const ok = await addActions.resumeJobFromDisk()
     setResumeState(ok ? 'idle' : 'failed')
   }
+  // WR-06: a "Couldn't resume" result belongs to one job state only — clear it on every add
+  // step or job-target change so it never carries over to a later job or transition.
+  useEffect(() => {
+    setResumeState('idle')
+  }, [add.step, add.targetId])
 
   // D-12: mode derivation
   // D-04: 'job' = non-idle add job with no confirmed target (relaunch resume).
