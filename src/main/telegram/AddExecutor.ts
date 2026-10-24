@@ -533,25 +533,11 @@ export class AddExecutor {
       }
 
       const links = linkedOutcomes.map((o) => o.link).join('\n')
-      const text = this._getDmText({ name: targetName, links })
-      const inputPeerUser = new Api.InputPeerUser({
-        userId: bigInt(resolved.id.toString()),
-        accessHash: bigInt(resolved.accessHash.toString()),
-      })
-      const randomId = bigInt(randomBytes(8).toString('hex'), 16)
-
       try {
-        await this._governor.run(() =>
-          this._client.invoke(new Api.messages.SendMessage({ peer: inputPeerUser, message: text, randomId }))
-        )
-        dmStatus = 'sent'
+        dmStatus = await this._sendDm(resolved, links, targetName)
       } catch (err) {
         const msg = (err as { errorMessage?: string })?.errorMessage ?? ''
-        if (
-          ['USER_PRIVACY_RESTRICTED', 'USER_IS_BLOCKED', 'YOU_BLOCKED_USER', 'PRIVACY_PREMIUM_REQUIRED'].includes(msg)
-        ) {
-          dmStatus = 'refused'
-        } else if (classifyRpcError(err).disposition === 'hard-stop') {
+        if (classifyRpcError(err).disposition === 'hard-stop') {
           // PEER_FLOOD during the DM send (T-14-11): the per-group work already
           // completed successfully — hard-stop the run exactly like the main dispatch
           // loop rather than letting it fall through to the generic branch below.
@@ -732,6 +718,34 @@ export class AddExecutor {
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Shared DM send (end-of-run and retry tail). Returns 'sent', or 'refused' for the four
+   * privacy/block refusal errors; rethrows anything else so the caller applies hard-stop
+   * or generic handling.
+   */
+  private async _sendDm(resolved: ResolvedAddUser, links: string, targetName: string): Promise<'sent' | 'refused'> {
+    const text = this._getDmText({ name: targetName, links })
+    const inputPeerUser = new Api.InputPeerUser({
+      userId: bigInt(resolved.id.toString()),
+      accessHash: bigInt(resolved.accessHash.toString()),
+    })
+    const randomId = bigInt(randomBytes(8).toString('hex'), 16)
+
+    try {
+      await this._governor.run(() =>
+        this._client.invoke(new Api.messages.SendMessage({ peer: inputPeerUser, message: text, randomId }))
+      )
+      return 'sent'
+    } catch (err) {
+      const msg = (err as { errorMessage?: string })?.errorMessage ?? ''
+      if (['USER_PRIVACY_RESTRICTED', 'USER_IS_BLOCKED', 'YOU_BLOCKED_USER', 'PRIVACY_PREMIUM_REQUIRED'].includes(msg)) {
+        return 'refused'
+      }
+      throw err
+    }
+  }
+
 
   /**
    * Add the target to a single dialog using the correct Telegram mechanic.
