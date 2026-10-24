@@ -30,6 +30,12 @@ function makeDialog(overrides: Partial<AdminDialogDTO>): AdminDialogDTO {
 // Simple translate mock — returns the key unchanged
 const t = (key: string) => key
 
+// WR-04: computeAddGroups only keeps dialogs with a RESOLVED actionable status, so tests that
+// expect a row to survive the filter must supply an explicit 'not-member' scan result.
+function notMember(...ids: string[]): Map<string, MembershipStatus> {
+  return new Map(ids.map((id) => [id, 'not-member' as MembershipStatus]))
+}
+
 // ---------------------------------------------------------------------------
 // computeAddGroups
 // ---------------------------------------------------------------------------
@@ -39,7 +45,7 @@ describe('computeAddGroups', () => {
     const d1 = makeDialog({ id: '1' })
     const d2 = makeDialog({ id: '2' })
     const d3 = makeDialog({ id: '3' })
-    const result = computeAddGroups([d1, d2, d3], new Set(['1', '3']), new Map(), t)
+    const result = computeAddGroups([d1, d2, d3], new Set(['1', '3']), notMember('1', '2', '3'), t)
     expect(result.map((r) => r.dialog.id)).toEqual(['1', '3'])
   })
 
@@ -51,19 +57,19 @@ describe('computeAddGroups', () => {
 
   it('basic-group → mechanicNote is add:mechanicNote.add', () => {
     const d1 = makeDialog({ id: '1', type: 'basic-group' })
-    const result = computeAddGroups([d1], new Set(['1']), new Map(), t)
+    const result = computeAddGroups([d1], new Set(['1']), notMember('1'), t)
     expect(result[0].mechanicNote).toBe('add:mechanicNote.add')
   })
 
   it('supergroup → mechanicNote is add:mechanicNote.invite', () => {
     const d1 = makeDialog({ id: '1', type: 'supergroup' })
-    const result = computeAddGroups([d1], new Set(['1']), new Map(), t)
+    const result = computeAddGroups([d1], new Set(['1']), notMember('1'), t)
     expect(result[0].mechanicNote).toBe('add:mechanicNote.invite')
   })
 
   it('broadcast-channel → mechanicNote is add:mechanicNote.invite (same as supergroup)', () => {
     const d1 = makeDialog({ id: '1', type: 'broadcast-channel' })
-    const result = computeAddGroups([d1], new Set(['1']), new Map(), t)
+    const result = computeAddGroups([d1], new Set(['1']), notMember('1'), t)
     expect(result[0].mechanicNote).toBe('add:mechanicNote.invite')
   })
 
@@ -83,23 +89,36 @@ describe('computeAddGroups', () => {
     expect(result[0].banNoteAppended).toBe(false)
   })
 
-  it('absent membership entry → treated as not-banned', () => {
+  it('WR-04: absent membership entry (unscanned) → excluded, not treated as not-member', () => {
     const d1 = makeDialog({ id: '1', type: 'basic-group' })
+    const d2 = makeDialog({ id: '2', type: 'basic-group' })
+    const result = computeAddGroups([d1, d2], new Set(['1', '2']), notMember('2'), t)
+    expect(result.map((r) => r.dialog.id)).toEqual(['2'])
+  })
+
+  it('WR-04: pending/failed/member statuses → excluded in Add mode (D-05)', () => {
+    const dialogs = ['1', '2', '3'].map((id) => makeDialog({ id }))
+    const status = new Map<string, MembershipStatus>([['1', 'pending'], ['2', 'failed'], ['3', 'member']])
+    const result = computeAddGroups(dialogs, new Set(['1', '2', '3']), status, t)
+    expect(result).toHaveLength(0)
+  })
+
+  it('WR-04: empty membership map (scan not started) → nothing actionable', () => {
+    const d1 = makeDialog({ id: '1' })
     const result = computeAddGroups([d1], new Set(['1']), new Map(), t)
-    expect(result[0].mechanicNote).toBe('add:mechanicNote.add')
-    expect(result[0].banNoteAppended).toBe(false)
+    expect(result).toHaveLength(0)
   })
 
   it('defaults t to identity when not provided', () => {
     const d1 = makeDialog({ id: '1', type: 'basic-group' })
-    const result = computeAddGroups([d1], new Set(['1']), new Map())
+    const result = computeAddGroups([d1], new Set(['1']), notMember('1'))
     expect(result[0].mechanicNote).toBe('add:mechanicNote.add')
   })
 
   it('WR-03: excludes a checked dialog whose canAdd is false, even though it is in checkedIds', () => {
     const d1 = makeDialog({ id: '1', canAdd: false })
     const d2 = makeDialog({ id: '2', canAdd: true })
-    const result = computeAddGroups([d1, d2], new Set(['1', '2']), new Map(), t)
+    const result = computeAddGroups([d1, d2], new Set(['1', '2']), notMember('1', '2'), t)
     expect(result.map((r) => r.dialog.id)).toEqual(['2'])
   })
 

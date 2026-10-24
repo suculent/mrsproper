@@ -38,7 +38,10 @@ export function computeAddGroups(
     // mirroring computePlannedActions' safety net on the Remove path — a dialog the target
     // cannot actually be added to must never reach startAdd(dialogIds), even if checkedDialogIds
     // is stale/incorrect.
-    .filter((d) => checkedIds.has(d.id) && isActionableForMode(d, membershipByDialogId.get(d.id) ?? 'not-member', 'add'))
+    // WR-04 (D-05): an absent (unscanned/pending) membership status is passed as `null`, which
+    // isActionableForMode deliberately treats as NOT actionable in Add mode — unknown membership
+    // must never be silently upgraded to 'not-member' and slip past this safety net.
+    .filter((d) => checkedIds.has(d.id) && isActionableForMode(d, membershipByDialogId.get(d.id) ?? null, 'add'))
     .map((d) => {
       const isBasic = d.type === 'basic-group'
       const isBanned = membershipByDialogId.get(d.id) === 'banned'
