@@ -84,9 +84,15 @@ const IDLE_ADD_STATE: AddState = {
 }
 
 /** Create a mock AddExecutorLike with controllable state and call tracking. */
-function makeMockExecutor(initialState: AddState = IDLE_ADD_STATE) {
+function makeMockExecutor(
+  initialState: AddState = IDLE_ADD_STATE,
+  decision?: 'resume' | 'fresh' | 'reject'
+) {
   const state = { current: initialState }
   return {
+    checkResumeIdentity: vi.fn((existing: AddJobFile | null, _ids: string[]) =>
+      decision ?? (existing !== null && existing.status !== 'complete' ? 'resume' : 'fresh')
+    ),
     execute: vi.fn(async () => {}),
     abortExecution: vi.fn(() => {}),
     retryGroup: vi.fn(async () => {}),
@@ -322,6 +328,43 @@ describe('addChannels — ADD_START security gates', () => {
     const callArg = (executor.execute.mock.calls as unknown as Array<[Record<string, unknown>]>)[0][0]
     expect(callArg).toHaveProperty('dialogIds', ['111', '222'])
     expect(callArg.resume).toBe(true)
+    expect(executor.checkResumeIdentity).toHaveBeenCalledWith(expect.objectContaining({ status: 'stopped' }), [
+      '111',
+      '222',
+    ])
+  })
+
+  const startWith = async (decision: 'resume' | 'fresh' | 'reject') => {
+    const executor = makeMockExecutor(IDLE_ADD_STATE, decision)
+    const auditStore = makeMockAuditStore(makeJobFile({ status: 'stopped' }))
+    registerAddChannels(
+      makeMockWin() as never,
+      executor as never,
+      makeMockEnumerator(['111', '222']) as never,
+      auditStore as never,
+      makeMockContactService() as never,
+      makeMockAddLogStore() as never,
+      makeGetAuthState('authorized')
+    )
+    const result = await capturedHandlers['add:start']({}, { dialogIds: ['111', '222'] })
+    return { executor, auditStore, result }
+  }
+
+  it('5c. ADD_START — checkResumeIdentity reject: execute not called, job untouched, returns state', async () => {
+    const { executor, auditStore, result } = await startWith('reject')
+    expect(executor.execute).not.toHaveBeenCalled()
+    expect(auditStore.clearJob).not.toHaveBeenCalled()
+    expect(result).toBe(executor.getState())
+  })
+
+  it('5d. ADD_START — checkResumeIdentity resume: execute called with resume:true', async () => {
+    const { executor } = await startWith('resume')
+    expect(executor.execute).toHaveBeenCalledWith({ dialogIds: ['111', '222'], resume: true })
+  })
+
+  it('5e. ADD_START — checkResumeIdentity fresh with a leftover job: execute called with resume:false', async () => {
+    const { executor } = await startWith('fresh')
+    expect(executor.execute).toHaveBeenCalledWith({ dialogIds: ['111', '222'], resume: false })
   })
 })
 

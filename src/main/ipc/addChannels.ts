@@ -61,6 +61,11 @@ export interface AddExecutorLike {
   /** Called fire-and-forget from the ADD_START handler. `resume` is computed by THIS module
    *  from auditStore.readJob() — never accepted from the renderer payload (T-14-16). */
   execute(args: { dialogIds: string[]; resume?: boolean }): Promise<void>
+  /** D-07: identity-aware resume decision. 'reject' = never act (job untouched, no RPC). */
+  checkResumeIdentity(
+    existing: AddJobFile | null,
+    dialogIds: string[]
+  ): 'resume' | 'fresh' | 'reject'
 }
 
 // ── ContactServiceLike interface ─────────────────────────────────────────────
@@ -171,7 +176,14 @@ export function registerAddChannels(
     // AddExecutor independently re-validates targetId/dialogId-set equality (D-20) before
     // actually continuing — this handler only signals intent via a boolean.
     const existingJob = auditStore.readJob()
-    const resume = existingJob !== null && existingJob.status !== 'complete'
+    // D-07: identity is checked in main — a Resume of job A while a different target B is
+    // confirmed is rejected here (job untouched, no execute); a reviewed new target starts fresh.
+    const decision = executor.checkResumeIdentity(existingJob, parsed.dialogIds)
+    if (decision === 'reject') {
+      return executor.getState()
+    }
+    const resume =
+      decision === 'resume' && existingJob !== null && existingJob.status !== 'complete'
 
     // Fire-and-forget — identity sourced from resolver.getResolvedUser() inside execute().
     // Only { dialogIds, resume } are forwarded — NEVER identity from renderer payload (T-05-04-B).
