@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: milestone_complete
-stopped_at: Milestone complete (Phase 16 was final phase)
-last_updated: 2026-10-04T20:46:33.061Z
+status: completed
+stopped_at: Phase 17 context gathered
+last_updated: "2026-10-24T19:58:45.210Z"
 last_activity: 2026-10-04
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 4
   total_plans: 33
   completed_plans: 33
-  percent: 50
+  percent: 44
 ---
 
 # Project State
@@ -222,9 +222,9 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 
 ## Session Continuity
 
-Last session: 2026-10-04T20:40:57.239Z
-Stopped at: Phase 16 context gathered
-Resume file: None
+Last session: 2026-10-24T19:58:45.205Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-close-gap-add-08-add-12-relaunch-resume-ui-visibility-and-ta/17-CONTEXT.md
 
 ## Operator Next Steps
 
