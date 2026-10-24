@@ -48,6 +48,7 @@ import {
   TARGET_ADD_CONTACT,
 } from '@shared/channels'
 import type { AddState, AddJobFile, AddJobFileSafe } from '@shared/addTypes'
+import { isJobFinished } from '@shared/addResume'
 import type { AddAuditStore } from '../storage/addAuditStore'
 
 // ── AddExecutorLike interface ────────────────────────────────────────────────
@@ -217,6 +218,12 @@ export function registerAddChannels(
     }
     const job = auditStore.readJob()
     if (job === null || executor.checkExplicitResume(job) === 'reject') {
+      return executor.getState()
+    }
+    // WR-03 (iter 2): a job with nothing left to process is never resumed — a continuation
+    // would add nothing and could only re-run the end-of-run DM tail (mirrors the renderer's
+    // resumeJobFromDisk filter, which is UX only).
+    if (isJobFinished(job)) {
       return executor.getState()
     }
     // Enumeration gate (Phase 16 D-04): every job group must still be in the loaded

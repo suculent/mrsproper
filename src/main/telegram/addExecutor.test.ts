@@ -2107,6 +2107,7 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
   it('WR-01 (iter 2): a retry DM delivered while another retry hard-stops is persisted as sent; a later Resume does not re-send it', async () => {
     const ctx = await setupFailedThenPrivacy('31040')
     const { executor, mockClient, auditStore } = ctx
+    auditStore.setStatus('stopped')
     const origInvoke = mockClient.invoke.bind(mockClient)
     let bumped = false
     mockClient.invoke = (async (req: unknown) => {
@@ -2151,6 +2152,8 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     await p
     expect(executor.getState().step).toBe('complete')
     addLogStore.appendBlockCalls.length = 0
+    // A non-terminal job on disk (WR-03 iter 2: a 'complete' job is never demoted).
+    auditStore.setStatus('stopped')
 
     // Y (31021) ends privacy-blocked and would DM; X (31020) hits PEER_FLOOD meanwhile.
     mockConfig.inviteToChannelErrorDialogIds = { '31020': 'PEER_FLOOD', '31021': 'USER_PRIVACY_RESTRICTED' }
@@ -2277,6 +2280,40 @@ describe('AddExecutor — retry privacy-blocked log and DM (Phase 17, D-12)', ()
     expect(executor.getState().step).toBe('complete')
     expect(mockClient.sendMessageCalls).toHaveLength(0)
     expect(executor.getState().dmStatus).toBe('sent')
+  })
+
+  it('WR-03 (iter 2): a retry PEER_FLOOD on a completed job never rewrites the job file to hard-stopped', async () => {
+    const { executor, auditStore } = await setupFailedThenPrivacy('31060', { sendMessageError: 'PEER_FLOOD' })
+    expect(auditStore._job!.status).toBe('complete')
+    await executor.retryGroup('31060')
+    expect(executor.getState().step).toBe('hard-stopped')
+    expect(auditStore._job!.status).toBe('complete')
+    expect(auditStore.setStatusCalls.some((c) => c.status === 'hard-stopped')).toBe(false)
+  })
+
+  it('WR-03 (iter 2): a continuation whose lineage already sent its end-of-run DM sends no second DM', async () => {
+    const ts = new Date().toISOString()
+    const dialogIds = ['31061', '31062']
+    const auditStore = makeAddAuditStore(dialogIds, {
+      targetId: '99',
+      status: 'hard-stopped',
+      dmStatus: 'sent',
+      outcomes: [
+        { dialogId: '31061', status: 'privacy-blocked', reason: 'privacy', link: 'https://t.me/+oldLink', timestamp: ts },
+      ] as AddGroupOutcome[],
+    })
+    const { executor, mockClient } = makeExecutor({
+      dialogs: dialogIds.map((id) => makeDialog(id, 'supergroup')),
+      auditStore,
+      resolverNull: true,
+    })
+    const p = executor.execute({ dialogIds, resume: true })
+    await vi.runAllTimersAsync()
+    await p
+    expect(executor.getState().step).toBe('complete')
+    expect(mockClient.sendMessageCalls).toHaveLength(0)
+    expect(executor.getState().dmStatus).toBe('sent')
+    expect(auditStore._job!.dmStatus).toBe('sent')
   })
 
   it("job dmStatus 'not-needed' becomes the retry DM result; other values are left alone", async () => {

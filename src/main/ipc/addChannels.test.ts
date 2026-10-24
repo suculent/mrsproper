@@ -428,6 +428,27 @@ describe('addChannels — ADD_RESUME', () => {
     ).not.toHaveBeenCalled()
     expect((await resumeWith({ enumerated: ['111'] })).executor.execute).not.toHaveBeenCalled()
   })
+
+  it('R5. WR-03 (iter 2): a non-complete job with every group already processed is not resumed', async () => {
+    const ts = new Date().toISOString()
+    const finished = makeJobFile({
+      status: 'hard-stopped',
+      outcomes: [
+        { dialogId: '111', status: 'done', timestamp: ts },
+        { dialogId: '222', status: 'privacy-blocked', reason: 'privacy', link: 'https://t.me/+x', timestamp: ts },
+      ] as AddJobFile['outcomes'],
+    })
+    expect((await resumeWith({ job: finished })).executor.execute).not.toHaveBeenCalled()
+    // A 'skipped' row is still resumable.
+    const withSkipped = makeJobFile({
+      status: 'hard-stopped',
+      outcomes: [
+        { dialogId: '111', status: 'done', timestamp: ts },
+        { dialogId: '222', status: 'skipped', timestamp: ts },
+      ] as AddJobFile['outcomes'],
+    })
+    expect((await resumeWith({ job: withSkipped })).executor.execute).toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------

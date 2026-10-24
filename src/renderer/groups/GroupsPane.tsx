@@ -574,6 +574,11 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
 
       // b-add. PEER_FLOOD banner (hard-stopped)
       if (add.step === 'hard-stopped') {
+        // WR-03 (iter 2): mirror canResume — no Resume for a job with nothing left to process
+        // (main's ADD_RESUME rejects it too).
+        const canResumeHardStopped =
+          (add.dialogIds?.length ?? 0) > 0 &&
+          !isJobFinished({ dialogIds: add.dialogIds ?? [], outcomes: add.outcomes })
         return (
           <div className="px-4 py-2 shrink-0">
             <Alert
@@ -586,22 +591,24 @@ export function GroupsPane(props: GroupsPaneProps): React.JSX.Element {
               <AlertDescription className="text-body">
                 {tAdd('peerFloodBanner')}
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={resumeState === 'inflight'}
-                    aria-describedby={resumeState === 'failed' ? 'add-resume-failed-peerflood' : undefined}
-                    onClick={() => void handleResumeAdd()}
-                  >
-                    {resumeState === 'inflight' ? (
-                      <>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
-                        {tAdd('confirmDispatching')}
-                      </>
-                    ) : (
-                      tAdd('peerFloodResumeLabel')
-                    )}
-                  </Button>
+                  {canResumeHardStopped && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={resumeState === 'inflight'}
+                      aria-describedby={resumeState === 'failed' ? 'add-resume-failed-peerflood' : undefined}
+                      onClick={() => void handleResumeAdd()}
+                    >
+                      {resumeState === 'inflight' ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />
+                          {tAdd('confirmDispatching')}
+                        </>
+                      ) : (
+                        tAdd('peerFloodResumeLabel')
+                      )}
+                    </Button>
+                  )}
                   {/* CR-02 (D-09): the only exit from a hard-stopped job — in the relaunch job
                       view nothing else (toolbar, target card, lookup) can leave it. */}
                   <Button

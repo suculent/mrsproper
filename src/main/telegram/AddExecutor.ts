@@ -527,8 +527,15 @@ export class AddExecutor {
     )
     const anyRetryDmSent = outcomes.some((o) => o.retryDmStatus === 'sent')
     let dmStatus: AddDmStatus = 'pending'
+    // WR-03 (iter 2): the end-of-run DM is attempted once per lineage. If this continuation's
+    // job already sent (or was refused) its DM, never send another — old links carry no
+    // per-link marker, so re-sending would duplicate them.
+    const lineageDm = isContinuation ? existing!.dmStatus : undefined
+    const lineageDmAttempted = lineageDm === 'sent' || lineageDm === 'refused'
 
-    if (linkedOutcomes.length === 0) {
+    if (lineageDmAttempted) {
+      dmStatus = lineageDm
+    } else if (linkedOutcomes.length === 0) {
       // D-13: no DM when the run has no undelivered links. If every link already went out via
       // a retry DM, the target did get a DM — report 'sent', not 'not-needed'.
       dmStatus = anyRetryDmSent ? 'sent' : 'not-needed'
@@ -838,7 +845,12 @@ export class AddExecutor {
     console.error('[AddExecutor] retryGroup hard-stopped (PEER_FLOOD-classified error) for dialog:', dialogId)
     if (gen !== this._generation) return
     this._generation++
-    this._auditStore.setStatus('hard-stopped')
+    // WR-03 (iter 2): never demote a finished job on disk. A 'complete' job already ran its
+    // end-of-run DM; rewriting it to 'hard-stopped' would make a later ADD_START for the same
+    // person a no-op continuation that re-sends old links. The in-memory view still shows the
+    // PEER_FLOOD banner so the admin sees the account flag.
+    const onDisk = this._auditStore.readJob()
+    if (onDisk !== null && onDisk.status !== 'complete') this._auditStore.setStatus('hard-stopped')
     this._emit({ ...this._currentState, step: 'hard-stopped', floodWaitRemaining: null })
   }
 
