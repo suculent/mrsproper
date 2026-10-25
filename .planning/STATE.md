@@ -129,6 +129,7 @@ were confirmed already-shipped and closed to `.planning/todos/done/` in Phase 13
 | 261003-jni | Move GramJS client to TL layer 229 (schema swap via postinstall regeneration) | 2026-10-03 | c90a39a | [261003-jni-move-gramjs-client-to-tl-layer-229-schem](./quick/261003-jni-move-gramjs-client-to-tl-layer-229-schem/) |
 | 261004-p6t | Close security threat T-15-03: gate ADD_EXPORT_LOG handler on authorized session, with failing test first | 2026-10-04 | be42017 | [261004-p6t-close-security-threat-t-15-03-gate-add-e](./quick/261004-p6t-close-security-threat-t-15-03-gate-add-e/) |
 | 261025-dnf | Fix v1.7 audit warnings W1 (language channels before window), W2 (forced mode syncs pre-check), W4 (logout wipes add job) | 2026-10-25 | a8bcb84 | [261025-dnf-fix-v1-7-audit-warnings-w1-w2-w4](./quick/261025-dnf-fix-v1-7-audit-warnings-w1-w2-w4/) |
+| fast | Fix Snyk findings: zod ^4.6.6, overrides fast-uri ^3.1.9 and ip-address 10.7.4 | 2026-10-25 | c10893d | — |
 
 ## Deferred Items
 
