@@ -1,4 +1,5 @@
 ---
+status: complete
 phase: quick-260620-f8a
 plan: "01"
 subsystem: scripts/spike

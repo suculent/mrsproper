@@ -1,5 +1,36 @@
 # Milestones
 
+## v1.7 Add Mode (Shipped: 2026-10-25)
+
+**Phases completed:** 5 phases (13–17), 41 plans
+
+**Delivered:** A fourth action, Add, that puts the resolved, verified target into every selected
+group they are not yet in. It invites into supergroups/channels and adds to basic groups, unbans
+first when needed, and falls back to unique 5-day invite links sent in one templated DM when privacy
+blocks a direct add. It runs on the same throttled, checkpointed, resumable pipeline as Remove/Tag,
+with an inverted checklist, add-to-contacts, an editable en/cs DM template, an add log export,
+and a target-identity lock across relaunch-resume.
+
+**Key accomplishments:**
+
+- **Phase 13**: Main-computed `canAdd`/`addGreyReason` on every `AdminDialogDTO` (broadcast channels included when the admin holds the invite right). MembershipScanner now reports a distinct `banned` status. TagExecutor collapsed to a single-client loop at the default layer, and the dead layer-224 `tagClient`/`tagApi` modules were deleted (TAG-07).
+- **Phase 14**: `AddExecutor`, built TDD with 54 tests. Covers `InviteToChannel`/`AddChatUser` dispatch, unban-before-invite, deleted/bot pre-flight, privacy-block expiring links plus a single end-of-run DM, PEER_FLOOD hard-stop and D-20 continuation resume. It persists to Zod-validated `add-job.json` and an append-only `add-log.txt`, with a non-blocking contact service and the gated `ADD_*` IPC surface.
+- **Phase 15**: Renderer Add mode. Remove/Tag/Add `ModeSwitch`, an inverted checklist via `isActionableForMode`, an add-to-contacts checkbox, `DmTemplateEditor` with a byte-identical shared `renderTemplate` preview, Add review/run/report bands with per-group retry and Copy-link, `AddResumeJobDialog`, add-log export, and a new `add` i18n namespace (en + cs).
+- **Phase 16** (audit gap closure): the relaunch resume rebuilds the target from the job file and continues the same jobId with the full dialog set. A main-computed `canUnban` drives the Add predicate. Add mode got a cause-aware empty state, and the DM language is read at render time.
+- **Phase 17** (re-audit gap closure): the renderer job view shows a relaunch-resumed run (progress, Stop, PEER_FLOOD Resume, summary) via `JobTargetCard`. The target identity is locked while an add job exists (lookup lock, `checkResumeIdentity`, explicit `ADD_RESUME`). `bannedDialogIds` is persisted so unban-first survives a relaunch. Retry links now get a DM and a log block, a stopped run can be resumed in the same session, the default DM follows the detected OS language, and an IPC-level relaunch integration suite was added.
+- **Quick 261025-dnf**: closed audit warnings W1 (language IPC registered before the window), W2 (forced modes sync the groupsStore pre-check) and W4 (logout wipes the add job, executor and resolver state).
+
+**Known deferred items at close:** audit status `tech_debt` (see [milestones/v1.7-MILESTONE-AUDIT.md](milestones/v1.7-MILESTONE-AUDIT.md)):
+- W3: stage stays `report` after an in-session Resume (cosmetic step indicator).
+- W5: main does not block a concurrent Remove/Tag run alongside Add (the governor still serialises calls).
+- WR-03: a hard-stop during the end-of-run DM leaves the DM unsent with no add-log block.
+- Replacing or discarding a stopped job drops its earlier-segment links.
+- UI-REVIEW 18/24 polish: disabled-button tooltips, stopped-band buttons clickable during an in-flight Resume, and no placeholder on queued rows.
+- Phase 16/17 VALIDATION drafts (Nyquist partial). 5 server-behaviour checks need a live account. Dialogs added after the scan are excluded from Review.
+- Remove/Tag job files still survive logout. The `config.test.ts` failure is env-dependent.
+
+---
+
 ## v1.6 Member Tag Action (Shipped: 2026-06-20)
 
 **Phases completed:** 4 phases (9–12), 13 plans

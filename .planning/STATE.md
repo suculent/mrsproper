@@ -2,33 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: milestone_complete
-stopped_at: Milestone complete (Phase 17 was final phase)
-last_updated: 2026-10-25T08:31:49.251Z
-last_activity: 2026-10-24
+status: Awaiting next milestone
+stopped_at: Milestone v1.7 complete
+last_updated: "2026-10-25T08:55:19.478Z"
+last_activity: 2026-10-25 — Milestone v1.7 completed and archived
 progress:
-  total_phases: 9
+  total_phases: 5
   completed_phases: 5
   total_plans: 41
   completed_plans: 41
-  percent: 56
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-20)
+See: .planning/PROJECT.md (updated 2026-10-25)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-10-25 - Completed quick task 261025-dnf: fix v1.7 audit warnings W1/W2/W4
+Phase: Milestone v1.7 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-25 — Milestone v1.7 completed and archived
 
 ## Performance Metrics
 
@@ -105,77 +105,9 @@ Last activity: 2026-10-25 - Completed quick task 261025-dnf: fix v1.7 audit warn
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Phase 0 spike]: `messages.editChatParticipantRank#a00f32b0` is the confirmed member-tag setter (not `channels.editAdmin + rank`, which is inert on tags at any layer)
-- [Phase 0 spike]: Layer 224 required for the whole connection; per-call `InvokeWithLayer` rejected by server (`CONNECTION_LAYER_INVALID`)
-- [Phase 0 spike]: patch-connect-restore technique proven — patch `AllTLObjects.LAYER = 224` before `tagClient.connect()`, restore to 198 immediately after; LAYER is read only at connect-time so the 198 main client is unaffected
-- [Phase 0 spike]: Already-admin probe: `editChatParticipantRank` does NOT change admin rights (no `admin_rights` param), but DOES overwrite the admin's `rank` (custom title = same field); decision: skip & flag (`TAG_TARGET_IS_ADMIN`)
-- [Phase 0 spike]: Basic groups: call accepted by server but round-trip unconfirmed cleanly; v1 decision: skip (`TAG_UNSUPPORTED_BASIC_GROUP`)
-- [Design spec §4.3]: Main `client` must not reconnect during the brief layer-patch window; guard with a mutex or by only opening `tagClient` when no removal/enumeration is in flight
-- [Design spec §4]: `TagExecutor` is a parallel class to `RemovalExecutor` (not a refactor) — avoids destabilizing shipped v1.0 removal path
-- [Phase ?]: 09-01 completed
-- [Phase ?]: 09-01 tagApi.ts
-- [Phase ?]: 09-01 tagApi.ts
-- [Phase ?]: require('telegram/tl/AllTLObjects') called inside connect() method body so vi.mock intercepts it in tests
-- [Phase ?]: main-client reconnect-race mitigation deferred to Phase 11 per spec §4.3
-- [Phase ?]: Avoids TS6133 unused-import error
-- [Phase ?]: Phase 11 replaces with real TagExecutor
-- [Phase ?]: Fixed vi.fn<> type-arg syntax in tagExecutor.test.ts to current Vitest single-callback-type API; no behavioral change
-- [11-tagexecutor/03]: Cast client.session.save() as unknown as string — GramJS abstract base types save() as void but StringSession.save() returns string; double-cast avoids TS error without runtime impact
-- [11-tagexecutor/03]: Use TagExecutorOptions['mainClient'] index access for mainClient cast — Parameters<typeof TagExecutor> fails on class types; accessing the exported interface property works correctly
-- [Phase ?]: Phase 12 Plan 01
-- [Phase ?]: Phase 12 Plan 01
-- [Phase ?]: Phase 12 Plan 03 decisions
-- [v1.7 roadmap]: GramJS now runs at TL layer 229 everywhere (quick 261003-jni) — Phase 13's TAG-07 cleanup removes the layer-224 isolation hack from TagExecutor since it is no longer needed for tag writes
-- [v1.7 roadmap]: No new TL layer/connection work is needed for Add Mode — `channels.InviteToChannel` / `messages.AddChatUser` are already covered at layer 229, so the milestone compresses to 3 phases (Foundation → AddExecutor → Renderer) instead of the 4-phase Tag pattern (which needed a dedicated API/connection phase)
-- [v1.7 roadmap]: Contact-adding (ADD-05) and the add-log export (ADD-14) are mapped to the Renderer phase (15) since their observable success criteria require the UI (checkbox, save dialog) even though supporting main-process calls are implemented alongside AddExecutor in Phase 14
-- [Phase 13]: canAdd = creator || adminRights.inviteUsers || defaultBannedRights.inviteUsers !== true (open-permissions default)
-- [Phase 13]: Broadcast-channel 200-member channel-full override applies after the base canAdd rule, broadcast-channel branch only
-- [Phase 13]: AddGreyReason's already-member/banned-no-unban-right values are data-foundation only in 13-01; gating/sort logic ships in Phase 15
-- [Phase 13]: ChannelParticipantBanned.left===true (ban lifted / user left) maps to 'not-member'; left unset or false (still banned) maps to 'banned' (D-01, resolves Open Question 2 as a locked, tested contract)
-- [Phase 13]: Basic-group branch keeps returning only 'member'/'not-member' (never 'banned') since bans are not visible via messages.GetFullChat (D-03)
-- [Phase 13-03]: TagExecutorClient mirrors RemovalExecutorClient's minimal invoke(request) shape — no tag-specific client interface needed
-- [Phase 13-03]: D-11 test uses an RPC-shaped error with an unrecognized errorMessage (not a bare no-errorMessage Error) to actually exercise _classifyTagError's UNKNOWN fallthrough, since classifyRpcError maps no-errorMessage errors to NETWORK/retry
-- [Phase 14]: AddJobFile/AddState carry dmStatus — net-new field, no RemovalState/TagState precedent
-- [Phase 14]: ADD-09 wording aligned: privacy-blocked covers not-mutual-contact/privacy-restricted and the broadcast/supergroup direct-add cap per D-07/D-12; failed codes list includes a basic-group member-cap case instead
-- [Phase ?]: [14-02]: Extended mock resolveUsernameResult/resolvePhoneResult/getUsersResult with optional deleted/bot/contact fields (default false) for TargetResolver flag-passthrough tests
-- [Phase ?]: [14-02]: AddChatUser mock error config fires only on the first recorded call per chatId, enabling the D-03 fwd_limit 1000->100 retry sequence to be asserted in later AddExecutor tests
-- [Phase 14]: [14-03]: AddJobFileSchema requires dmStatus (non-optional) so a missing field is rejected as schema mismatch, distinguishing AddAuditStore from Tag/Removal job-file precedent
-- [Phase ?]: [14-04]: Follow-up add-log blocks marked with a literal CONTINUATION substring in the header line, grep-able per D-18, no separate field needed
-- [Phase 14]: [14-05] createContactService: addIfMissing() is the D-08 non-blocking contacts.AddContact wrapper (skip-if-contact, never-rethrows, single governor.run call); not wired into Plan 14-10's IPC/main index yet
-- [Phase 14]: [14-06] renderTemplate() uses two sequential single-brace regex replaces (no templating library); confirmed by test to leave i18next's {{ }} double-brace syntax untouched
-- [Phase 14]: [14-06] DEFAULT_TEMPLATE_CS drafted with formal vykani and a gender-neutral 'radi bychom' construction per D-15
-- [Phase 14]: [14-06] TEMPLATE_GET returns null (not a default template) on first launch, so Plan 14-11's wiring chooses the EN/CS default by current app language
-- [Phase 14]: [14-07]: addExecutor.test.ts defines AddExecutor's full constructor contract ({ client, governor, enumerator, scanner, resolver, auditStore, addLogStore, getDmText, onStateChange }) and all 54 D-01..D-20 test cases before any implementation exists, including the D-20 continuation-based resume contract as 5 independently-assertable scenarios
-- [Phase 14]: AddExecutor avoids literal bigInt.zero (uses bigInt('0') instead) to satisfy T-05-04-B grep acceptance criterion while preserving identical fallback behavior
-- [Phase 14-09]: Seeded continuation outcomes exclude 'skipped' entries (not a verbatim copy) so a resumed segment reprocesses dialogs an abort left unattempted, not just unfinished — Required for the two-segment end-of-run DM test to accumulate links from both segments
-- [Phase 14]: [14-10]: resume flag for ADD_START computed server-side from auditStore.readJob() (existingJob !== null && status !== 'complete'), never accepted from renderer payload
-- [Phase 14-11]: getDmText closure reads getCachedTemplate() first, falling back to DEFAULT_TEMPLATE_CS/EN by the language stored at launch (D-15)
-- [Phase 14-11]: Used Parameters<typeof createContactService>[0]['client'] instead of ConstructorParameters since createContactService is a factory function, not a class
-- [Phase 15-01]: DM_TEMPLATE_MAX_LENGTH (4000) is the single source of truth for the template length bound, consumed by templateChannels.ts's Zod schema and the renderer's validateDmTemplate (Plan 15-03)
-- [Phase ?]: [15-02]: Switched ADD_EXPORT_LOG's node:fs access from require() to await import() -- vi.mock('node:fs') only intercepts the ESM/dynamic-import graph in this Vitest setup, not a literal CommonJS require() call
-- [Phase ?]: [15-03]: isActionableForMode's Add branch deliberately treats a null/pending status as non-actionable (D-05 asymmetry), while Remove/Tag treat null as actionable
-- [Phase ?]: [15-03]: addValidation.ts imports TranslateFn from tagValidation.ts rather than duplicating the type
-- [Phase 15-04]: add i18n namespace created verbatim from UI-SPEC sections 2-9; groups.json gains modeSwitch keys; i18next.d.ts needs zero edits since CustomTypeOptions.resources is structurally typed
-- [Phase 15]: [15-05]: maybeAddToContacts sets contactAddAttempted synchronously before awaiting the bridge call, so a second concurrent call sees the flag already set — enforces the at-most-once-per-target guarantee (D-09)
-- [Phase 15]: [15-05]: targetStore.test.ts reuses the react-mock + vi.resetModules()-per-test pattern established in 15-03's groupsStore.test.ts for node-environment store tests
-- [Phase 15]: [15-06]: exportAddLog's typed MrsProperApi augmentation deferred to Plan 15-07's addClient.ts (Add-mode action, not generic clipboard)
-- [Phase ?]: [Phase 15]: [15-11]: TargetCard's checkbox block sits as a sibling before the footer div (not nested in the !isConfirmed conditional) so it renders in both resolved and confirmed Add-mode states per D-08
-- [Phase ?]: addActions.startAdd(dialogIds) takes a single argument with no order flip, unlike tagActions.startTag(tag, dialogIds) (T-15-07)
-- [Phase ?]: [15-07]: addStore.test.ts mocks react's useSyncExternalStore (groupsStore.test.ts idiom) instead of tagStore.test.ts's indirect-assertion style, to directly assert cachedSnapshot identity stability
-- [Phase 15]: [15-08]: addGreyReason renders as an unconditional sibling branch gated only by addGreyReason != null && greyReason == null -- no new isAddModeRow prop
-- [Phase 15]: [15-08]: Split the single-file GroupRow.tsx change into two atomic task commits by reverting to HEAD and re-applying each task's exact diff, since TypeScript noUnusedLocals requires Task 1 and Task 2's code to coexist to compile
-- [Phase 15]: [15-09]: isRunActive folds removal/tag/add running-or-stopping into unconditional ORs (no activeMode gate) since ModeSwitch's own disabled condition already prevents switching modes during an active run
-- [Phase 15]: [15-09]: GroupsPaneProps keeps the deprecated unused activeAction prop alongside the new optional activeMode/onModeChange (default 'remove') so AppShell's current call site type-checks unmodified until Plan 15-13
-- [Phase 15]: ReviewScreenProps keeps deprecated action/onActionChange alongside new optional mode/severity/onSeverityChange so AppShell's call site compiles unmodified until Plan 15-13
-- [Phase 15]: DmTemplateEditor owns its own Edit-toggle/isEditing state internally; ReviewScreen only owns the persisted/default currentTemplate value and the always-visible preview
-- [Phase 15]: AddResumeJobDialog clones TagResumeJobDialog exactly; SettingsMenu export entry clears its no-log message on every menu reopen instead of using a toast system
-- [Phase ?]: Split AppShell's conflated action state into mode (session-only) + severity (persisted) per D-02
-- [Phase ?]: Deleted the deprecated activeAction/action/onActionChange bridge props from GroupsPane/ReviewScreen once AppShell wired the real values
-- [Phase 15-14]: isGreyedVisual reuses isActionable for Add mode; addGreyReasonKey derives already-member in the renderer — Keeps GroupRow's grey-visual treatment mode-aware without duplicating isActionableForMode, and fixes the always-null already-member addGreyReason gap
-- [Phase 15-14]: groupsStore._activeMode set only inside recomputeCheckedForMode — Fixes the hardcoded 'remove' literal in the first-scan-complete pre-check rebuild with zero new call sites
+Decisions are logged in PROJECT.md Key Decisions table (v1.7 decisions added at milestone close).
+Per-plan decision history for v1.6/v1.7 lives in the archived phase SUMMARYs under
+`.planning/milestones/v1.6-phases/` and `.planning/milestones/v1.7-phases/`.
 
 ### Pending Todos
 
@@ -186,10 +118,9 @@ were confirmed already-shipped and closed to `.planning/todos/done/` in Phase 13
 
 ### Blockers/Concerns
 
-- (Resolved 2026-10-03 by quick 261003-jni) Layer-224 patch window no longer exists — whole package runs at layer 229. Follow-up: TagExecutor still carries the two-phase/restoreMainClientLayer logic and stale layer-224 comments; removal is now scoped as TAG-07 in Phase 13.
-- Phase 9: Tag max length and allowed charset not yet measured — deferred to Phase 9 via the proven probe path; results feed Phase 12 input validation
-- Phase 12: Exact `editChatParticipantRank` RPC error strings (e.g. `CHAT_ADMIN_REQUIRED` vs `RIGHT_FORBIDDEN`) need live verification in Phase 11 — `TagErrorCode` candidates in spec §4.2 are provisional
-- Phase 14: Exact RPC error strings for `channels.InviteToChannel` / `messages.AddChatUser` (no rights, not mutual contact, target in too many channels, previously kicked, deleted/bot, direct-add cap) need live verification during implementation — `AddErrorCode` candidates in REQUIREMENTS.md ADD-09 are provisional pending real-API confirmation
+- Live-account verification still owed: the 5 server-behaviour items in 14-VALIDATION (exact
+  `InviteToChannel`/`AddChatUser` RPC error strings, direct-add cap behaviour). `AddErrorCode`
+  mapping is test-backed but not live-confirmed. Carry into the next milestone.
 
 ### Quick Tasks Completed
 
@@ -222,14 +153,25 @@ Items acknowledged and deferred at v1.6 milestone close (2026-06-20):
 | todo | country-picker-rows-clickable (ui) | pending | v1.6 close (carried from v1.0) |
 | todo | default-country-czechia (ui) | pending | v1.6 close (carried from v1.0) |
 
+Items acknowledged and deferred at v1.7 milestone close (2026-10-25), audit status tech_debt (see milestones/v1.7-MILESTONE-AUDIT.md):
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| tech_debt | W3: stage stays 'report' after in-session Resume (cosmetic) | open | v1.7 close |
+| tech_debt | W5: no main-side block on concurrent Remove/Tag + Add runs | open | v1.7 close |
+| tech_debt | WR-03: hard-stop during end-of-run DM leaves DM unsent, no add-log block | open | v1.7 close |
+| tech_debt | Replacing/discarding a stopped job drops earlier-segment links | open | v1.7 close |
+| tech_debt | Remove/Tag job files survive logout (add job now wiped, 261025-dnf) | open | v1.7 close |
+| ui_review | 17-UI-REVIEW 18/24 polish (disabled tooltips, in-flight Resume buttons, queued placeholder) | open | v1.7 close |
+| validation | 16-VALIDATION.md / 17-VALIDATION.md drafts (nyquist partial) | open | v1.7 close |
+| uat_gap | 14-VALIDATION: 5 server-behaviour items need a live account | open | v1.7 close |
+
 ## Session Continuity
 
-Last session: 2026-10-24T20:33:12.001Z
-Stopped at: Phase 17 context gathered
+Last session: 2026-10-25
+Stopped at: Milestone v1.7 complete and archived
 Resume file: None
 
 ## Operator Next Steps
 
-- v1.7 milestone audit (2026-10-04) returned gaps_found — see .planning/v1.7-MILESTONE-AUDIT.md
-- Phase 16 added to close ADD-08 (resume path) and ADD-02 (Add-mode empty state) plus audit tech debt
-- Run `/gsd:discuss-phase 16` then `/gsd:plan-phase 16`; re-run `/gsd:audit-milestone` after Phase 16 before `/gsd:complete-milestone v1.7`
+- Start the next milestone with /gsd-new-milestone

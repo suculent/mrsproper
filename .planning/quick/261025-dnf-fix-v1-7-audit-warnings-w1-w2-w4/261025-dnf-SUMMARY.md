@@ -1,3 +1,7 @@
+---
+status: complete
+---
+
 # Quick 261025-dnf: Fix v1.7 audit warnings W1, W2, W4
 
 Language IPC registered before the window, forced modes sync groupsStore, and logout wipes the add job, executor and resolver.
