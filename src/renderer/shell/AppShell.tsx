@@ -23,6 +23,7 @@ import { useRemovalStore } from '../store/removalStore'
 import { useTagStore } from '../store/tagStore'
 import { useAddStore } from '../store/addStore'
 import { useGroupsStore } from '../store/groupsStore'
+import { forceMode } from './forceMode'
 import { useTargetStore } from '../store/targetStore'
 import { severityClient } from '../ipc/severityClient'
 
@@ -106,7 +107,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
 
   // D-02: a non-idle add job forces Add mode (ModeSwitch is locked meanwhile).
   useEffect(() => {
-    if (add.step !== 'idle' && mode !== 'add') setMode('add')
+    if (add.step !== 'idle' && mode !== 'add') forceMode('add', setMode)
   }, [add.step, mode])
 
   const addJobActive = add.step !== 'idle'
@@ -204,7 +205,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           open={tagResumeOpen}
           onOpenChange={() => {}}
           job={pendingTagJob}
-          onResume={() => { setMode('tag'); setStage('run') }}
+          onResume={() => { forceMode('tag', setMode); setStage('run') }}
         />
       )}
 
@@ -215,7 +216,7 @@ export default function AppShell({ identity }: AppShellProps): React.JSX.Element
           onOpenChange={() => {}}
           job={pendingAddJob}
           groupsLoaded={groupsState.step === 'loaded'}
-          onResume={() => { setMode('add'); setStage('run') }}
+          onResume={() => { forceMode('add', setMode); setStage('run') }}
         />
       )}
     </div>
