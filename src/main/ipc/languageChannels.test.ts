@@ -131,4 +131,10 @@ describe('languageChannels', () => {
     await setHandler({}, { language: 'en' })
     expect(getEffectiveLanguage()).toBe('en')
   })
+
+  it('LANGUAGE_SET_DETECTED works with no preloadLanguageCache() call (registered pre-window, W1)', async () => {
+    mocks.store.get.mockReturnValue(null)
+    await expect(detectedHandler({}, { language: 'cs' })).resolves.toBe('cs')
+    expect(mocks.store.set).not.toHaveBeenCalled()
+  })
 })

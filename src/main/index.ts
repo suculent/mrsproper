@@ -142,6 +142,10 @@ app.whenReady().then(async () => {
     console.error('[main] Failed to read stored theme preference:', err)
   }
 
+  // Audit W1 (ADD-16): renderer main.tsx invokes language:setDetected on load, which can
+  // race ahead of a late registration. Register before the window exists.
+  registerLanguageChannels()
+
   // Track the CURRENT window (review WR-03): on macOS the app keeps running after
   // the window closes, and 'activate' creates a new one. All push emitters below
   // close over this mutable binding so re-activated windows keep receiving
@@ -409,7 +413,6 @@ app.whenReady().then(async () => {
   registerSeverityChannels()
 
   // Phase 8: register language and theme preference IPC handlers (LOC-01)
-  registerLanguageChannels()
   registerThemeChannels()
 
   // ── On-launch job-file detection (Resume/Discard) ─────────────────────────
