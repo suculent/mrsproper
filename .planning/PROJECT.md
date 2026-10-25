@@ -59,6 +59,16 @@ disabled during any run. 661 tests green. Human UAT of the relaunch-resume flow 
 empty-state wording is pending (`16-HUMAN-UAT.md`). v1.7 Add Mode is feature-complete pending that UAT
 and the milestone audit re-run.
 
+**2026-10-25 Phase 17 complete (v1.7 re-audit gap closure):** a relaunch-resumed add job is now
+visible and controllable. The groups pane shows the Add band (progress, Stop, PEER_FLOOD banner,
+summary) with a read-only job card, only the job's groups, and a locked mode switch and target input.
+The job's identity is locked in main: target resolve, confirm and name search are refused while add is
+non-idle, retry uses only the job's target, and resume goes through an explicit main-owned `ADD_RESUME`
+channel. `ADD_START` with a different reviewed person starts fresh (D-07 narrow rule). Also folded in:
+the banned flag is persisted so unban-first survives a relaunch, an in-session "Resume adding" after
+Stop, a privacy-blocked retry now logs and DMs its link (no duplicate DMs), and the first-launch DM
+language now matches the OS-detected UI language. 755 tests green; human UAT 3/3 passed.
+
 ## Current Milestone: v1.7 Add Mode
 
 **Goal:** Let the admin add the resolved target to every selected group they are not yet in, with
@@ -189,4 +199,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-04 — Phase 16 (v1.7 audit gap closure) complete; all v1.7 phases executed, human UAT pending before milestone close.*
+*Last updated: 2026-10-25 — Phase 17 (v1.7 re-audit gap closure) complete, UAT 3/3 passed; milestone audit re-run next.*
