@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Add Mode
-status: verifying
-stopped_at: Phase 17 context gathered
-last_updated: "2026-10-24T20:33:12.007Z"
+status: milestone_complete
+stopped_at: Milestone complete (Phase 17 was final phase)
+last_updated: 2026-10-25T08:31:49.251Z
 last_activity: 2026-10-24
 progress:
   total_phases: 9
@@ -21,20 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-20)
 
 **Core value:** A group admin can confidently remove the right person from every relevant community in one safe, verified, rate-limit-respecting pass.
-**Current focus:** Phase 17 — Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 17 (Close gap: ADD-08/ADD-12 — relaunch-resume UI visibility and target-identity lock) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-10-24
+Phase: 17
+Plan: Not started
+Status: Milestone complete
+Last activity: 2026-10-25
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 83 (v1.0 cumulative)
+- Total plans completed: 91 (v1.0 cumulative)
 - Average duration: — min
 - Total execution time: — hours
 
@@ -50,6 +50,7 @@ Last activity: 2026-10-24
 | 14 | 11 | - | - |
 | 15 | TBD | - | - |
 | 16 | 5 | - | - |
+| 17 | 8 | - | - |
 
 **Recent Trend:**
 

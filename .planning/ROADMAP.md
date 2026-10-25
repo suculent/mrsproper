@@ -299,7 +299,7 @@ Plans:
 **Plans:** 8/8 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 17 to break down)
+- [x] TBD (run /gsd-plan-phase 17 to break down) (completed 2026-10-25)
 
 ## Progress
 
@@ -322,4 +322,4 @@ Plans:
 | 14. AddExecutor — Dispatch, Privacy Fallback & Audit | v1.7 | 11/11 | Complete    | 2026-10-03 |
 | 15. Renderer — Add Mode, Contacts, Template & Reporting | v1.7 | 14/14 | Complete   | 2026-10-04 |
 | 16. Close gap: ADD-08 resume path and ADD-02 empty state | v1.7 | 5/5 | Complete    | 2026-10-04 |
-| 17. Close gap: ADD-08/ADD-12 relaunch-resume UI and identity lock | v1.7 | 8/8 | Complete   | 2026-10-24 |
+| 17. Close gap: ADD-08/ADD-12 relaunch-resume UI and identity lock | v1.7 | 8/8 | Complete    | 2026-10-25 |
