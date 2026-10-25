@@ -24,6 +24,7 @@ import { registerThemeChannels, getStoredTheme } from './ipc/themeChannels'
 import { ParticipantSearcher } from './telegram/ParticipantSearcher'
 import { AddExecutor } from './telegram/AddExecutor'
 import { createAddAuditStore } from './storage/addAuditStore'
+import { wipeAddSessionState } from './sessionWipe'
 import { createAddLogStore } from './storage/addLogStore'
 import { createContactService } from './telegram/contactService'
 import { registerAddChannels, emitAddState } from './ipc/addChannels'
@@ -191,6 +192,8 @@ app.whenReady().then(async () => {
   let executorRef: import('./telegram/RemovalExecutor').RemovalExecutor | null = null
   let tagExecutorRef: TagExecutor | null = null
   let addExecutorRef: AddExecutor | null = null
+  let addAuditStoreRef: ReturnType<typeof createAddAuditStore> | null = null
+  let resolverRef: TargetResolver | null = null
 
   const governor = new RateLimitGovernor({
     client: client as unknown as ConstructorParameters<typeof RateLimitGovernor>[0]['client'],
@@ -238,6 +241,8 @@ app.whenReady().then(async () => {
     },
     onSessionWipe: () => {
       secretsStore.wipeSession()
+      // Audit W4: drop the persisted add job (holds target access hash), executor state, and resolved target.
+      wipeAddSessionState({ addExecutor: addExecutorRef, addAuditStore: addAuditStoreRef, resolver: resolverRef })
     },
     onSessionPersist: (sessionString: string) => {
       // Write the session to the encrypted on-disk store so it survives a restart.
@@ -265,6 +270,7 @@ app.whenReady().then(async () => {
       emitTargetState(currentWin, state)
     },
   })
+  resolverRef = resolver
   // NOTE: registerTargetChannels is called AFTER scanner is constructed below (CR-01-MAIN).
   // scanner must be in scope before the call; it is declared at the MembershipScanner block.
 
@@ -352,6 +358,7 @@ app.whenReady().then(async () => {
   // ── Wire AddAuditStore ────────────────────────────────────────────────────
   // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).
   const addAuditStore = createAddAuditStore()
+  addAuditStoreRef = addAuditStore
 
   // ── Wire AddLogStore ──────────────────────────────────────────────────────
   // Production store: lazy-requires node:fs + electron.app (no side effects at module parse).

@@ -998,6 +998,39 @@ describe('AddExecutor — PEER_FLOOD hard-stop, abort, generation guard (mirrors
     expect(hasAnySkipped).toBe(true)
   })
 
+  it('resetForSessionWipe() mid-run ends idle; the aborted loop emits no stopped state and does no further audit writes (W4)', async () => {
+    const dialogs = [makeDialog('12101', 'supergroup'), makeDialog('12102', 'supergroup'), makeDialog('12103', 'supergroup')]
+    const dialogIds = ['12101', '12102', '12103']
+    const auditStore = makeAddAuditStore(dialogIds)
+    const { executor, states } = makeExecutor({ dialogs, auditStore })
+
+    let wiped = false
+    let checkpointsAtWipe = -1
+    const originalCheckpoint = auditStore.checkpoint.bind(auditStore)
+    auditStore.checkpoint = (dialogId: string, outcome: AddGroupOutcome) => {
+      originalCheckpoint(dialogId, outcome)
+      if (!wiped) {
+        wiped = true
+        executor.resetForSessionWipe()
+        checkpointsAtWipe = auditStore.checkpointCalls.length
+      }
+    }
+    const p = executor.execute({ dialogIds })
+    await vi.runAllTimersAsync()
+    await p
+
+    expect(states[states.length - 1]!.step).toBe('idle')
+    expect(states.map((s) => s.step)).not.toContain('stopped')
+    expect(auditStore.checkpointCalls.length).toBe(checkpointsAtWipe)
+    expect(auditStore.setStatusCalls.some((c) => c.status === 'stopped')).toBe(false)
+  })
+
+  it('resetForSessionWipe() from idle emits idle', () => {
+    const { executor, states } = makeExecutor({ dialogs: [makeDialog('12104', 'supergroup')] })
+    executor.resetForSessionWipe()
+    expect(states[states.length - 1]?.step).toBe('idle')
+  })
+
   it('abortExecution() when idle emits idle state (not stopped)', () => {
     const dialogs = [makeDialog('12004', 'supergroup')]
     const { executor, states } = makeExecutor({ dialogs })

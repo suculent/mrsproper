@@ -154,6 +154,8 @@ export class AddExecutor {
   /** Generation token (D-15/WR-01): incremented on execute() and abortExecution(). */
   private _generation = 0
   private _abortController: AbortController | null = null
+  /** Set by resetForSessionWipe(); makes an aborted in-flight loop inert (no audit writes / 'stopped' emit). */
+  private _wiped = false
   /** True while an add run is active — gates flood-tick forwarding. */
   private _runActive = false
   /** Target rebuilt/resolved for the active run; lets retryGroup work after a relaunch resume. */
@@ -279,6 +281,7 @@ export class AddExecutor {
     }
 
     const gen = ++this._generation
+    this._wiped = false
     this._runActive = true
 
     if (
@@ -652,6 +655,30 @@ export class AddExecutor {
         outcomes: [],
       })
     }
+  }
+
+  /**
+   * Logout / session wipe: unconditionally return to idle from any state (including a
+   * running run) and make the aborted in-flight loop inert so it cannot write checkpoints
+   * or emit 'stopped' after the wipe (audit W4, ADD-08/12).
+   */
+  resetForSessionWipe(): void {
+    this._wiped = true
+    this._generation++
+    if (this._abortController) {
+      this._abortController.abort()
+      this._abortController = null
+    }
+    this._runActive = false
+    this._resolvedTarget = null
+    this._jobDialogIds = null
+    this._emit({
+      step: 'idle',
+      targetId: '',
+      targetName: '',
+      progress: { processed: 0, total: 0 },
+      outcomes: [],
+    })
   }
 
   /**
@@ -1153,6 +1180,7 @@ export class AddExecutor {
     outcomes: AddGroupOutcome[],
     ctx: { targetId: string; targetName: string; total: number }
   ): void {
+    if (this._wiped) return
     const processedIds = new Set(outcomes.map((o) => o.dialogId))
     const remaining = selectedDialogs.filter((d) => !processedIds.has(d.id))
     for (const d of remaining) {
